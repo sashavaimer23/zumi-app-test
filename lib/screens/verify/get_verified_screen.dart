@@ -30,7 +30,11 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
     _reload();
   }
 
-  void _reload() => _idStatus = context.read<AppState>().repo.verificationStatus(kind: 'identity');
+  void _reload() {
+    final repo = context.read<AppState>().repo;
+    // статусы могли поменяться — команда Zumi проверяет заявки вручную
+    _idStatus = repo.refreshUser().then((_) => repo.verificationStatus(kind: 'identity'));
+  }
 
   // ---------------- шаги ----------------
   Future<void> _editName(AppUser u) async {
@@ -96,7 +100,7 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
     if (no == null || no.trim().length < 3 || !mounted) return;
     try {
       await context.read<AppState>().repo.submitAgentLicence(no);
-      if (mounted) showSnack(context, 'Thanks! We will check it with ZIEA within 1–2 working days.');
+      if (mounted) showSnack(context, 'Sent to the Zumi team! We check the number with ZIEA — usually about 15 minutes.');
     } catch (e) {
       if (mounted) showSnack(context, '$e');
     }
@@ -111,7 +115,9 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
     return FutureBuilder<String?>(
       future: _idStatus,
       builder: (context, snap) {
-        final idStatus = u.idVerified ? 'approved' : snap.data;
+        final idStatus = u.idVerified ? 'approved' : (u.idStatus ?? snap.data);
+        final idNote = (u.idNote ?? '').trim();
+        final licNote = (u.licenceNote ?? '').trim();
         final steps = <_StepData>[
           _StepData(
             icon: ZI.user,
@@ -134,8 +140,8 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
             title: 'ID check',
             subtitle: switch (idStatus) {
               'approved' => 'NRC / passport confirmed',
-              'pending' => 'Under review — 1–2 working days',
-              'rejected' => 'Photos were not clear — please try again',
+              'pending' => 'With the Zumi team — usually about 15 minutes',
+              'rejected' => idNote.isEmpty ? 'Not approved — please try again' : 'Not approved: $idNote. Please try again.',
               _ => 'Photo of your NRC or passport + a selfie',
             },
             done: u.idVerified,
@@ -150,14 +156,17 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
               subtitle: u.licenceVerified
                   ? 'Licence ${u.licenceNo} confirmed'
                   : (u.licenceNo != null
-                      ? 'Number ${u.licenceNo} — under review'
-                      : 'Your ZIEA registration number'),
+                      ? 'Number ${u.licenceNo} — with the Zumi team, usually about 15 minutes'
+                      : (licNote.isNotEmpty
+                          ? 'Not approved: $licNote. Please check the number and send it again.'
+                          : 'Your ZIEA registration number')),
               done: u.licenceVerified,
               pending: !u.licenceVerified && u.licenceNo != null,
               action: () => _licence(u),
-              actionLabel: 'Add',
+              actionLabel: licNote.isNotEmpty ? 'Retry' : 'Add',
             ),
         ];
+        final anyPending = steps.any((s) => s.pending);
         final done = steps.where((s) => s.done).length;
         final next = steps.where((s) => !s.done && !s.pending).firstOrNullSafe;
         final allDone = done == steps.length;
@@ -207,6 +216,24 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                   ]),
                 ]),
               ),
+              if (anyPending) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(16)),
+                  child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(ZI.clock, color: Zc.orange),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Your details are with the Zumi team. A real person checks every request — most take '
+                        'about 15 minutes (8:00–20:00, Lusaka time). You will see the result here and in your Profile.',
+                        style: TextStyle(fontSize: 13, height: 1.4),
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
               const SizedBox(height: 18),
 
               // ---- шаги
@@ -220,11 +247,17 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                   onPressed: next.action,
                 )
               else if (!allDone)
-                const Text(
-                  'Everything is sent. We will notify you when the check is complete.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Zc.grey),
-                ),
+                Column(children: [
+                  const Text(
+                    'Everything is sent. Tap below to see the latest status.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Zc.grey),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(_reload),
+                    child: const Text('Check status', style: TextStyle(color: Zc.green)),
+                  ),
+                ]),
               const SizedBox(height: 22),
               const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(ZI.shield, size: 18, color: Zc.grey),

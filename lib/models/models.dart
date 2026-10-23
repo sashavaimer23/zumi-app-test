@@ -469,6 +469,9 @@ class AppUser {
   final String? bio;          // «о себе» (агенты)
   final String? whatsapp;     // рабочий WhatsApp агента — виден на его странице
   final DateTime? createdAt;
+  final String? idStatus;     // последняя заявка на проверку документа: pending | approved | rejected
+  final String? idNote;       // причина отказа по документу
+  final String? licenceNote;  // причина отказа по лицензии ZIEA
 
   const AppUser({
     required this.id,
@@ -485,6 +488,9 @@ class AppUser {
     this.bio,
     this.whatsapp,
     this.createdAt,
+    this.idStatus,
+    this.idNote,
+    this.licenceNote,
   });
 
   bool get profileComplete => (fullName ?? '').trim().length > 1;
@@ -513,6 +519,10 @@ class AppUser {
     String? avatarUrl,
     String? bio,
     String? whatsapp,
+    String? idStatus,
+    String? idNote,
+    String? licenceNote,
+    bool clearLicence = false,
   }) =>
       AppUser(
         id: id,
@@ -523,12 +533,15 @@ class AppUser {
         agencyName: agencyName ?? this.agencyName,
         phoneVerified: phoneVerified ?? this.phoneVerified,
         idVerified: idVerified ?? this.idVerified,
-        licenceNo: licenceNo ?? this.licenceNo,
+        licenceNo: clearLicence ? null : (licenceNo ?? this.licenceNo),
         licenceVerified: licenceVerified ?? this.licenceVerified,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         bio: bio ?? this.bio,
         whatsapp: whatsapp ?? this.whatsapp,
         createdAt: createdAt,
+        idStatus: idStatus ?? this.idStatus,
+        idNote: idNote ?? this.idNote,
+        licenceNote: clearLicence ? licenceNote : (licenceNote ?? this.licenceNote),
       );
 
   bool get isAgent => role == 'agent';
@@ -875,8 +888,9 @@ class Rating {
 }
 
 class AdminStats {
-  final int idChecks, ownership, licences, reports, tickets, reviews, listings, users;
+  final int accounts, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
   const AdminStats({
+    this.accounts = 0,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -887,11 +901,12 @@ class AdminStats {
     this.users = 0,
   });
 
-  int get total => idChecks + ownership + licences + reports + tickets + reviews;
+  int get total => accounts + idChecks + ownership + licences + reports + tickets + reviews;
 
   factory AdminStats.fromMap(Map<String, dynamic> m) {
     int n(String k) => ((m[k] as num?) ?? 0).toInt();
     return AdminStats(
+      accounts: n('accounts'),
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),
@@ -946,6 +961,60 @@ class VerificationItem {
         reviewerNote: m['reviewer_note'] as String?,
         propertyTitle: m['property_title'] as String?,
         createdAt: _dt(m['created_at']),
+      );
+}
+
+/// Новый аккаунт в кабинете команды: кто зарегистрировался и как далеко прошёл проверку
+class AccountItem {
+  final String id;
+  final String? fullName;
+  final String? email;
+  final String role;
+  final String? phone;
+  final String? avatarUrl;
+  final bool phoneVerified;
+  final String? idStatus; // null | pending | approved | rejected
+  final String? licenceNo;
+  final bool licenceVerified;
+  final int listings;
+  final DateTime createdAt;
+  final DateTime? reviewedAt;
+  final bool banned;
+
+  const AccountItem({
+    required this.id,
+    this.fullName,
+    this.email,
+    this.role = 'owner',
+    this.phone,
+    this.avatarUrl,
+    this.phoneVerified = false,
+    this.idStatus,
+    this.licenceNo,
+    this.licenceVerified = false,
+    this.listings = 0,
+    required this.createdAt,
+    this.reviewedAt,
+    this.banned = false,
+  });
+
+  bool get isAgent => role == 'agent';
+
+  factory AccountItem.fromMap(Map<String, dynamic> m) => AccountItem(
+        id: m['id'] as String,
+        fullName: m['full_name'] as String?,
+        email: m['email'] as String?,
+        role: (m['role'] as String?) ?? 'owner',
+        phone: m['phone'] as String?,
+        avatarUrl: m['avatar_url'] as String?,
+        phoneVerified: (m['phone_verified'] as bool?) ?? false,
+        idStatus: m['id_status'] as String?,
+        licenceNo: m['licence_no'] as String?,
+        licenceVerified: (m['licence_verified'] as bool?) ?? false,
+        listings: ((m['listings'] as num?) ?? 0).toInt(),
+        createdAt: _dt(m['created_at']),
+        reviewedAt: DateTime.tryParse((m['reviewed_at'] as String?) ?? ''),
+        banned: (m['banned'] as bool?) ?? false,
       );
 }
 

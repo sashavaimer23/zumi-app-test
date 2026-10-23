@@ -2,21 +2,21 @@
 // ignore_for_file: prefer_single_quotes
 
 const List<Map<String, dynamic>> demoAreas = [
-  {'id': 1, 'city': 'Lusaka', 'name': 'Kabulonga', 'lat': -15.425, 'lng': 28.335, 'tagline': 'Leafy streets & top schools', 'image_url': null},
-  {'id': 2, 'city': 'Lusaka', 'name': 'Woodlands', 'lat': -15.435, 'lng': 28.32, 'tagline': 'Central, calm and green', 'image_url': null},
-  {'id': 3, 'city': 'Lusaka', 'name': 'Roma', 'lat': -15.37, 'lng': 28.31, 'tagline': 'Vibrant community & city access', 'image_url': 'asset:n2.jpg'},
-  {'id': 4, 'city': 'Lusaka', 'name': 'Ibex Hill', 'lat': -15.44, 'lng': 28.37, 'tagline': 'Modern homes & green spaces', 'image_url': 'asset:n1.jpg'},
-  {'id': 5, 'city': 'Lusaka', 'name': 'Rhodes Park', 'lat': -15.405, 'lng': 28.305, 'tagline': 'Walk to everything', 'image_url': null},
-  {'id': 6, 'city': 'Lusaka', 'name': 'Olympia', 'lat': -15.385, 'lng': 28.31, 'tagline': 'Close to UNZA & malls', 'image_url': null},
-  {'id': 7, 'city': 'Lusaka', 'name': 'Northmead', 'lat': -15.4, 'lng': 28.3, 'tagline': 'Shops, cafes and nightlife', 'image_url': null},
-  {'id': 8, 'city': 'Lusaka', 'name': 'Longacres', 'lat': -15.412, 'lng': 28.312, 'tagline': 'Business district living', 'image_url': null},
-  {'id': 9, 'city': 'Lusaka', 'name': 'Chelston', 'lat': -15.37, 'lng': 28.37, 'tagline': 'Affordable family homes', 'image_url': null},
-  {'id': 10, 'city': 'Lusaka', 'name': 'Avondale', 'lat': -15.375, 'lng': 28.355, 'tagline': 'Quiet residential area', 'image_url': null},
-  {'id': 11, 'city': 'Lusaka', 'name': 'Meanwood', 'lat': -15.355, 'lng': 28.33, 'tagline': 'Peaceful living and family-friendly', 'image_url': 'asset:n3.jpg'},
-  {'id': 12, 'city': 'Lusaka', 'name': 'Chalala', 'lat': -15.47, 'lng': 28.33, 'tagline': 'Growing suburb, great value', 'image_url': null},
-  {'id': 13, 'city': 'Lusaka', 'name': 'Leopards Hill', 'lat': -15.46, 'lng': 28.39, 'tagline': 'Big plots and views', 'image_url': null},
-  {'id': 14, 'city': 'Lusaka', 'name': 'New Kasama', 'lat': -15.43, 'lng': 28.4, 'tagline': 'New developments', 'image_url': null},
-  {'id': 15, 'city': 'Lusaka', 'name': 'Makeni', 'lat': -15.46, 'lng': 28.25, 'tagline': 'Space to build', 'image_url': null},
+  {'id': 1, 'city': 'Lusaka', 'name': 'Kabulonga', 'lat': -15.425, 'lng': 28.335, 'tagline': 'Leafy streets & top schools', 'image_url': 'asset:area_kabulonga.jpg'},
+  {'id': 2, 'city': 'Lusaka', 'name': 'Woodlands', 'lat': -15.435, 'lng': 28.32, 'tagline': 'Central, calm and green', 'image_url': 'asset:area_woodlands.jpg'},
+  {'id': 3, 'city': 'Lusaka', 'name': 'Roma', 'lat': -15.37, 'lng': 28.31, 'tagline': 'Vibrant community & city access', 'image_url': 'asset:area_roma.jpg'},
+  {'id': 4, 'city': 'Lusaka', 'name': 'Ibex Hill', 'lat': -15.44, 'lng': 28.37, 'tagline': 'Modern homes & green spaces', 'image_url': 'asset:area_ibex_hill.jpg'},
+  {'id': 5, 'city': 'Lusaka', 'name': 'Rhodes Park', 'lat': -15.405, 'lng': 28.305, 'tagline': 'Walk to everything', 'image_url': 'asset:area_rhodes_park.jpg'},
+  {'id': 6, 'city': 'Lusaka', 'name': 'Olympia', 'lat': -15.385, 'lng': 28.31, 'tagline': 'Close to UNZA & malls', 'image_url': 'asset:area_olympia.jpg'},
+  {'id': 7, 'city': 'Lusaka', 'name': 'Northmead', 'lat': -15.4, 'lng': 28.3, 'tagline': 'Shops, cafes and nightlife', 'image_url': 'asset:area_northmead.jpg'},
+  {'id': 8, 'city': 'Lusaka', 'name': 'Longacres', 'lat': -15.412, 'lng': 28.312, 'tagline': 'Business district living', 'image_url': 'asset:area_longacres.jpg'},
+  {'id': 9, 'city': 'Lusaka', 'name': 'Chelston', 'lat': -15.37, 'lng': 28.37, 'tagline': 'Affordable family homes', 'image_url': 'asset:area_chelston.jpg'},
+  {'id': 10, 'city': 'Lusaka', 'name': 'Avondale', 'lat': -15.375, 'lng': 28.355, 'tagline': 'Quiet residential area', 'image_url': 'asset:area_avondale.jpg'},
+  {'id': 11, 'city': 'Lusaka', 'name': 'Meanwood', 'lat': -15.355, 'lng': 28.33, 'tagline': 'Peaceful living and family-friendly', 'image_url': 'asset:area_meanwood.jpg'},
+  {'id': 12, 'city': 'Lusaka', 'name': 'Chalala', 'lat': -15.47, 'lng': 28.33, 'tagline': 'Growing suburb, great value', 'image_url': 'asset:area_chalala.jpg'},
+  {'id': 13, 'city': 'Lusaka', 'name': 'Leopards Hill', 'lat': -15.46, 'lng': 28.39, 'tagline': 'Big plots and views', 'image_url': 'asset:area_leopards_hill.jpg'},
+  {'id': 14, 'city': 'Lusaka', 'name': 'New Kasama', 'lat': -15.43, 'lng': 28.4, 'tagline': 'New developments', 'image_url': 'asset:area_new_kasama.jpg'},
+  {'id': 15, 'city': 'Lusaka', 'name': 'Makeni', 'lat': -15.46, 'lng': 28.25, 'tagline': 'Space to build', 'image_url': 'asset:area_makeni.jpg'},
 ];
 
 const List<Map<String, dynamic>> demoProperties = [

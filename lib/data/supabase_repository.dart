@@ -43,6 +43,10 @@ class SupabaseRepository implements Repository {
               'agent_licence_no, licence_verified_at, avatar_url, bio, whatsapp, created_at')
           .eq('id', u.id)
           .maybeSingle();
+      Map<String, dynamic>? ver;
+      try {
+        ver = Map<String, dynamic>.from(await _db.rpc('my_verification') as Map);
+      } catch (_) {/* не критично */}
       return AppUser(
         id: u.id,
         email: u.email,
@@ -58,6 +62,9 @@ class SupabaseRepository implements Repository {
         bio: row?['bio'] as String?,
         whatsapp: row?['whatsapp'] as String?,
         createdAt: DateTime.tryParse((row?['created_at'] as String?) ?? ''),
+        idStatus: ver?['id_status'] as String?,
+        idNote: ver?['id_note'] as String?,
+        licenceNote: ver?['licence_note'] as String?,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
@@ -119,6 +126,9 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<void> signOut() => _db.auth.signOut();
+
+  @override
+  Future<void> refreshUser() => _reloadUser();
 
   @override
   Future<void> sendPasswordReset(String email) => _guard(() async {
@@ -561,6 +571,7 @@ class SupabaseRepository implements Repository {
           'doc_paths': paths,
           'consent_at': DateTime.now().toUtc().toIso8601String(),
         });
+        await _reloadUser(); // статус «на проверке»
       });
 
   @override
@@ -747,6 +758,17 @@ class SupabaseRepository implements Repository {
   Future<AdminStats> adminStats() => _guard(() async {
         final res = await _db.rpc('admin_stats');
         return AdminStats.fromMap(Map<String, dynamic>.from(res as Map));
+      });
+
+  @override
+  Future<List<AccountItem>> adminAccounts({bool onlyNew = true}) => _guard(() async {
+        final rows = await _db.rpc('admin_accounts', params: {'only_new': onlyNew}) as List;
+        return rows.map((r) => AccountItem.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<void> adminReviewAccount(String userId, String action, {String? note}) => _guard(() async {
+        await _db.rpc('admin_review_account', params: {'uid': userId, 'p_action': action, 'p_note': note});
       });
 
   @override

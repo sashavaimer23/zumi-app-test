@@ -182,10 +182,13 @@ class _PostWizardState extends State<PostWizard> {
       };
 
   Widget _page({required String title, required String subtitle, required List<Widget> children, Widget? button}) {
+    // на компьютере форма узкой колонкой по центру, а не на весь экран
+    final w = MediaQuery.sizeOf(context).width;
+    final side = w > 760 ? (w - 640) / 2 : 26.0;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(26, 30, 26, 30),
+      padding: EdgeInsets.fromLTRB(side, 30, side, 30),
       children: [
-        Text(title, style: zHeadline(context, size: 42)),
+        Text(title, style: zHeadline(context, size: w > 760 ? 36 : 42)),
         const SizedBox(height: 8),
         Text(subtitle, style: const TextStyle(fontSize: 16, color: Zc.grey)),
         const SizedBox(height: 28),
@@ -223,7 +226,7 @@ class _PostWizardState extends State<PostWizard> {
         Row(children: [
           Expanded(
             child: _DealCard(
-              image: 'p4.jpg',
+              image: 'deal_rent.jpg',
               title: 'For rent',
               subtitle: 'Find the right tenants quickly.',
               selected: _d.dealType == DealType.rent,
@@ -233,7 +236,7 @@ class _PostWizardState extends State<PostWizard> {
           const SizedBox(width: 16),
           Expanded(
             child: _DealCard(
-              image: 'p5.jpg',
+              image: 'deal_sale.jpg',
               title: 'For sale',
               subtitle: 'Reach serious buyers.',
               selected: _d.dealType == DealType.sale,
@@ -589,8 +592,10 @@ class _PostWizardState extends State<PostWizard> {
 
   // ------------------------------ ШАГ 5 ------------------------------
   Widget _step5() {
+    final w = MediaQuery.sizeOf(context).width;
+    final side = w > 760 ? (w - 640) / 2 : 26.0;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(26, 30, 26, 30),
+      padding: EdgeInsets.fromLTRB(side, 30, side, 30),
       children: [
         const ListingLiveHero(),
         const SizedBox(height: 24),
@@ -697,7 +702,10 @@ class _DealCard extends StatelessWidget {
           border: Border.all(color: selected ? Zc.orange : Zc.lightGrey, width: selected ? 2 : 1.2),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AspectRatio(aspectRatio: 0.92, child: PropImage('asset:$image', radius: 14)),
+          AspectRatio(
+            aspectRatio: MediaQuery.sizeOf(context).width > 760 ? 1.3 : 0.92,
+            child: PropImage('asset:$image', radius: 14),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

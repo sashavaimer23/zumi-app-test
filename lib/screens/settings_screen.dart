@@ -257,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: (u.licenceNo ?? '').isEmpty ? 'ZIEA licence' : 'ZIEA licence ${u.licenceNo}',
                   subtitle: u.licenceVerified
                       ? 'Checked by the Zumi team'
-                      : ((u.licenceNo ?? '').isEmpty ? 'Not added yet' : 'Under review — 1–2 working days'),
+                      : ((u.licenceNo ?? '').isEmpty ? 'Not added yet' : 'With the Zumi team — about 15 minutes'),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen())),
                 ),
 

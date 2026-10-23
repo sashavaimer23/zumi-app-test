@@ -4,21 +4,21 @@
 --  Фото демо лежат в приложении (asset:...). Реальные фото — в Storage.
 -- =====================================================================
 
-update public.areas set tagline = 'Leafy streets & top schools', image_url = null where city = 'Lusaka' and name = 'Kabulonga';
-update public.areas set tagline = 'Central, calm and green', image_url = null where city = 'Lusaka' and name = 'Woodlands';
-update public.areas set tagline = 'Vibrant community & city access', image_url = 'asset:n2.jpg' where city = 'Lusaka' and name = 'Roma';
-update public.areas set tagline = 'Modern homes & green spaces', image_url = 'asset:n1.jpg' where city = 'Lusaka' and name = 'Ibex Hill';
-update public.areas set tagline = 'Walk to everything', image_url = null where city = 'Lusaka' and name = 'Rhodes Park';
-update public.areas set tagline = 'Close to UNZA & malls', image_url = null where city = 'Lusaka' and name = 'Olympia';
-update public.areas set tagline = 'Shops, cafes and nightlife', image_url = null where city = 'Lusaka' and name = 'Northmead';
-update public.areas set tagline = 'Business district living', image_url = null where city = 'Lusaka' and name = 'Longacres';
-update public.areas set tagline = 'Affordable family homes', image_url = null where city = 'Lusaka' and name = 'Chelston';
-update public.areas set tagline = 'Quiet residential area', image_url = null where city = 'Lusaka' and name = 'Avondale';
-update public.areas set tagline = 'Peaceful living and family-friendly', image_url = 'asset:n3.jpg' where city = 'Lusaka' and name = 'Meanwood';
-update public.areas set tagline = 'Growing suburb, great value', image_url = null where city = 'Lusaka' and name = 'Chalala';
-update public.areas set tagline = 'Big plots and views', image_url = null where city = 'Lusaka' and name = 'Leopards Hill';
-update public.areas set tagline = 'New developments', image_url = null where city = 'Lusaka' and name = 'New Kasama';
-update public.areas set tagline = 'Space to build', image_url = null where city = 'Lusaka' and name = 'Makeni';
+update public.areas set tagline = 'Leafy streets & top schools', image_url = 'asset:area_kabulonga.jpg' where city = 'Lusaka' and name = 'Kabulonga';
+update public.areas set tagline = 'Central, calm and green', image_url = 'asset:area_woodlands.jpg' where city = 'Lusaka' and name = 'Woodlands';
+update public.areas set tagline = 'Vibrant community & city access', image_url = 'asset:area_roma.jpg' where city = 'Lusaka' and name = 'Roma';
+update public.areas set tagline = 'Modern homes & green spaces', image_url = 'asset:area_ibex_hill.jpg' where city = 'Lusaka' and name = 'Ibex Hill';
+update public.areas set tagline = 'Walk to everything', image_url = 'asset:area_rhodes_park.jpg' where city = 'Lusaka' and name = 'Rhodes Park';
+update public.areas set tagline = 'Close to UNZA & malls', image_url = 'asset:area_olympia.jpg' where city = 'Lusaka' and name = 'Olympia';
+update public.areas set tagline = 'Shops, cafes and nightlife', image_url = 'asset:area_northmead.jpg' where city = 'Lusaka' and name = 'Northmead';
+update public.areas set tagline = 'Business district living', image_url = 'asset:area_longacres.jpg' where city = 'Lusaka' and name = 'Longacres';
+update public.areas set tagline = 'Affordable family homes', image_url = 'asset:area_chelston.jpg' where city = 'Lusaka' and name = 'Chelston';
+update public.areas set tagline = 'Quiet residential area', image_url = 'asset:area_avondale.jpg' where city = 'Lusaka' and name = 'Avondale';
+update public.areas set tagline = 'Peaceful living and family-friendly', image_url = 'asset:area_meanwood.jpg' where city = 'Lusaka' and name = 'Meanwood';
+update public.areas set tagline = 'Growing suburb, great value', image_url = 'asset:area_chalala.jpg' where city = 'Lusaka' and name = 'Chalala';
+update public.areas set tagline = 'Big plots and views', image_url = 'asset:area_leopards_hill.jpg' where city = 'Lusaka' and name = 'Leopards Hill';
+update public.areas set tagline = 'New developments', image_url = 'asset:area_new_kasama.jpg' where city = 'Lusaka' and name = 'New Kasama';
+update public.areas set tagline = 'Space to build', image_url = 'asset:area_makeni.jpg' where city = 'Lusaka' and name = 'Makeni';
 
 insert into public.properties (id, title, description, deal_type, property_type, price, currency, rent_period, bedrooms, bathrooms, area_sqm, plot_sqm, amenities, area_id, address, location, status, promoted_until, listed_by, contact_name, contact_phone, renovation, kids_allowed, pets_allowed, lease_term, views_count, created_at, is_demo) values
   ('00000000-0000-0000-0000-00000000d000', 'Cosy family house', 'Bright 3-bedroom family house in a quiet gated street of Ibex Hill. Fitted kitchen, borehole, solar backup and a private garden.', 'rent', 'house', 45000, 'ZMW', 'month', 3, 2, 70.8, null, array['parking','garden','ac']::text[], (select id from public.areas where city='Lusaka' and name='Ibex Hill'), 'The 3rd street', st_point(28.367181,-15.445586)::geography, 'active', now() + interval '30 days', 'agent', 'Zumi Realty', '+260 97 000 0000', 'designer', true, false, 'year', 353, '2026-10-20T10:00:00Z', true),

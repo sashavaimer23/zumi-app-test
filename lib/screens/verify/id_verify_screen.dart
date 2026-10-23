@@ -54,12 +54,7 @@ class _IdVerifyScreenState extends State<IdVerifyScreen> {
     try {
       await context.read<AppState>().repo.submitIdentity(docType: _docType, document: _doc!, selfie: _selfie!);
       if (!mounted) return;
-      showSnack(
-        context,
-        context.read<AppState>().repo.isDemo
-            ? 'Demo mode: approved instantly'
-            : 'Sent! We check within 1–2 working days.',
-      );
+      showSnack(context, 'Sent to the Zumi team! Most checks take about 15 minutes.');
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) showSnack(context, '$e');

@@ -21,6 +21,9 @@ abstract class Repository {
   });
   Future<void> signOut();
 
+  /// Перечитать свой профиль с сервера (статусы проверок могли измениться)
+  Future<void> refreshUser();
+
   /// Забыли пароль: код из письма → новый пароль
   Future<void> sendPasswordReset(String email);
   Future<void> resetPasswordWithCode({required String email, required String code, required String newPassword});
@@ -124,6 +127,8 @@ abstract class Repository {
 
   // --- кабинет команды Zumi (только role = admin)
   Future<AdminStats> adminStats();
+  Future<List<AccountItem>> adminAccounts({bool onlyNew = true});
+  Future<void> adminReviewAccount(String userId, String action, {String? note});
   Future<List<VerificationItem>> adminVerificationQueue({String status = 'pending'});
   Future<List<String>> adminDocUrls(List<String> paths);
   Future<void> adminReviewVerification(String id, bool approve, {String? note});

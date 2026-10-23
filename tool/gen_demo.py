@@ -2,21 +2,21 @@ import json, uuid, random
 random.seed(7)
 # (id, name, lng, lat, tagline, image)
 areas = [
- (1,'Kabulonga',28.335,-15.425,'Leafy streets & top schools',None),
- (2,'Woodlands',28.320,-15.435,'Central, calm and green',None),
- (3,'Roma',28.310,-15.370,'Vibrant community & city access','asset:n2.jpg'),
- (4,'Ibex Hill',28.370,-15.440,'Modern homes & green spaces','asset:n1.jpg'),
- (5,'Rhodes Park',28.305,-15.405,'Walk to everything',None),
- (6,'Olympia',28.310,-15.385,'Close to UNZA & malls',None),
- (7,'Northmead',28.300,-15.400,'Shops, cafes and nightlife',None),
- (8,'Longacres',28.312,-15.412,'Business district living',None),
- (9,'Chelston',28.370,-15.370,'Affordable family homes',None),
- (10,'Avondale',28.355,-15.375,'Quiet residential area',None),
- (11,'Meanwood',28.330,-15.355,'Peaceful living and family-friendly','asset:n3.jpg'),
- (12,'Chalala',28.330,-15.470,'Growing suburb, great value',None),
- (13,"Leopards Hill",28.390,-15.460,'Big plots and views',None),
- (14,'New Kasama',28.400,-15.430,'New developments',None),
- (15,'Makeni',28.250,-15.460,'Space to build',None),
+ (1,'Kabulonga',28.335,-15.425,'Leafy streets & top schools','asset:area_kabulonga.jpg'),
+ (2,'Woodlands',28.320,-15.435,'Central, calm and green','asset:area_woodlands.jpg'),
+ (3,'Roma',28.310,-15.370,'Vibrant community & city access','asset:area_roma.jpg'),
+ (4,'Ibex Hill',28.370,-15.440,'Modern homes & green spaces','asset:area_ibex_hill.jpg'),
+ (5,'Rhodes Park',28.305,-15.405,'Walk to everything','asset:area_rhodes_park.jpg'),
+ (6,'Olympia',28.310,-15.385,'Close to UNZA & malls','asset:area_olympia.jpg'),
+ (7,'Northmead',28.300,-15.400,'Shops, cafes and nightlife','asset:area_northmead.jpg'),
+ (8,'Longacres',28.312,-15.412,'Business district living','asset:area_longacres.jpg'),
+ (9,'Chelston',28.370,-15.370,'Affordable family homes','asset:area_chelston.jpg'),
+ (10,'Avondale',28.355,-15.375,'Quiet residential area','asset:area_avondale.jpg'),
+ (11,'Meanwood',28.330,-15.355,'Peaceful living and family-friendly','asset:area_meanwood.jpg'),
+ (12,'Chalala',28.330,-15.470,'Growing suburb, great value','asset:area_chalala.jpg'),
+ (13,"Leopards Hill",28.390,-15.460,'Big plots and views','asset:area_leopards_hill.jpg'),
+ (14,'New Kasama',28.400,-15.430,'New developments','asset:area_new_kasama.jpg'),
+ (15,'Makeni',28.250,-15.460,'Space to build','asset:area_makeni.jpg'),
 ]
 A={a[0]:a for a in areas}
 # title, deal, type, price, period, bed, bath, sqm, plot, area, address, images, amen, promoted, by, reno, kids, pets, lease, desc

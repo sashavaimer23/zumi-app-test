@@ -15,11 +15,12 @@ import '../support/ticket_chat_screen.dart';
 // Разделы: Inbox · ID checks · Licences · Reports · Support · Reviews · Log
 // ======================================================================
 
-enum _Section { inbox, ids, licences, reports, support, reviews, log }
+enum _Section { inbox, accounts, ids, licences, reports, support, reviews, log }
 
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
+        _Section.accounts => 'New accounts',
         _Section.ids => 'ID checks',
         _Section.licences => 'Licences',
         _Section.reports => 'Reports',
@@ -29,6 +30,7 @@ extension on _Section {
       };
   IconData get icon => switch (this) {
         _Section.inbox => ZI.bell,
+        _Section.accounts => ZI.userCircle,
         _Section.ids => ZI.idCard,
         _Section.licences => ZI.badge,
         _Section.reports => ZI.flag,
@@ -68,6 +70,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   int _badge(_Section s) => switch (s) {
         _Section.inbox => _stats.total,
+        _Section.accounts => _stats.accounts,
         _Section.ids => _stats.idChecks + _stats.ownership,
         _Section.licences => _stats.licences,
         _Section.reports => _stats.reports,
@@ -78,6 +81,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _body() => switch (_section) {
         _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats),
+        _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
         _Section.licences => _Licences(onChanged: _refreshStats),
         _Section.reports => _Reports(onChanged: _refreshStats),
@@ -319,6 +323,7 @@ class _Inbox extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = [
       (_Section.reports, stats.reports, 'Scam & problem reports', 'Check first — people may lose money'),
+      (_Section.accounts, stats.accounts, 'New accounts', 'Everyone who signed up — take a quick look'),
       (_Section.ids, stats.idChecks, 'ID checks', 'NRC / passport + selfie'),
       (_Section.ids, stats.ownership, 'Ownership documents', 'Title deeds and mandates'),
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),
@@ -379,6 +384,132 @@ class _Inbox extends StatelessWidget {
           );
         }),
       ),
+    );
+  }
+}
+
+// ======================================================================
+// NEW ACCOUNTS — каждый, кто зарегистрировался
+// ======================================================================
+class _Accounts extends StatefulWidget {
+  const _Accounts({required this.onChanged, required this.onOpen});
+  final VoidCallback onChanged;
+  final ValueChanged<_Section> onOpen;
+
+  @override
+  State<_Accounts> createState() => _AccountsState();
+}
+
+class _AccountsState extends State<_Accounts> {
+  bool _onlyNew = true;
+  late Future<List<AccountItem>> _future = _load();
+
+  Future<List<AccountItem>> _load() => context.read<AppState>().repo.adminAccounts(onlyNew: _onlyNew);
+
+  Future<void> _act(AccountItem a, String action) async {
+    String? note;
+    if (action == 'ban') {
+      note = await _askNote(context, 'Block ${a.fullName ?? 'this account'}?', [
+        'Fake account',
+        'Scam / asked for prepayment',
+        'Pretends to be someone else',
+        'Spam',
+      ]);
+      if (note == null) return;
+    }
+    try {
+      await context.read<AppState>().repo.adminReviewAccount(a.id, action, note: note);
+      if (!mounted) return;
+      showSnack(context, action == 'ban' ? 'Account blocked' : 'Marked as checked');
+      setState(() => _future = _load());
+      widget.onChanged();
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'New accounts',
+      subtitle: 'Everyone who signed up. Check that the name and email look real; '
+          'documents and licences are in ID checks and Licences.',
+      trailing: SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(value: true, label: Text('New')),
+          ButtonSegment(value: false, label: Text('All')),
+        ],
+        selected: {_onlyNew},
+        onSelectionChanged: (s) => setState(() {
+          _onlyNew = s.first;
+          _future = _load();
+        }),
+      ),
+      child: _Loader<List<AccountItem>>(
+        future: _future,
+        builder: (list) {
+          if (list.isEmpty) return _emptyDone('No new accounts.');
+          return Column(children: [for (final a in list) _accountCard(a)]);
+        },
+      ),
+    );
+  }
+
+  Widget _accountCard(AccountItem a) {
+    Widget chip(String text, Color c) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(color: c.withAlpha(30), borderRadius: BorderRadius.circular(12)),
+          child: Text(text, style: TextStyle(fontSize: 12, color: c, fontWeight: FontWeight.w500)),
+        );
+    const ok = Color(0xFF2E9E5B);
+    const wait = Zc.orange;
+    const no = Zc.grey;
+    const bad = Color(0xFFD64545);
+    final id = switch (a.idStatus) {
+      'approved' => chip('ID ✓', ok),
+      'pending' => chip('ID waiting', wait),
+      'rejected' => chip('ID rejected', bad),
+      _ => chip('No ID yet', no),
+    };
+    return _Card(
+      highlight: a.reviewedAt == null,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          ZAvatar(url: a.avatarUrl, name: a.fullName ?? a.email, size: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(a.fullName ?? 'No name', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              SelectableText(
+                [if (a.email != null) a.email!, if ((a.phone ?? '').isNotEmpty) a.phone!].join(' · '),
+                style: const TextStyle(fontSize: 13, color: Zc.grey),
+              ),
+              Text('${a.isAgent ? 'Agent' : 'Owner'} · signed up ${timeAgo(a.createdAt)} · ${a.listings} listings',
+                  style: const TextStyle(fontSize: 12, color: Zc.grey)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          a.phoneVerified ? chip('Phone ✓', ok) : chip('Phone not confirmed', no),
+          id,
+          if (a.isAgent)
+            a.licenceVerified
+                ? chip('ZIEA ✓', ok)
+                : (a.licenceNo != null ? chip('ZIEA ${a.licenceNo} waiting', wait) : chip('No ZIEA number', no)),
+          if (a.banned) chip('Blocked', bad),
+        ]),
+        if (!a.banned && a.reviewedAt == null) ...[
+          const SizedBox(height: 12),
+          Wrap(spacing: 10, runSpacing: 8, children: [
+            _actionBtn('Looks OK', () => _act(a, 'ok'), primary: true),
+            if (a.idStatus == 'pending') _actionBtn('Open ID check', () => widget.onOpen(_Section.ids)),
+            if (a.isAgent && a.licenceNo != null && !a.licenceVerified)
+              _actionBtn('Open licence', () => widget.onOpen(_Section.licences)),
+            _actionBtn('Block', () => _act(a, 'ban'), danger: true),
+          ]),
+        ],
+      ]),
     );
   }
 }

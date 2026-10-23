@@ -37,6 +37,8 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=MAPTILER_KEY="$MAPTILER_KEY"
+      - name: Code check (report is published next to the app as analyze.txt)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings > build/web/analyze.txt 2>&1 || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web

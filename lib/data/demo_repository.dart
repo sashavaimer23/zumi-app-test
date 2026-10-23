@@ -21,6 +21,18 @@ class DemoRepository implements Repository {
   final _userCtrl = StreamController<AppUser?>.broadcast();
   AppUser? _user;
 
+  /// Все аккаунты этого демо (по id) — чтобы после выхода и входа всё сохранялось,
+  /// а команда Zumi (вход с почтой со словом admin) могла одобрять проверки.
+  final Map<String, AppUser> _known = {};
+
+  void _setUser(AppUser u) {
+    _known[u.id] = u;
+    if (_user?.id == u.id) {
+      _user = u;
+      _userCtrl.add(_user);
+    }
+  }
+
   // чаты
   final Map<String, Conversation> _convs = {};
   final Map<String, List<ChatMessage>> _msgs = {};
@@ -45,15 +57,22 @@ class DemoRepository implements Repository {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
     // демо: email со словом admin открывает кабинет команды Zumi
-    // демо: email со словом agent входит как агент
+    // демо: email со словом agent входит как агент, со словом admin — как команда Zumi
     final e = email.toLowerCase();
-    _user = AppUser(
-      id: 'demo-${email.hashCode}',
-      email: email,
-      fullName: email.split('@').first,
-      role: e.contains('admin') ? 'admin' : (e.contains('agent') ? 'agent' : 'owner'),
-      createdAt: DateTime.now(),
-    );
+    final id = 'demo-${e.hashCode}';
+    final known = _known[id];
+    if (known == null) {
+      final u = AppUser(
+        id: id,
+        email: email,
+        fullName: email.split('@').first,
+        role: e.contains('admin') ? 'admin' : (e.contains('agent') ? 'agent' : 'owner'),
+        createdAt: DateTime.now(),
+      );
+      _known[id] = u;
+      if (!u.isAdmin) _newAccounts.add(id);
+    }
+    _user = _known[id];
     _userCtrl.add(_user);
   }
 
@@ -67,14 +86,25 @@ class DemoRepository implements Repository {
   }) async {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
-    _user = AppUser(
-      id: 'demo-${email.hashCode}',
+    final u = AppUser(
+      id: 'demo-${email.toLowerCase().hashCode}',
       email: email,
       fullName: fullName,
       phone: phone,
       role: email.toLowerCase().contains('admin') ? 'admin' : role,
       createdAt: DateTime.now(),
     );
+    _known[u.id] = u;
+    if (!u.isAdmin) _newAccounts.add(u.id);
+    _user = u;
+    _userCtrl.add(_user);
+  }
+
+  @override
+  Future<void> refreshUser() async {
+    final u = _user;
+    if (u == null) return;
+    _user = _known[u.id] ?? u;
     _userCtrl.add(_user);
   }
 
@@ -352,7 +382,11 @@ class DemoRepository implements Repository {
       bio: bio == null ? u.bio : (bio.trim().isEmpty ? null : bio.trim()),
       whatsapp: whatsapp == null ? u.whatsapp : (whatsapp.trim().isEmpty ? null : whatsapp.trim()),
       createdAt: u.createdAt,
+      idStatus: u.idStatus,
+      idNote: u.idNote,
+      licenceNote: u.licenceNote,
     );
+    _known[u.id] = _user!;
     _syncMyBadge();
     _userCtrl.add(_user);
   }
@@ -362,9 +396,8 @@ class DemoRepository implements Repository {
     final u = _requireUser();
     await _lag();
     final url = MemoryImages.put('avatar-${u.id}-${DateTime.now().millisecondsSinceEpoch}', photo.bytes);
-    _user = u.copyWith(avatarUrl: url);
+    _setUser(u.copyWith(avatarUrl: url));
     _syncMyBadge();
-    _userCtrl.add(_user);
   }
 
   @override
@@ -429,19 +462,33 @@ class DemoRepository implements Repository {
   }) async {
     final u = _requireUser();
     await _lag();
-    _verification['identity:'] = 'approved';
-    _user = u.copyWith(idVerified: true);
-    _syncMyBadge();
-    _userCtrl.add(_user);
+    // как на сервере: заявка уходит команде Zumi и ждёт проверки
+    _vQueue.insert(
+      0,
+      VerificationItem(
+        id: _uuid.v4(),
+        userId: u.id,
+        userName: u.fullName,
+        userRole: u.role,
+        kind: 'identity',
+        docType: docType,
+        docPaths: [
+          MemoryImages.put('doc-${u.id}-${DateTime.now().millisecondsSinceEpoch}', document.bytes),
+          MemoryImages.put('selfie-${u.id}-${DateTime.now().millisecondsSinceEpoch}', selfie.bytes),
+        ],
+        createdAt: DateTime.now(),
+      ),
+    );
+    _setUser(u.copyWith(idStatus: 'pending'));
   }
 
   @override
   Future<void> submitAgentLicence(String licenceNo) async {
     final u = _requireUser();
     await _lag();
-    _user = u.copyWith(licenceNo: licenceNo, licenceVerified: true);
-    _syncMyBadge();
-    _userCtrl.add(_user);
+    _licences.removeWhere((l) => l.userId == u.id);
+    _licences.add(LicenceItem(userId: u.id, userName: u.fullName, licenceNo: licenceNo.trim()));
+    _setUser(u.copyWith(licenceNo: licenceNo.trim(), licenceVerified: false, clearLicence: false, licenceNote: ''));
   }
 
   @override
@@ -457,8 +504,12 @@ class DemoRepository implements Repository {
   }
 
   @override
-  Future<String?> verificationStatus({required String kind, String? propertyId}) async =>
-      _user == null ? null : _verification['$kind:${propertyId ?? ''}'];
+  Future<String?> verificationStatus({required String kind, String? propertyId}) async {
+    final u = _user;
+    if (u == null) return null;
+    if (kind == 'identity' && propertyId == null) return u.idVerified ? 'approved' : u.idStatus;
+    return _verification['$kind:${propertyId ?? ''}'];
+  }
 
   @override
   Future<PropertyCheckResult> submitPropertyCheck(
@@ -493,9 +544,8 @@ class DemoRepository implements Repository {
     if (_pendingPhone != phone || code.trim() != '123456') {
       throw AppException('Wrong code. In demo mode the code is 123456');
     }
-    _user = u.copyWith(phone: phone, phoneVerified: true);
+    _setUser(u.copyWith(phone: phone, phoneVerified: true));
     _syncMyBadge();
-    _userCtrl.add(_user);
   }
 
   @override
@@ -670,6 +720,7 @@ class DemoRepository implements Repository {
   Future<AdminStats> adminStats() async {
     _requireAdmin();
     return AdminStats(
+      accounts: _newAccounts.length + _demoNewAccounts.where((a) => a.reviewedAt == null).length,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
       ownership: _vQueue.where((v) => v.kind == 'ownership').length,
       licences: _licences.length,
@@ -677,7 +728,7 @@ class DemoRepository implements Repository {
       tickets: _tickets.where((t) => t.status == 'open').length,
       reviews: _reviews.where((r) => r.flagsCount > 0 && r.status == 'published').length,
       listings: _props.where((p) => p.status == 'active').length,
-      users: 128,
+      users: 128 + _known.length,
     );
   }
 
@@ -701,6 +752,88 @@ class DemoRepository implements Repository {
         kind: v.kind, docType: v.docType, status: approve ? 'approved' : 'rejected', reviewerNote: note,
         propertyTitle: v.propertyTitle, createdAt: v.createdAt));
     _log(approve ? 'approve' : 'reject', v.kind, v.userName ?? v.id, note);
+    final target = _known[v.userId];
+    if (target != null && v.kind == 'identity') {
+      _setUser(approve
+          ? target.copyWith(idVerified: true, idStatus: 'approved')
+          : target.copyWith(idStatus: 'rejected', idNote: note ?? ''));
+      _syncBadgeFor(v.userId);
+    }
+  }
+
+  /// Плашка Verified на объявлениях конкретного человека
+  void _syncBadgeFor(String userId) {
+    final u = _known[userId];
+    if (u == null) return;
+    for (var i = 0; i < _props.length; i++) {
+      if (_props[i].ownerId == userId) _props[i] = _props[i].copyWith(ownerIdentityVerified: u.identityVerified);
+    }
+  }
+
+  // ---------------- новые аккаунты (кабинет) ----------------
+  final List<String> _newAccounts = [];
+  final Set<String> _reviewedAccounts = {};
+  final Set<String> _bannedAccounts = {};
+  late final List<AccountItem> _demoNewAccounts = [
+    AccountItem(id: 'u-chanda', fullName: 'Chanda Phiri', email: 'chanda.phiri@gmail.com', role: 'owner',
+        phone: '+260 97 555 0101', phoneVerified: true, idStatus: 'pending', createdAt: _ago(55)),
+    AccountItem(id: 'u-joseph', fullName: 'Joseph Tembo', email: 'joseph@lusakahomes.co.zm', role: 'agent',
+        phone: '+260 96 555 0202', phoneVerified: true, idStatus: 'pending', licenceNo: 'ZIEA/2024/0417',
+        listings: 3, createdAt: _ago(200)),
+    AccountItem(id: 'u-new', fullName: 'Grace Mulenga', email: 'grace.m@yahoo.com', role: 'owner',
+        createdAt: _ago(12)),
+  ];
+
+  AccountItem _accountOf(AppUser u) => AccountItem(
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.role,
+        phone: u.phone,
+        avatarUrl: u.avatarUrl,
+        phoneVerified: u.phoneVerified,
+        idStatus: u.idVerified ? 'approved' : u.idStatus,
+        licenceNo: u.licenceNo,
+        licenceVerified: u.licenceVerified,
+        listings: _props.where((p) => p.ownerId == u.id).length,
+        createdAt: u.createdAt ?? DateTime.now(),
+        reviewedAt: _reviewedAccounts.contains(u.id) ? DateTime.now() : null,
+        banned: _bannedAccounts.contains(u.id),
+      );
+
+  @override
+  Future<List<AccountItem>> adminAccounts({bool onlyNew = true}) async {
+    _requireAdmin();
+    await _lag();
+    final real = [
+      for (final id in _known.keys)
+        if (!_known[id]!.isAdmin && (!onlyNew || _newAccounts.contains(id))) _accountOf(_known[id]!),
+    ];
+    final demo = _demoNewAccounts.where((a) => !onlyNew || a.reviewedAt == null);
+    return [...real, ...demo]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<void> adminReviewAccount(String userId, String action, {String? note}) async {
+    _requireAdmin();
+    _newAccounts.remove(userId);
+    _reviewedAccounts.add(userId);
+    if (action == 'ban') {
+      _bannedAccounts.add(userId);
+      for (var i = 0; i < _props.length; i++) {
+        if (_props[i].ownerId == userId && _props[i].status == 'active') {
+          _props[i] = _props[i].copyWith(status: 'archived');
+        }
+      }
+    }
+    final i = _demoNewAccounts.indexWhere((a) => a.id == userId);
+    if (i >= 0) {
+      final a = _demoNewAccounts[i];
+      _demoNewAccounts[i] = AccountItem(id: a.id, fullName: a.fullName, email: a.email, role: a.role, phone: a.phone,
+          phoneVerified: a.phoneVerified, idStatus: a.idStatus, licenceNo: a.licenceNo, listings: a.listings,
+          createdAt: a.createdAt, reviewedAt: DateTime.now(), banned: action == 'ban');
+    }
+    _log(action, 'account', _known[userId]?.fullName ?? (i >= 0 ? _demoNewAccounts[i].fullName ?? userId : userId), note);
   }
 
   @override
@@ -714,6 +847,13 @@ class DemoRepository implements Repository {
     _requireAdmin();
     final l = _licences.where((x) => x.userId == userId).toList();
     _licences.removeWhere((x) => x.userId == userId);
+    final target = _known[userId];
+    if (target != null) {
+      _setUser(approve
+          ? target.copyWith(licenceVerified: true, licenceNote: '')
+          : target.copyWith(clearLicence: true, licenceVerified: false, licenceNote: note ?? 'Licence could not be confirmed'));
+      _syncBadgeFor(userId);
+    }
     _log(approve ? 'approve' : 'reject', 'licence', l.isEmpty ? userId : '${l.first.userName} ${l.first.licenceNo}', note);
   }
 
