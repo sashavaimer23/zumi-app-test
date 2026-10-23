@@ -1,0 +1,10 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - third_party/**
+    - build/**
+
+linter:
+  rules:
+    use_build_context_synchronously: false
