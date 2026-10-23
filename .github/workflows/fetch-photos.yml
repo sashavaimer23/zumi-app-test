@@ -1,0 +1,33 @@
+# Скачивает бесплатные фото с Unsplash (лицензия Unsplash) по списку tool/photos.txt
+# в ветку "photos" — оттуда лучшие кадры переносятся в assets/images.
+name: Fetch photos
+on:
+  push:
+    branches: [main]
+    paths: [tool/photos.txt]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          mkdir -p /tmp/out
+          while read -r name id; do
+            [ -z "$name" ] && continue
+            curl -sSfL "https://images.unsplash.com/${id}?w=1000&q=80&fm=jpg&fit=max" -o "/tmp/out/${name}.jpg" || echo "fail $name"
+          done < tool/photos.txt
+          ls -la /tmp/out
+      - name: Save to branch photos
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan photos
+          git rm -rfq .
+          mkdir candidates && cp /tmp/out/*.jpg candidates/
+          git add candidates
+          git commit -qm "Photo candidates"
+          git push -f origin photos
