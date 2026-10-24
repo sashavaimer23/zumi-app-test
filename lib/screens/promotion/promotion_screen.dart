@@ -11,6 +11,7 @@ import '../../widgets/common.dart';
 import '../../widgets/promo_card.dart';
 import '../../widgets/share.dart';
 import '../../widgets/zicons.dart';
+import '../verify/get_verified_screen.dart';
 import 'crop_dialog.dart';
 
 const _ok = Color(0xFF2E9E5B);
@@ -92,6 +93,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
           if (snap.hasError) {
             return EmptyState(icon: ZI.warning, title: 'Could not load', subtitle: '${snap.error}');
           }
+          final user = context.watch<AppState>().user;
           final campaigns = snap.data![0] as List<Campaign>;
           final props = snap.data![1] as Map<String, Property>;
           final stats = snap.data![2] as List<CampaignStats>;
@@ -112,7 +114,41 @@ class _PromotionScreenState extends State<PromotionScreen> {
                   style: TextStyle(color: Zc.grey, height: 1.4),
                 ),
                 const SizedBox(height: 18),
-                PrimaryButton(label: '+  New campaign', width: double.infinity, onPressed: _new),
+                if (user != null && user.isAgent && !user.licenceVerified)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: const Color(0xFFFFF1D6), borderRadius: BorderRadius.circular(14)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Row(children: [
+                        Icon(ZI.lock, color: Color(0xFF9A6200), size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Promotion opens after your ZIEA licence is checked',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ]),
+                      const SizedBox(height: 6),
+                      Text(
+                        (user.licenceNo ?? '').isEmpty
+                            ? 'Add your ZIEA registration number — the Zumi team checks it with the register.'
+                            : 'Your number ${user.licenceNo} is waiting for the Zumi team to check it.',
+                        style: const TextStyle(fontSize: 13, height: 1.4),
+                      ),
+                      if ((user.licenceNo ?? '').isEmpty) ...[
+                        const SizedBox(height: 10),
+                        PrimaryButton(
+                          label: 'Add licence number',
+                          width: double.infinity,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const GetVerifiedScreen()),
+                          ),
+                        ),
+                      ],
+                    ]),
+                  )
+                else
+                  PrimaryButton(label: '+  New campaign', width: double.infinity, onPressed: _new),
                 if (campaigns.isNotEmpty) ...[
                   const SizedBox(height: 22),
                   Row(children: [

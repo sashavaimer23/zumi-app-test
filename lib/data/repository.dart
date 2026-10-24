@@ -19,6 +19,7 @@ abstract class Repository {
     required String phone,
     required String role,
     bool termsAccepted = true,
+    String? licenceNo, // агент может сразу указать номер ZIEA
   });
   Future<void> signOut();
 
@@ -191,6 +192,10 @@ abstract class Repository {
   Future<void> adminReviewCampaign(String id, bool approve, {String? note});
   /// Тестовый режим кодов (123456 подходит всем) — включить/выключить
   Future<void> adminSetOtpTestMode(bool on);
+  /// Агент публикует объявления только после проверки лицензии ZIEA — включить/выключить
+  Future<void> adminSetRequireLicence(bool on);
+  /// Удалить из хранилища фото документов по решённым и старым (30 дней) заявкам. Возвращает число файлов.
+  Future<int> adminPurgeDocs();
 
   // --- чаты
   Future<String> startConversation(String propertyId);

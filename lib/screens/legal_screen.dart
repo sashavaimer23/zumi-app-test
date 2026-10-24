@@ -7,7 +7,7 @@ import '../theme.dart';
 /// ВАЖНО: это черновики. Перед запуском их должен проверить юрист в Замбии.
 /// Когда тексты будут проверены — поставьте kLegalDraft = false (плашка «Draft» исчезнет).
 const kLegalDraft = true;
-const kLegalUpdated = '23 October 2026';
+const kLegalUpdated = '25 October 2026';
 
 enum LegalDoc { terms, privacy }
 
@@ -130,13 +130,25 @@ const _privacy = <(String, String)>[
   ),
   (
     'What we collect',
-    '• Account: name, email, phone number, account type (owner or agent).\n'
-        '• Profile: photo, agency name, "about you" and business WhatsApp number (agents).\n'
+    '• Account: name, email, phone number, account type (owner or agent), and the date you accepted the '
+        'Terms and this Privacy Policy.\n'
+        '• Profile: photo, agency name, "about you" and business WhatsApp number (agents), ZIEA licence number '
+        '(agents), and how people may contact you (phone or chat only).\n'
         '• Listings: photos, description, price, location on the map, contact number you add.\n'
         '• Messages you send in Zumi chats and to support.\n'
+        '• Phone-number views: when you open a phone or WhatsApp number, we record who opened whose number and '
+        'when. This protects agents and owners from spam and lets us find bots.\n'
+        '• Confirmation codes: the phone number or email we sent a code to, when, and how many attempts were '
+        'made (the code itself is stored only in protected, scrambled form).\n'
+        '• Safety records: reports about listings or reviews, blocked accounts and the reason, and a log of '
+        'actions taken by Zumi moderators.\n'
         '• Verification (only if you choose to get verified): photo of your NRC or passport and a selfie; '
-        'for agents — ZIEA registration number; for the on-site check — photos and your location at that moment.\n'
-        '• Technical data: device type, app version and error logs, to keep the app working.'
+        'for the on-site check — photos and your location at that moment.\n'
+        '• Ad and promotion statistics: your IP address and a random device code, used only to count each '
+        'person once a day for views and clicks. They are deleted after 2 days.\n'
+        '• Technical data: device type, app version and error logs, to keep the app working.\n'
+        '• On your device only: your saved (favourite) listings, recently viewed listings and the random '
+        'device code. You can remove them by clearing the app or browser data.'
   ),
   (
     'Why we use it',
@@ -146,9 +158,14 @@ const _privacy = <(String, String)>[
   ),
   (
     'Who can see what',
-    '• Public: your listings, your name and photo, and — for agents — the agent page with agency name, '
-        '"about you", business WhatsApp and reviews.\n'
-        '• Private: your email and personal phone number (except the contact number you put in a listing).\n'
+    '• Public: your listings (without the phone number), your name and photo, and — for agents — the agent '
+        'page with agency name, "about you", licence status and reviews.\n'
+        '• Phone numbers in listings and agents\' WhatsApp numbers are not public. They are shown only to '
+        'signed-in users who have confirmed their own phone, one at a time when they tap "Show number" or '
+        '"WhatsApp", and only up to a daily limit. Each such view is recorded.\n'
+        '• Agents and owners can choose "Chat only" — then their number is not shown at all and people '
+        'contact them through Zumi chat.\n'
+        '• Private: your email, your personal phone number and your confirmation codes.\n'
         '• Verification documents are stored privately and seen only by the Zumi verification team.'
   ),
   (
@@ -158,7 +175,11 @@ const _privacy = <(String, String)>[
   ),
   (
     'How long we keep it',
-    'Account data — until you delete the account. Verification photos — deleted after the check. '
+    'Account data — until you delete the account. Verification photos (documents, selfie, on-site photos) — '
+        'deleted as soon as the team approves or rejects the check, and in any case within 30 days if no decision '
+        'is made; we keep only the result (status, date, who checked it and the reason if rejected). '
+        'IP addresses and device codes for ad statistics — 2 days. Phone-number view records and safety records — '
+        'as long as needed to protect users. '
         'When you delete your account, your profile, listings, photos and chats are deleted. Records of payments '
         'may be kept without your name where the law requires it.'
   ),

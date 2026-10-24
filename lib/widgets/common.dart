@@ -246,6 +246,7 @@ class PropertyCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(p.locationLine,
                       style: const TextStyle(fontSize: 14, color: Zc.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (p.unlicensedAgent) ...[const SizedBox(height: 6), const LicenceWarning(compact: true)],
                 ],
               ),
             ),

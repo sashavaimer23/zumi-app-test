@@ -33,10 +33,11 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   final _name = TextEditingController();
   final _phone = TextEditingController();
+  final _licence = TextEditingController(); // номер ZIEA (агенты)
 
   @override
   void dispose() {
-    for (final c in [_email, _password, _name, _phone]) {
+    for (final c in [_email, _password, _name, _phone, _licence]) {
       c.dispose();
     }
     super.dispose();
@@ -60,6 +61,7 @@ class _AuthScreenState extends State<AuthScreen> {
           phone: _phone.text.trim(),
           role: _role,
           termsAccepted: _consent,
+          licenceNo: _role == 'agent' ? _licence.text.trim() : null,
         );
         // после регистрации — предлагаем подтвердить телефон по SMS (можно пропустить)
         if (!widget.embedded) nav.pop(true);
@@ -137,6 +139,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
                 ),
                 const SizedBox(height: 18),
+                if (_role == 'agent') ...[
+                  _label('ZIEA registration number'),
+                  TextFormField(
+                    controller: _licence,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(hintText: 'From your ZIEA certificate (you can add it later)'),
+                    validator: (v) => (v ?? '').trim().length > 40 ? 'Too long' : null,
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'The Zumi team checks it with the Zambia Institute of Estate Agents. Until then your listings show '
+                    '"ZIEA licence not verified" and promotion is not available.',
+                    style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35),
+                  ),
+                  const SizedBox(height: 18),
+                ],
               ],
               _label('Email'),
               TextFormField(

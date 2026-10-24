@@ -177,6 +177,7 @@ class _Info extends StatelessWidget {
         ]),
         const SizedBox(height: 10),
         TrustLine(p: p),
+        if (p.unlicensedAgent) ...[const SizedBox(height: 6), const LicenceWarning(compact: true)],
         const Spacer(),
         const Divider(height: 20, color: Zc.lightGrey),
         // автор

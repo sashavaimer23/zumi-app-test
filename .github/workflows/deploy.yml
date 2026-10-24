@@ -35,7 +35,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
         run: |
-          flutter build web --release --base-href "/${{ github.event.repository.name }}/" \
+          flutter build web --release --no-web-resources-cdn --base-href "/${{ github.event.repository.name }}/" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=MAPTILER_KEY="$MAPTILER_KEY"

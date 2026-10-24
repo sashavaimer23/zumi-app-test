@@ -158,9 +158,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Text(
                               hidden == 1
                                   ? '1 listing is hidden from search: it was not confirmed for 60 days. '
-                                      'Tap ⋯ → Confirm still available.'
+                                      'Tap … → Confirm still available.'
                                   : '$hidden listings are hidden from search: they were not confirmed for 60 days. '
-                                      'Tap ⋯ → Confirm still available.',
+                                      'Tap … → Confirm still available.',
                               style: const TextStyle(fontSize: 13, height: 1.35),
                             ),
                           ),

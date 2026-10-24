@@ -253,6 +253,7 @@ class _VerifyListingScreenState extends State<VerifyListingScreen> {
         'approved' => 'Verified',
         'pending' => 'Under review — 1–2 working days',
         'rejected' => 'Not approved — please upload again',
+        'expired' => 'No decision within 30 days — please upload again',
         _ => 'Not verified',
       };
 }

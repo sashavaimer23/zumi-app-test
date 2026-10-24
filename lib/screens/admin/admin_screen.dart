@@ -72,6 +72,8 @@ class _AdminScreenState extends State<AdminScreen> {
   void initState() {
     super.initState();
     _refreshStats();
+    // фото документов по решённым и старым заявкам удаляем из хранилища (тихо, в фоне)
+    context.read<AppState>().repo.adminPurgeDocs();
   }
 
   Future<void> _refreshStats() async {
@@ -108,7 +110,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.phones => const _PhoneViews(),
         _Section.ads => _Ads(onChanged: _refreshStats),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
-        _Section.licences => _Licences(onChanged: _refreshStats),
+        _Section.licences => _Licences(onChanged: _refreshStats, requireLicence: _stats.requireLicence),
         _Section.reports => _Reports(onChanged: _refreshStats),
         _Section.support => _Support(onChanged: _refreshStats),
         _Section.reviews => _Reviews(onChanged: _refreshStats),
@@ -363,7 +365,7 @@ class _Inbox extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: _Page(
-        title: stats.total == 0 ? 'Nothing waiting 🎉' : '${stats.total} things need you',
+        title: stats.total == 0 ? 'Nothing waiting' : '${stats.total} things need you',
         subtitle: '${stats.listings} active listings · ${stats.users} users',
         child: LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth > 800 ? 3 : (c.maxWidth > 500 ? 2 : 1);
@@ -725,8 +727,9 @@ class _DocImagesState extends State<_DocImages> {
 // LICENCES (ZIEA)
 // ======================================================================
 class _Licences extends StatefulWidget {
-  const _Licences({required this.onChanged});
+  const _Licences({required this.onChanged, required this.requireLicence});
   final VoidCallback onChanged;
+  final bool requireLicence;
 
   @override
   State<_Licences> createState() => _LicencesState();
@@ -734,6 +737,27 @@ class _Licences extends StatefulWidget {
 
 class _LicencesState extends State<_Licences> {
   late Future<List<LicenceItem>> _future = context.read<AppState>().repo.adminLicenceQueue();
+  late bool _require = widget.requireLicence;
+
+  @override
+  void didUpdateWidget(covariant _Licences old) {
+    super.didUpdateWidget(old);
+    if (old.requireLicence != widget.requireLicence) _require = widget.requireLicence;
+  }
+
+  Future<void> _setRequire(bool on) async {
+    try {
+      await context.read<AppState>().repo.adminSetRequireLicence(on);
+      if (!mounted) return;
+      setState(() => _require = on);
+      showSnack(context, on
+          ? 'From now on agents publish only after their licence is checked'
+          : 'Agents can publish before the check (with the "licence not verified" label)');
+      widget.onChanged();
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    }
+  }
 
   Future<void> _decide(LicenceItem l, bool approve) async {
     String? note;
@@ -764,8 +788,25 @@ class _LicencesState extends State<_Licences> {
       child: _Loader<List<LicenceItem>>(
         future: _future,
         builder: (list) {
-          if (list.isEmpty) return _emptyDone('No licences waiting.');
+          final rule = _Card(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              activeColor: Zc.orange,
+              value: _require,
+              onChanged: _setRequire,
+              title: const Text('Publish only after the licence check',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              subtitle: const Text(
+                'Off: agents without a checked licence can publish, their listings show "ZIEA licence not verified". '
+                'On: they cannot publish new listings until you approve the licence. '
+                'Promotion is always only for agents with a checked licence.',
+                style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35),
+              ),
+            ),
+          );
+          if (list.isEmpty) return Column(children: [rule, _emptyDone('No licences waiting.')]);
           return Column(children: [
+            rule,
             for (final l in list)
               _Card(
                 child: Row(children: [

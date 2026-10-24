@@ -142,12 +142,13 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
               'approved' => 'NRC / passport confirmed',
               'pending' => 'With the Zumi team — usually about 15 minutes',
               'rejected' => idNote.isEmpty ? 'Not approved — please try again' : 'Not approved: $idNote. Please try again.',
+              'expired' => 'No decision within 30 days — your photos were deleted. Please send them again.',
               _ => 'Photo of your NRC or passport + a selfie',
             },
             done: u.idVerified,
             pending: idStatus == 'pending',
             action: _id,
-            actionLabel: idStatus == 'rejected' ? 'Retry' : 'Start',
+            actionLabel: idStatus == 'rejected' || idStatus == 'expired' ? 'Retry' : 'Start',
           ),
           if (u.isAgent)
             _StepData(

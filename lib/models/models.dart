@@ -124,6 +124,7 @@ class Property {
   final bool ownershipVerified;         // документы о собственности / полномочия агента
   final bool ownerIdentityVerified;     // телефон по SMS + документ
   final bool ownerPhoneVerified;        // телефон подтверждён SMS-кодом
+  final bool ownerLicenceVerified;      // у агента сверена лицензия ZIEA
   final DateTime? confirmedAt;          // автор подтвердил «ещё доступно»
   final String? agencyName;
   final String? highlights;             // «Gated street | Borehole | Solar backup»
@@ -174,6 +175,7 @@ class Property {
     this.ownershipVerified = false,
     this.ownerIdentityVerified = false,
     this.ownerPhoneVerified = false,
+    this.ownerLicenceVerified = true,
     this.confirmedAt,
     this.agencyName,
     this.highlights,
@@ -225,6 +227,7 @@ class Property {
         ownershipVerified: (m['ownership_verified'] as bool?) ?? false,
         ownerIdentityVerified: (m['owner_identity_verified'] as bool?) ?? false,
         ownerPhoneVerified: (m['owner_phone_verified'] as bool?) ?? false,
+        ownerLicenceVerified: (m['owner_licence_verified'] as bool?) ?? true,
         confirmedAt: DateTime.tryParse((m['confirmed_at'] as String?) ?? ''),
         agencyName: m['agency_name'] as String?,
         highlights: m['highlights'] as String?,
@@ -248,6 +251,7 @@ class Property {
     String? ownerAvatarUrl,
     String? contactName,
     String? contactMode,
+    bool? ownerLicenceVerified,
   }) =>
       Property(
         id: id, ownerId: ownerId, title: title, description: description,
@@ -264,7 +268,8 @@ class Property {
         propertyVerifiedAt: (propertyVerified ?? false) ? DateTime.now() : propertyVerifiedAt,
         ownershipVerified: ownershipVerified,
         ownerIdentityVerified: ownerIdentityVerified ?? this.ownerIdentityVerified,
-        ownerPhoneVerified: ownerPhoneVerified, confirmedAt: confirmedAt ?? this.confirmedAt,
+        ownerPhoneVerified: ownerPhoneVerified, ownerLicenceVerified: ownerLicenceVerified ?? this.ownerLicenceVerified,
+        confirmedAt: confirmedAt ?? this.confirmedAt,
         agencyName: agencyName, highlights: highlights,
         ownerAvatarUrl: ownerAvatarUrl ?? this.ownerAvatarUrl, thumbs: thumbs,
         isFresh: confirmedAt != null ? true : isFresh,
@@ -273,6 +278,9 @@ class Property {
 
   bool get isPending => status == 'pending';
   bool get chatOnly => contactMode == 'chat';
+
+  /// Агент без сверенной лицензии ZIEA — на объявлении пометка
+  bool get unlicensedAgent => listedBy == 'agent' && !ownerLicenceVerified;
 
   String? get cover => images.isEmpty ? null : images.first;
 
@@ -919,11 +927,13 @@ class Rating {
 class AdminStats {
   final int accounts, listingsNew, campaignsNew, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
   final bool otpTestMode; // коды подтверждения в тестовом режиме (123456 подходит всем)
+  final bool requireLicence; // агенты публикуют только после проверки лицензии ZIEA
   const AdminStats({
     this.accounts = 0,
     this.listingsNew = 0,
     this.campaignsNew = 0,
     this.otpTestMode = false,
+    this.requireLicence = false,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -944,6 +954,7 @@ class AdminStats {
       listingsNew: n('listings_new'),
       campaignsNew: n('campaigns_new'),
       otpTestMode: (m['otp_test_mode'] as bool?) ?? false,
+      requireLicence: (m['require_licence'] as bool?) ?? false,
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),

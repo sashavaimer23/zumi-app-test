@@ -72,6 +72,28 @@ class VerifiedBadge extends StatelessWidget {
   }
 }
 
+/// «ZIEA licence not verified» — агент, чья лицензия ещё не сверена с реестром
+class LicenceWarning extends StatelessWidget {
+  const LicenceWarning({super.key, this.compact = false});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: 'The Zumi team has not yet checked this agent\'s licence with the ZIEA register',
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 3 : 6),
+          decoration: BoxDecoration(color: const Color(0xFFFFF1D6), borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(ZI.warning, size: compact ? 13 : 16, color: const Color(0xFF9A6200)),
+            const SizedBox(width: 5),
+            Text('ZIEA licence not verified',
+                style: TextStyle(
+                    fontSize: compact ? 11 : 13, color: const Color(0xFF9A6200), fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
+}
+
 /// Галочка рядом с именем, если личность автора подтверждена
 class VerifiedMark extends StatelessWidget {
   const VerifiedMark({super.key, this.size = 16});

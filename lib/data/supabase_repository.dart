@@ -113,6 +113,13 @@ class SupabaseRepository implements Repository {
         throw AppException('You can run up to 3 campaigns at the same time. Stop one to start a new one.');
       }
       if (e.message.contains('AGENTS_ONLY')) throw AppException('Promotion campaigns are for agents');
+      if (e.message.contains('LICENCE_NOT_VERIFIED')) {
+        throw AppException('Promotion is available after the Zumi team checks your ZIEA licence.', code: 'LICENCE');
+      }
+      if (e.message.contains('LICENCE_REQUIRED')) {
+        throw AppException('Agents can publish listings after the Zumi team checks their ZIEA licence. '
+            'Add your licence number in Profile → Get verified.', code: 'LICENCE');
+      }
       if (e.message.contains('NOT_YOUR_LISTING')) throw AppException('Choose one of your active listings');
       if (e.message.contains('START_IN_PAST')) throw AppException('The start date cannot be in the past');
       if (e.message.contains('CAMPAIGN_STOPPED')) throw AppException('A stopped campaign cannot be started again');
@@ -142,12 +149,19 @@ class SupabaseRepository implements Repository {
     required String phone,
     required String role,
     bool termsAccepted = true,
+    String? licenceNo,
   }) =>
       _guard(() async {
         final res = await _db.auth.signUp(
           email: email,
           password: password,
-          data: {'full_name': fullName, 'phone': phone, 'role': role, 'terms_accepted': termsAccepted},
+          data: {
+            'full_name': fullName,
+            'phone': phone,
+            'role': role,
+            'terms_accepted': termsAccepted,
+            if (role == 'agent' && (licenceNo ?? '').trim().isNotEmpty) 'licence_no': licenceNo!.trim(),
+          },
         );
         if (res.session == null) {
           throw AppException('Check your email to confirm the account, then sign in.', code: 'CONFIRM_EMAIL');
@@ -680,6 +694,10 @@ class SupabaseRepository implements Repository {
           'dev_lng': lng,
           'photo_paths': paths,
         }) as Map<String, dynamic>;
+        // решение принято сразу — фото с места больше не нужны, удаляем
+        try {
+          await _db.storage.from('verification-docs').remove(paths);
+        } catch (_) {/* не успели — уберёт ежедневная уборка */}
         return PropertyCheckResult(res['verified'] == true, (res['distance_m'] as num?)?.round() ?? 0);
       });
 
@@ -857,6 +875,28 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> adminReviewVerification(String id, bool approve, {String? note}) => _guard(() async {
         await _db.rpc('admin_review_verification', params: {'rid': id, 'approve': approve, 'p_note': note});
+        // решение есть — фото документа и селфи удаляем из хранилища
+        await adminPurgeDocs();
+      });
+
+  @override
+  Future<int> adminPurgeDocs() async {
+    var total = 0;
+    try {
+      for (var round = 0; round < 10; round++) {
+        final names = ((await _db.rpc('docs_purge_list')) as List? ?? const []).cast<String>();
+        if (names.isEmpty) break;
+        await _db.storage.from('verification-docs').remove(names);
+        await _db.rpc('docs_purge_done', params: {'names': names});
+        total += names.length;
+      }
+    } catch (_) {/* не критично: повторим при следующем открытии кабинета или ежедневной уборкой */}
+    return total;
+  }
+
+  @override
+  Future<void> adminSetRequireLicence(bool on) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'require_licence_to_publish', 'p_value': '$on'});
       });
 
   @override

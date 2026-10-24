@@ -67,6 +67,9 @@ class DemoRepository implements Repository {
         email: email,
         fullName: email.split('@').first,
         role: e.contains('admin') ? 'admin' : (e.contains('agent') ? 'agent' : 'owner'),
+        // демо: agent@test.com — агент с уже проверенной лицензией; другие «agent…» — без проверки
+        licenceNo: e == 'agent@test.com' ? 'ZIEA/2019/0417' : null,
+        licenceVerified: e == 'agent@test.com',
         createdAt: DateTime.now(),
       );
       _known[id] = u;
@@ -84,6 +87,7 @@ class DemoRepository implements Repository {
     required String phone,
     required String role,
     bool termsAccepted = true,
+    String? licenceNo,
   }) async {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
@@ -93,10 +97,14 @@ class DemoRepository implements Repository {
       fullName: fullName,
       phone: phone,
       role: email.toLowerCase().contains('admin') ? 'admin' : role,
+      licenceNo: role == 'agent' && (licenceNo ?? '').trim().isNotEmpty ? licenceNo!.trim() : null,
       createdAt: DateTime.now(),
     );
     _known[u.id] = u;
     if (!u.isAdmin) _newAccounts.add(u.id);
+    if (u.licenceNo != null) {
+      _licences.add(LicenceItem(userId: u.id, userName: u.fullName, licenceNo: u.licenceNo!));
+    }
     _user = u;
     _userCtrl.add(_user);
   }
@@ -237,6 +245,10 @@ class DemoRepository implements Repository {
   @override
   Future<Property> createListing(ListingDraft d) async {
     final u = _requireUser();
+    if (_requireLicence && u.isAgent && !u.licenceVerified) {
+      throw AppException('Agents can publish listings after the Zumi team checks their ZIEA licence. '
+          'Add your licence number in Profile → Get verified.', code: 'LICENCE');
+    }
     final q = await myQuota();
     if (q.reached) throw AppException('Listing limit reached', code: 'LISTING_LIMIT_REACHED');
     await _lag();
@@ -271,6 +283,7 @@ class DemoRepository implements Repository {
       createdAt: DateTime.now(),
       confirmedAt: DateTime.now(),
       ownerPhoneVerified: u.phoneVerified,
+      ownerLicenceVerified: !u.isAgent || u.licenceVerified,
       ownerIdentityVerified: u.identityVerified,
       ownerAvatarUrl: u.avatarUrl,
       agencyName: u.agencyName,
@@ -324,6 +337,7 @@ class DemoRepository implements Repository {
       confirmedAt: DateTime.now(),
       propertyVerified: old.propertyVerified,
       ownerPhoneVerified: u.phoneVerified,
+      ownerLicenceVerified: !u.isAgent || u.licenceVerified,
       ownerIdentityVerified: u.identityVerified,
       ownerAvatarUrl: u.avatarUrl,
       agencyName: u.agencyName,
@@ -574,6 +588,7 @@ class DemoRepository implements Repository {
       (k) => k.id != uid && k.phoneVerified && _normPhone(k.phone) == _normPhone(phone) && _normPhone(phone).isNotEmpty);
 
   bool _otpTestMode = true;
+  bool _requireLicence = false;
 
   @override
   Future<void> verifyCode(String channel, String destination, String code) async {
@@ -833,6 +848,7 @@ class DemoRepository implements Repository {
       listingsNew: _props.where((p) => p.status == 'pending').length,
       campaignsNew: _campaigns.where((c) => c.phase == 'review').length,
       otpTestMode: _otpTestMode,
+      requireLicence: _requireLicence,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
       ownership: _vQueue.where((v) => v.kind == 'ownership').length,
       licences: _licences.length,
@@ -878,7 +894,12 @@ class DemoRepository implements Repository {
     final u = _known[userId];
     if (u == null) return;
     for (var i = 0; i < _props.length; i++) {
-      if (_props[i].ownerId == userId) _props[i] = _props[i].copyWith(ownerIdentityVerified: u.identityVerified);
+      if (_props[i].ownerId == userId) {
+        _props[i] = _props[i].copyWith(
+          ownerIdentityVerified: u.identityVerified,
+          ownerLicenceVerified: !u.isAgent || u.licenceVerified,
+        );
+      }
     }
   }
 
@@ -1066,6 +1087,9 @@ class DemoRepository implements Repository {
   Future<Campaign> createCampaign(CampaignDraft d) async {
     final u = _requireUser();
     if (!u.isAgent && !u.isAdmin) throw AppException('Promotion campaigns are for agents');
+    if (u.isAgent && !u.licenceVerified) {
+      throw AppException('Promotion is available after the Zumi team checks your ZIEA licence.', code: 'LICENCE');
+    }
     await _lag();
     final live = _campaigns.where((c) => c.ownerId == u.id && c.status == 'active' && c.phase != 'finished').length;
     if (live >= 3) {
@@ -1304,6 +1328,16 @@ class DemoRepository implements Repository {
     _campaigns[i] = _campaigns[i].copyWith(reviewStatus: approve ? 'approved' : 'rejected', reviewNote: note);
     _log(approve ? 'approve_campaign' : 'reject_campaign', 'campaign', _campaigns[i].advertiser);
   }
+
+  @override
+  Future<void> adminSetRequireLicence(bool on) async {
+    _requireAdmin();
+    _requireLicence = on;
+    _log('setting', 'settings', 'require_licence_to_publish = $on');
+  }
+
+  @override
+  Future<int> adminPurgeDocs() async => 0; // в демо файлы не хранятся
 
   @override
   Future<void> adminSetOtpTestMode(bool on) async {

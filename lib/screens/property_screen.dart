@@ -194,6 +194,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
               Expanded(child: Text(p.locationLine, style: const TextStyle(color: Zc.grey, fontSize: 15))),
             ]),
             if (TrustLine.textFor(p) != null) ...[const SizedBox(height: 12), TrustLine(p: p)],
+            if (p.unlicensedAgent) ...[const SizedBox(height: 10), const LicenceWarning()],
             const SizedBox(height: 18),
             Wrap(spacing: 22, runSpacing: 10, children: [
               if (p.bedrooms != null) _Spec(ZI.bed, '${p.bedrooms} beds'),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Цвета из макетов Zumi
 class Zc {
@@ -27,6 +26,7 @@ class Zc {
 ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: kBrandFont,
     scaffoldBackgroundColor: Zc.bg,
     colorScheme: ColorScheme.fromSeed(
       seedColor: Zc.green,
@@ -77,19 +77,9 @@ TextStyle zHeadline(BuildContext context, {double size = 40}) => _brandFont(
 /// Любой текст шрифтом бренда
 TextStyle zBrand(TextStyle style) => _brandFont(style);
 
-/// Шрифт бренда — Onest (Google Fonts). Если недоступен — Rubik.
-TextStyle _brandFont(TextStyle style) {
-  try {
-    return GoogleFonts.getFont('Onest', textStyle: style);
-  } catch (_) {
-    return GoogleFonts.rubik(textStyle: style);
-  }
-}
+/// Шрифт бренда — Onest, вшит в приложение (assets/fonts). Из интернета ничего не загружается.
+const kBrandFont = 'Onest';
 
-TextTheme _brandTextTheme(TextTheme base) {
-  try {
-    return GoogleFonts.getTextTheme('Onest', base);
-  } catch (_) {
-    return GoogleFonts.rubikTextTheme(base);
-  }
-}
+TextStyle _brandFont(TextStyle style) => style.copyWith(fontFamily: kBrandFont);
+
+TextTheme _brandTextTheme(TextTheme base) => base.apply(fontFamily: kBrandFont);
