@@ -59,8 +59,8 @@ class _PromotedCardState extends State<PromotedCard> {
 
   /// Ссылка на сайт рекламодателя (телефон в кампании больше не хранится)
   String? get _link {
-    final c = (c.contact ?? '').trim();
-    return c.isEmpty || !c.contactIsLink ? null : c;
+    final link = (c.contact ?? '').trim();
+    return link.isEmpty || !c.contactIsLink ? null : link;
   }
 
   Future<void> _visit() async {
