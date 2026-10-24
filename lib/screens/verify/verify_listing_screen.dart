@@ -57,7 +57,12 @@ class _VerifyListingScreenState extends State<VerifyListingScreen> {
         maxHeight: 1600,
       );
       if (f == null) return;
-      _photos.add(PickedPhoto(f.name, await f.readAsBytes()));
+      final bytes = await f.readAsBytes();
+      if (bytes.lengthInBytes > kMaxDocBytes) {
+        if (mounted) showSnack(context, 'This photo is larger than 10 MB. Please take it again.');
+        return;
+      }
+      _photos.add(PickedPhoto(f.name, bytes));
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) showSnack(context, 'Could not open the camera: $e');

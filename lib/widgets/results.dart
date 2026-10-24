@@ -7,6 +7,7 @@ import '../screens/map_screen.dart';
 import '../screens/property_screen.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import 'ads.dart';
 import 'common.dart';
 import 'promo_card.dart';
 import 'wide_card.dart';
@@ -180,15 +181,24 @@ class _ResultsSliverState extends State<ResultsSliver> {
     final desk = isDesktop(context);
     final promoIds = {for (final (_, p) in _promo) p.id};
     final items = promoIds.isEmpty ? _items : _items.where((p) => !promoIds.contains(p.id)).toList();
-    final n = _promo.length;
+    // лента: продвигаемые первыми, затем объявления; после каждой 8-й карточки — рекламная полоска
+    final entries = <Object>[
+      for (final pr in _promo) pr,
+      for (var k = 0; k < items.length; k++) ...[
+        items[k],
+        if ((k + 1) % 8 == 0 && k != items.length - 1) (k + 1) ~/ 8 - 1,
+      ],
+    ];
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: desk ? desktopSide(context) : 16),
       sliver: SliverList.builder(
-        itemCount: n + items.length + 1,
+        itemCount: entries.length + 1,
         itemBuilder: (_, i) {
-          if (i < n) return PromotedCard(campaign: _promo[i].$1, property: _promo[i].$2, wide: desk);
-          if (i == n + items.length) return _footer();
-          final p = items[i - n];
+          if (i == entries.length) return _footer();
+          final e = entries[i];
+          if (e is (Campaign, Property)) return PromotedCard(campaign: e.$1, property: e.$2, wide: desk);
+          if (e is int) return FeedStripAd(slot: e);
+          final p = e as Property;
           return desk
               ? PropertyWideCard(p: p, onTap: () => openProperty(context, p))
               : PropertyCard(p: p, onTap: () => openProperty(context, p));

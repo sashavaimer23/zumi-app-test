@@ -27,6 +27,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _signUp = false;
   bool _loading = false;
   String _role = 'owner';
+  bool _consent = false;
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -43,6 +44,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (_signUp && !_consent) {
+      showSnack(context, 'Please accept the Terms of Service and Privacy Policy');
+      return;
+    }
     setState(() => _loading = true);
     final repo = context.read<AppState>().repo;
     final nav = Navigator.of(context); // экран входа может исчезнуть сразу после входа
@@ -54,6 +59,7 @@ class _AuthScreenState extends State<AuthScreen> {
           fullName: _name.text.trim(),
           phone: _phone.text.trim(),
           role: _role,
+          termsAccepted: _consent,
         );
         // после регистрации — предлагаем подтвердить телефон по SMS (можно пропустить)
         if (!widget.embedded) nav.pop(true);
@@ -165,12 +171,26 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               if (_signUp) ...[
                 const SizedBox(height: 16),
-                Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  const Text('By creating an account you agree to the ', style: TextStyle(fontSize: 13, color: Zc.grey)),
-                  _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
-                  const Text(' and ', style: TextStyle(fontSize: 13, color: Zc.grey)),
-                  _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
-                  const Text('.', style: TextStyle(fontSize: 13, color: Zc.grey)),
+                // отдельная галочка согласия — дата согласия сохраняется на сервере
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Checkbox(
+                    value: _consent,
+                    activeColor: Zc.orange,
+                    onChanged: (v) => setState(() => _consent = v ?? false),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+                        const Text('I agree to the ', style: TextStyle(fontSize: 13, color: Zc.text)),
+                        _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
+                        const Text(' and ', style: TextStyle(fontSize: 13, color: Zc.text)),
+                        _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
+                        const Text(', and to Zumi processing my data to run my account.',
+                            style: TextStyle(fontSize: 13, color: Zc.text)),
+                      ]),
+                    ),
+                  ),
                 ]),
               ],
               const SizedBox(height: 30),

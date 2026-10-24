@@ -45,17 +45,18 @@ const kBannerMinW = 1200;
 const kBannerMinH = 800;
 const kBannerMaxBytes = 15 * 1024 * 1024;
 
-/// Обрезать по долям (0..1) от ширины/высоты и сжать в JPEG 1500×1000
-Future<Uint8List?> cropBanner(Uint8List bytes, double left, double top, double width, double height) async {
+/// Обрезать по долям (0..1) от ширины/высоты и сжать в JPEG (по умолчанию 1500×1000)
+Future<Uint8List?> cropBanner(Uint8List bytes, double left, double top, double width, double height,
+    {int outW = 1500, int outH = 1000}) async {
   try {
-    return await compute(_cropBanner, (bytes, left, top, width, height));
+    return await compute(_cropBanner, (bytes, left, top, width, height, outW, outH));
   } catch (_) {
     return null;
   }
 }
 
-Uint8List? _cropBanner((Uint8List, double, double, double, double) a) {
-  final (bytes, l, t, w, h) = a;
+Uint8List? _cropBanner((Uint8List, double, double, double, double, int, int) a) {
+  final (bytes, l, t, w, h, outW, outH) = a;
   final src = img.decodeImage(bytes);
   if (src == null) return null;
   final o = img.bakeOrientation(src);
@@ -64,8 +65,8 @@ Uint8List? _cropBanner((Uint8List, double, double, double, double) a) {
   final cw = (w * o.width).round().clamp(1, o.width - x);
   final ch = (h * o.height).round().clamp(1, o.height - y);
   final cropped = img.copyCrop(o, x: x, y: y, width: cw, height: ch);
-  final out = cropped.width > 1500
-      ? img.copyResize(cropped, width: 1500, height: 1000, interpolation: img.Interpolation.average)
+  final out = cropped.width > outW
+      ? img.copyResize(cropped, width: outW, height: outH, interpolation: img.Interpolation.average)
       : cropped;
   return Uint8List.fromList(img.encodeJpg(out, quality: 82));
 }

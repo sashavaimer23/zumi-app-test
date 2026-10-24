@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/ads.dart';
 import '../widgets/common.dart';
+import '../widgets/contact.dart';
 import '../widgets/gallery.dart';
 import '../widgets/reviews.dart';
 import '../widgets/share.dart';
@@ -54,25 +55,6 @@ class _PropertyScreenState extends State<PropertyScreen> {
     final id = _profileId;
     if (id == null) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => PublicProfileScreen(userId: id)));
-  }
-
-  Future<void> _call() async {
-    final phone = p.contactPhone;
-    if (phone == null || phone.isEmpty) {
-      showSnack(context, 'No phone number in this listing');
-      return;
-    }
-    await launchUrl(Uri(scheme: 'tel', path: phone.replaceAll(' ', '')));
-  }
-
-  Future<void> _whatsapp() async {
-    final phone = (p.contactPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    if (phone.isEmpty) {
-      showSnack(context, 'No phone number in this listing');
-      return;
-    }
-    final text = Uri.encodeComponent('Hello! I saw your listing on Zumi: ${p.title}');
-    await launchUrl(Uri.parse('https://wa.me/$phone?text=$text'), mode: LaunchMode.externalApplication);
   }
 
   Future<void> _chat() async {
@@ -226,6 +208,8 @@ class _PropertyScreenState extends State<PropertyScreen> {
               _h('Description'),
               Text(p.description!, style: const TextStyle(fontSize: 15, height: 1.45)),
             ],
+            // реклама: блок под описанием
+            const Padding(padding: EdgeInsets.only(top: 22), child: ListingAdBlock()),
             if (p.amenities.isNotEmpty) ...[
               _h('Amenities'),
               Wrap(spacing: 10, runSpacing: 10, children: [
@@ -329,10 +313,13 @@ class _PropertyScreenState extends State<PropertyScreen> {
             boxShadow: [BoxShadow(color: Zc.shadow, blurRadius: 12, offset: Offset(0, -2))],
           ),
           child: Row(children: [
-            _ActionBtn(icon: ZI.phone, label: 'Call', onTap: _call),
-            const SizedBox(width: 10),
-            _ActionBtn(icon: ZI.whatsapp, label: 'WhatsApp', onTap: _whatsapp),
-            const SizedBox(width: 10),
+            // номер показывает сервер по кнопке; «только чат» — кнопок звонка нет
+            if (!p.chatOnly && p.hasPhone) ...[
+              _ActionBtn(icon: ZI.phone, label: 'Number', onTap: () => Contact.showNumber(context, p)),
+              const SizedBox(width: 10),
+              _ActionBtn(icon: ZI.whatsapp, label: 'WhatsApp', onTap: () => Contact.whatsapp(context, p)),
+              const SizedBox(width: 10),
+            ],
             Expanded(
               child: SizedBox(
                 height: 52,

@@ -34,7 +34,12 @@ class _IdVerifyScreenState extends State<IdVerifyScreen> {
         maxHeight: 1800,
       );
       if (f == null) return null;
-      return PickedPhoto(f.name, await f.readAsBytes());
+      final bytes = await f.readAsBytes();
+      if (bytes.lengthInBytes > kMaxDocBytes) {
+        if (mounted) showSnack(context, 'This photo is larger than 10 MB. Please take it again or choose a smaller one.');
+        return null;
+      }
+      return PickedPhoto(f.name, bytes);
     } catch (e) {
       if (mounted) showSnack(context, 'Could not open the camera: $e');
       return null;

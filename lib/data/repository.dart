@@ -18,6 +18,7 @@ abstract class Repository {
     required String fullName,
     required String phone,
     required String role,
+    bool termsAccepted = true,
   });
   Future<void> signOut();
 
@@ -72,7 +73,13 @@ abstract class Repository {
   Future<void> reportListing(String propertyId, String reason, String? details);
 
   /// Обновить профиль (имя, агентство, «о себе», рабочий WhatsApp)
-  Future<void> updateProfile({String? fullName, String? agencyName, String? bio, String? whatsapp});
+  Future<void> updateProfile({
+    String? fullName,
+    String? agencyName,
+    String? bio,
+    String? whatsapp,
+    String? contactMode, // 'phone' | 'chat'
+  });
 
   /// Фото профиля
   Future<void> uploadAvatar(PickedPhoto photo);
@@ -106,9 +113,16 @@ abstract class Repository {
     double lng,
   );
 
-  /// Телефон: отправить SMS-код и проверить его
-  Future<void> sendPhoneCode(String phone);
-  Future<void> verifyPhoneCode(String phone, String code);
+  /// Код подтверждения: channel = whatsapp | sms | email. Возвращает true в тестовом режиме (код 123456).
+  /// Значок «телефон подтверждён» — только за WhatsApp или SMS.
+  Future<bool> sendCode(String channel, String destination);
+  Future<void> verifyCode(String channel, String destination, String code);
+
+  /// Номер автора объявления: выдаёт сервер (вход + подтверждённый телефон, до 15 в сутки)
+  Future<String> revealPhone(String propertyId);
+
+  /// Номер из своего объявления (для правки)
+  Future<String?> myListingPhone(String propertyId);
 
   /// Автор подтверждает, что объект ещё доступен
   Future<void> confirmListing(String propertyId);
@@ -154,6 +168,30 @@ abstract class Repository {
 
   /// Показ или клик (для статистики)
   Future<void> logCampaignEvent(String campaignId, String kind);
+
+  // --- реклама (баннеры)
+  Future<List<Ad>> liveAds(String placement);
+  Future<void> logAdEvent(String adId, String kind);
+  Future<void> submitAdRequest({
+    required String name,
+    String? company,
+    required String contact,
+    String? placement,
+    String? message,
+  });
+
+  // --- кабинет команды: реклама, проверка объявлений, номера, бесплатное продвижение
+  Future<List<Ad>> adminAds();
+  Future<Ad> adminSaveAd(AdDraft d, {required bool launch});
+  Future<void> adminSetAdStatus(String id, String status);
+  Future<CampaignStats> adStats(String id);
+  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true});
+  Future<void> adminSetAdRequestStatus(String id, String status);
+  Future<List<Property>> adminPendingListings();
+  Future<void> adminReviewListing(String id, bool approve, {String? note});
+  Future<List<PhoneWatcher>> adminPhoneWatchers({int days = 7});
+  Future<List<Property>> adminAgentListings(String agentId);
+  Future<void> adminGrantPromotion(String agentId, String propertyId, int days, {String placement = 'search_top'});
 
   // --- чаты
   Future<String> startConversation(String propertyId);

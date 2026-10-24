@@ -14,16 +14,18 @@ Future<(double, double, double, double)?> showBannerCrop(
   required int width,
   required int height,
   String? message,
+  double ratio = kPromoRatio,
 }) {
   return showDialog<(double, double, double, double)>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _CropDialog(bytes: bytes, iw: width, ih: height, message: message),
+    builder: (_) => _CropDialog(bytes: bytes, iw: width, ih: height, message: message, ratio: ratio),
   );
 }
 
 class _CropDialog extends StatefulWidget {
-  const _CropDialog({required this.bytes, required this.iw, required this.ih, this.message});
+  const _CropDialog({required this.bytes, required this.iw, required this.ih, this.message, required this.ratio});
+  final double ratio;
   final Uint8List bytes;
   final int iw;
   final int ih;
@@ -49,7 +51,7 @@ class _CropDialogState extends State<_CropDialog> {
 
   /// Какая часть картинки сейчас в рамке (доли 0..1)
   (double, double, double, double) _cropFractions() {
-    final vh = _vw / kPromoRatio;
+    final vh = _vw / widget.ratio;
     final tl = _ctrl.toScene(Offset.zero);
     final br = _ctrl.toScene(Offset(_vw, vh));
     final cw = widget.iw * _base, ch = widget.ih * _base;
@@ -63,14 +65,14 @@ class _CropDialogState extends State<_CropDialog> {
   /// Хватит ли пикселей, чтобы баннер был чётким
   bool get _sharpEnough {
     final (_, _, w, _) = _cropFractions();
-    return w * widget.iw >= 900; // запас: минимум 1200 для исходника, после увеличения — не меньше 900
+    return w * widget.iw >= 800; // после увеличения кадр должен остаться достаточно крупным
   }
 
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.sizeOf(context).width;
     _vw = math.min(560.0, screenW - 80);
-    final vh = _vw / kPromoRatio;
+    final vh = _vw / widget.ratio;
     _base = math.max(_vw / widget.iw, vh / widget.ih);
     final cw = widget.iw * _base, ch = widget.ih * _base;
     if (!_centered) {

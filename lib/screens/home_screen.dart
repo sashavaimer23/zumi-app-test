@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/ads.dart';
 import '../widgets/common.dart';
 import '../widgets/promo_card.dart';
 import '../widgets/results.dart';
@@ -82,6 +83,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            // реклама: большой баннер вверху главной
+            if (_isPlainHome)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,
+                      isDesktop(context) ? desktopSide(context) : 16, 8),
+                  child: HomeHeroAds(key: ValueKey('ads$_token')),
+                ),
+              ),
             if (_isPlainHome) ..._sections(),
             ..._results(),
             const SliverToBoxAdapter(child: SizedBox(height: Shell.navSpace + 70)),

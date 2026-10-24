@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/images.dart';
 import '../../models/models.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
@@ -56,6 +57,12 @@ class _PostWizardState extends State<PostWizard> {
       _desc.text = e.description ?? '';
       _price.text = e.price.round().toString();
       _phone.text = e.contactPhone ?? '';
+      // номер не приходит с объявлением — свой берём отдельно
+      if (_phone.text.isEmpty) {
+        context.read<AppState>().repo.myListingPhone(e.id).then((n) {
+          if (n != null && mounted && _phone.text.isEmpty) setState(() => _phone.text = n);
+        });
+      }
       // район из справочника
       context.read<AppState>().areas().then((areas) {
         for (final a in areas) {
@@ -358,12 +365,25 @@ class _PostWizardState extends State<PostWizard> {
     try {
       final files = await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 1600, maxHeight: 1600);
       final room = 10 - _d.photos.length;
+      var skipped = 0;
       for (final f in files.take(room)) {
-        final bytes = await f.readAsBytes();
-        if (bytes.lengthInBytes > 10 * 1024 * 1024) continue;
+        var bytes = await f.readAsBytes();
+        // фото до 5 MB: большое пробуем сжать, если не вышло — пропускаем
+        if (bytes.lengthInBytes > kMaxImageBytes) {
+          final smaller = await makeThumb(bytes, width: 1600, quality: 78);
+          if (smaller == null || smaller.lengthInBytes > kMaxImageBytes) {
+            skipped++;
+            continue;
+          }
+          bytes = smaller;
+        }
         _d.photos.add(PickedPhoto(f.name, bytes));
       }
-      if (files.length > room && mounted) showSnack(context, 'Maximum 10 photos');
+      if (skipped > 0 && mounted) {
+        showSnack(context, '$skipped ${skipped == 1 ? 'photo was' : 'photos were'} skipped: photos must be under 5 MB');
+      } else if (files.length > room && mounted) {
+        showSnack(context, 'Maximum 10 photos');
+      }
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) showSnack(context, 'Could not open the gallery: $e');
@@ -599,10 +619,17 @@ class _PostWizardState extends State<PostWizard> {
       children: [
         const ListingLiveHero(),
         const SizedBox(height: 24),
-        Text('Your listing is live!', textAlign: TextAlign.center, style: zHeadline(context, size: 40)),
+        Text(_created?.isPending ?? false ? 'Almost live!' : 'Your listing is live!',
+            textAlign: TextAlign.center, style: zHeadline(context, size: 40)),
         const SizedBox(height: 16),
-        const Text('People can now find your property\non Zumi.',
-            textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Zc.grey)),
+        Text(
+          _created?.isPending ?? false
+              ? 'Your first listings get a quick check by the Zumi team — usually about 15 minutes. '
+                  'It appears in search right after.'
+              : 'People can now find your property\non Zumi.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, color: Zc.grey, height: 1.35),
+        ),
         const SizedBox(height: 28),
         // предложение пройти проверку (необязательно)
         if (_created != null)

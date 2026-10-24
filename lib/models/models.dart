@@ -130,6 +130,9 @@ class Property {
   final String? ownerAvatarUrl;         // фото автора
   final List<String> thumbs;            // маленькие копии фото для карточек (экономия трафика)
   final bool isFresh;                   // подтверждено «ещё доступно» за последние 60 дней
+  final String contactMode;             // 'phone' — номер можно показать, 'chat' — только чат
+  final bool hasPhone;                  // у объявления есть номер (сам номер выдаёт сервер по кнопке)
+  final String? moderationNote;         // почему модератор не одобрил
 
   const Property({
     required this.id,
@@ -177,7 +180,10 @@ class Property {
     this.ownerAvatarUrl,
     this.thumbs = const [],
     this.isFresh = true,
-  });
+    this.contactMode = 'phone',
+    bool? hasPhone,
+    this.moderationNote,
+  }) : hasPhone = hasPhone ?? (contactPhone != null && contactPhone != '');
 
   factory Property.fromMap(Map<String, dynamic> m) => Property(
         id: m['id'] as String,
@@ -225,6 +231,9 @@ class Property {
         ownerAvatarUrl: m['owner_avatar_url'] as String?,
         thumbs: _sl(m['thumb_urls']),
         isFresh: (m['is_fresh'] as bool?) ?? true,
+        contactMode: (m['contact_mode'] as String?) ?? 'phone',
+        hasPhone: m['has_phone'] as bool?,
+        moderationNote: m['moderation_note'] as String?,
       );
 
   /// Плашка «Verified» — автор (собственник или агент) прошёл проверку личности
@@ -238,6 +247,7 @@ class Property {
     DateTime? confirmedAt,
     String? ownerAvatarUrl,
     String? contactName,
+    String? contactMode,
   }) =>
       Property(
         id: id, ownerId: ownerId, title: title, description: description,
@@ -258,7 +268,11 @@ class Property {
         agencyName: agencyName, highlights: highlights,
         ownerAvatarUrl: ownerAvatarUrl ?? this.ownerAvatarUrl, thumbs: thumbs,
         isFresh: confirmedAt != null ? true : isFresh,
+        contactMode: contactMode ?? this.contactMode, hasPhone: hasPhone, moderationNote: moderationNote,
       );
+
+  bool get isPending => status == 'pending';
+  bool get chatOnly => contactMode == 'chat';
 
   String? get cover => images.isEmpty ? null : images.first;
 
@@ -472,6 +486,9 @@ class AppUser {
   final String? idStatus;     // последняя заявка на проверку документа: pending | approved | rejected
   final String? idNote;       // причина отказа по документу
   final String? licenceNote;  // причина отказа по лицензии ZIEA
+  final String contactMode;   // 'phone' | 'chat' — показывать ли номер в объявлениях
+  final String? phoneChannel; // чем подтверждён телефон: whatsapp | sms
+  final bool emailVerified;   // почта подтверждена кодом
 
   const AppUser({
     required this.id,
@@ -491,6 +508,9 @@ class AppUser {
     this.idStatus,
     this.idNote,
     this.licenceNote,
+    this.contactMode = 'phone',
+    this.phoneChannel,
+    this.emailVerified = false,
   });
 
   bool get profileComplete => (fullName ?? '').trim().length > 1;
@@ -523,6 +543,9 @@ class AppUser {
     String? idNote,
     String? licenceNote,
     bool clearLicence = false,
+    String? contactMode,
+    String? phoneChannel,
+    bool? emailVerified,
   }) =>
       AppUser(
         id: id,
@@ -542,6 +565,9 @@ class AppUser {
         idStatus: idStatus ?? this.idStatus,
         idNote: idNote ?? this.idNote,
         licenceNote: clearLicence ? licenceNote : (licenceNote ?? this.licenceNote),
+        contactMode: contactMode ?? this.contactMode,
+        phoneChannel: phoneChannel ?? this.phoneChannel,
+        emailVerified: emailVerified ?? this.emailVerified,
       );
 
   bool get isAgent => role == 'agent';
@@ -888,9 +914,11 @@ class Rating {
 }
 
 class AdminStats {
-  final int accounts, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
+  final int accounts, listingsNew, adRequests, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
   const AdminStats({
     this.accounts = 0,
+    this.listingsNew = 0,
+    this.adRequests = 0,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -901,12 +929,15 @@ class AdminStats {
     this.users = 0,
   });
 
-  int get total => accounts + idChecks + ownership + licences + reports + tickets + reviews;
+  int get total =>
+      accounts + listingsNew + adRequests + idChecks + ownership + licences + reports + tickets + reviews;
 
   factory AdminStats.fromMap(Map<String, dynamic> m) {
     int n(String k) => ((m[k] as num?) ?? 0).toInt();
     return AdminStats(
       accounts: n('accounts'),
+      listingsNew: n('listings_new'),
+      adRequests: n('ad_requests'),
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),
@@ -1207,7 +1238,9 @@ class CampaignDay {
   final DateTime day;
   final int views;
   final int clicks;
-  const CampaignDay(this.day, this.views, this.clicks);
+  final int calls;    // показали номер / нажали «Call»
+  final int messages; // начали чат
+  const CampaignDay(this.day, this.views, this.clicks, [this.calls = 0, this.messages = 0]);
 }
 
 class CampaignStats {
@@ -1215,6 +1248,8 @@ class CampaignStats {
   const CampaignStats(this.days);
   int get views => days.fold(0, (a, d) => a + d.views);
   int get clicks => days.fold(0, (a, d) => a + d.clicks);
+  int get calls => days.fold(0, (a, d) => a + d.calls);
+  int get messages => days.fold(0, (a, d) => a + d.messages);
   double get ctr => views == 0 ? 0 : clicks * 100 / views;
 }
 
@@ -1240,3 +1275,174 @@ bool campaignFits(Property p, SearchFilters? f) {
 
 String isoDay(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+// ======================================================================
+// Реклама (баннеры от команды Zumi)
+// ======================================================================
+
+/// Место показа → (название, описание, пропорции, мин. ширина, мин. высота, ширина после сжатия)
+class AdPlacement {
+  final String key, label, hint;
+  final double ratio;
+  final int minW, minH, outW;
+  const AdPlacement(this.key, this.label, this.hint, this.ratio, this.minW, this.minH, this.outW);
+  int get outH => (outW / ratio).round();
+  String get ratioLabel => ratio == 3 ? '3:1' : (ratio == 6 ? '6:1' : (ratio == 2 ? '2:1' : ratio.toString()));
+}
+
+const adPlacements = <String, AdPlacement>{
+  'home_hero': AdPlacement('home_hero', 'Home — big banner', 'Top of the home page. Several banners slide.',
+      3, 1200, 400, 1500),
+  'feed_strip': AdPlacement('feed_strip', 'Listings — thin strip', 'Between listings, at most one per 8 cards.',
+      6, 1200, 200, 1500),
+  'listing_block': AdPlacement('listing_block', 'Listing page — block', 'Under the description on every listing.',
+      2, 1000, 500, 1400),
+};
+
+class Ad {
+  final String id;
+  final String advertiser;
+  final String title;
+  final String targetType; // link | phone | whatsapp
+  final String target;
+  final String placement;
+  final String? imageUrl;
+  final DateTime startsOn;
+  final DateTime endsOn;
+  final String status; // draft | active | paused | stopped
+  final DateTime createdAt;
+
+  const Ad({
+    required this.id,
+    required this.advertiser,
+    required this.title,
+    required this.targetType,
+    required this.target,
+    required this.placement,
+    this.imageUrl,
+    required this.startsOn,
+    required this.endsOn,
+    this.status = 'draft',
+    required this.createdAt,
+  });
+
+  factory Ad.fromMap(Map<String, dynamic> m) => Ad(
+        id: m['id'] as String,
+        advertiser: m['advertiser'] as String,
+        title: m['title'] as String,
+        targetType: m['target_type'] as String,
+        target: m['target'] as String,
+        placement: m['placement'] as String,
+        imageUrl: m['image_url'] as String?,
+        startsOn: DateTime.parse(m['starts_on'] as String),
+        endsOn: DateTime.parse(m['ends_on'] as String),
+        status: (m['status'] as String?) ?? 'draft',
+        createdAt: _dt(m['created_at']),
+      );
+
+  Ad copyWith({String? status}) => Ad(
+        id: id, advertiser: advertiser, title: title, targetType: targetType, target: target,
+        placement: placement, imageUrl: imageUrl, startsOn: startsOn, endsOn: endsOn,
+        status: status ?? this.status, createdAt: createdAt,
+      );
+
+  static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// draft · scheduled · live · paused · finished · stopped
+  String get phase {
+    final today = _day(DateTime.now());
+    if (status == 'draft') return 'draft';
+    if (status == 'stopped') return 'stopped';
+    if (_day(endsOn).isBefore(today)) return 'finished';
+    if (status == 'paused') return 'paused';
+    if (_day(startsOn).isAfter(today)) return 'scheduled';
+    return 'live';
+  }
+
+  bool get isLive => phase == 'live';
+  AdPlacement get place => adPlacements[placement]!;
+}
+
+class AdDraft {
+  String? id; // если задан — правка черновика
+  String advertiser = '';
+  String title = '';
+  String targetType = 'link';
+  String target = '';
+  String placement = 'home_hero';
+  Uint8List? image;
+  String? imageUrl;
+  DateTime? startsOn;
+  DateTime? endsOn;
+}
+
+class AdRequest {
+  final String id;
+  final String name;
+  final String? company;
+  final String contact;
+  final String? placement;
+  final String? message;
+  final String status; // new | done
+  final DateTime createdAt;
+
+  const AdRequest({
+    required this.id,
+    required this.name,
+    this.company,
+    required this.contact,
+    this.placement,
+    this.message,
+    this.status = 'new',
+    required this.createdAt,
+  });
+
+  factory AdRequest.fromMap(Map<String, dynamic> m) => AdRequest(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        company: m['company'] as String?,
+        contact: m['contact'] as String,
+        placement: m['placement'] as String?,
+        message: m['message'] as String?,
+        status: (m['status'] as String?) ?? 'new',
+        createdAt: _dt(m['created_at']),
+      );
+}
+
+/// Кто чаще всех смотрит номера (кабинет команды)
+class PhoneWatcher {
+  final String userId;
+  final String? fullName;
+  final String? email;
+  final String? phone;
+  final int reveals;
+  final int listings;
+  final DateTime lastAt;
+  final bool banned;
+
+  const PhoneWatcher({
+    required this.userId,
+    this.fullName,
+    this.email,
+    this.phone,
+    required this.reveals,
+    required this.listings,
+    required this.lastAt,
+    this.banned = false,
+  });
+
+  factory PhoneWatcher.fromMap(Map<String, dynamic> m) => PhoneWatcher(
+        userId: m['user_id'] as String,
+        fullName: m['full_name'] as String?,
+        email: m['email'] as String?,
+        phone: m['phone'] as String?,
+        reveals: ((m['reveals'] as num?) ?? 0).toInt(),
+        listings: ((m['listings'] as num?) ?? 0).toInt(),
+        lastAt: _dt(m['last_at']),
+        banned: (m['banned'] as bool?) ?? false,
+      );
+}
+
+/// Лимиты размера файлов (такие же стоят на сервере)
+const kMaxImageBytes = 5 * 1024 * 1024; // фото — до 5 MB
+const kMaxDocBytes = 10 * 1024 * 1024; // документы для проверки — до 10 MB

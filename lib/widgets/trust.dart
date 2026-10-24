@@ -383,9 +383,16 @@ class _DocumentsSheetState extends State<_DocumentsSheet> {
   Future<void> _pick() async {
     try {
       final files = await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 2000, maxHeight: 2000);
+      var skipped = 0;
       for (final f in files.take(8 - _docs.length)) {
-        _docs.add(PickedPhoto(f.name, await f.readAsBytes()));
+        final bytes = await f.readAsBytes();
+        if (bytes.lengthInBytes > kMaxDocBytes) {
+          skipped++; // документы — до 10 MB
+          continue;
+        }
+        _docs.add(PickedPhoto(f.name, bytes));
       }
+      if (skipped > 0 && mounted) showSnack(context, 'Files larger than 10 MB were skipped');
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) showSnack(context, 'Could not open the gallery: $e');

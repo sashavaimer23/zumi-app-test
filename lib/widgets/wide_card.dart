@@ -215,15 +215,17 @@ class _Info extends StatelessWidget {
         // контакты
         Row(children: [
           _ContactBtn(icon: ZI.chat, label: 'Message', onTap: () => Contact.message(context, p)),
-          const SizedBox(width: 10),
-          _ContactBtn(icon: ZI.phone, label: 'Call', onTap: () => Contact.call(context, p)),
-          const SizedBox(width: 10),
-          _ContactBtn(
-            icon: ZI.whatsapp,
-            onTap: () => Contact.whatsapp(context, p),
-            bg: const Color(0xFFE6F4EA),
-            fg: const Color(0xFF1E8E4A),
-          ),
+          if (!p.chatOnly && p.hasPhone) ...[
+            const SizedBox(width: 10),
+            _ContactBtn(icon: ZI.phone, label: 'Show number', onTap: () => Contact.showNumber(context, p)),
+            const SizedBox(width: 10),
+            _ContactBtn(
+              icon: ZI.whatsapp,
+              onTap: () => Contact.whatsapp(context, p),
+              bg: const Color(0xFFE6F4EA),
+              fg: const Color(0xFF1E8E4A),
+            ),
+          ],
         ]),
       ]),
     );

@@ -7,7 +7,8 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/zicons.dart';
 
-/// Подтверждение телефона SMS-кодом.
+/// Подтверждение кодом: WhatsApp, SMS или email (человек выбирает сам).
+/// Значок «телефон подтверждён» даётся только за код через WhatsApp или SMS.
 /// Возвращает true через Navigator.pop, если телефон подтверждён.
 class PhoneVerifyScreen extends StatefulWidget {
   const PhoneVerifyScreen({super.key, this.afterSignup = false});
@@ -22,7 +23,10 @@ class PhoneVerifyScreen extends StatefulWidget {
 class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
   late final _phone = TextEditingController(text: _initialPhone());
   final _code = TextEditingController();
+  late final _email = TextEditingController(text: context.read<AppState>().user?.email ?? '');
+  String _channel = 'whatsapp'; // whatsapp | sms | email
   bool _codeSent = false;
+  bool _testMode = false;
   bool _loading = false;
   String _sentTo = '';
 
@@ -35,6 +39,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
   void dispose() {
     _phone.dispose();
     _code.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -47,18 +52,29 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
   }
 
   Future<void> _send() async {
-    final phone = _normalize(_phone.text);
-    if (phone == null) {
-      showSnack(context, 'Enter a valid phone number, e.g. +260 97 123 4567');
-      return;
+    final String? dest;
+    if (_channel == 'email') {
+      final e = _email.text.trim();
+      dest = RegExp(r'^\S+@\S+\.\S+$').hasMatch(e) ? e : null;
+      if (dest == null) {
+        showSnack(context, 'Enter a valid email');
+        return;
+      }
+    } else {
+      dest = _normalize(_phone.text);
+      if (dest == null) {
+        showSnack(context, 'Enter a valid phone number, e.g. +260 97 123 4567');
+        return;
+      }
     }
     setState(() => _loading = true);
     try {
-      await context.read<AppState>().repo.sendPhoneCode(phone);
+      final test = await context.read<AppState>().repo.sendCode(_channel, dest);
       if (!mounted) return;
       setState(() {
         _codeSent = true;
-        _sentTo = phone;
+        _sentTo = dest!;
+        _testMode = test;
       });
     } catch (e) {
       if (mounted) showSnack(context, '$e');
@@ -69,15 +85,20 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
 
   Future<void> _verify() async {
     if (_code.text.trim().length < 6) {
-      showSnack(context, 'Enter the 6-digit code from the SMS');
+      showSnack(context, 'Enter the 6-digit code');
       return;
     }
     setState(() => _loading = true);
     try {
-      await context.read<AppState>().repo.verifyPhoneCode(_sentTo, _code.text.trim());
+      await context.read<AppState>().repo.verifyCode(_channel, _sentTo, _code.text.trim());
       if (!mounted) return;
-      showSnack(context, 'Phone number verified');
-      Navigator.pop(context, true);
+      if (_channel == 'email') {
+        showSnack(context, 'Email confirmed. To get "Phone confirmed", use WhatsApp or SMS.');
+        Navigator.pop(context, false);
+      } else {
+        showSnack(context, 'Phone number confirmed');
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) showSnack(context, '$e');
     } finally {
@@ -87,7 +108,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final demo = context.read<AppState>().repo.isDemo;
+    final via = switch (_channel) { 'whatsapp' => 'WhatsApp', 'sms' => 'SMS', _ => 'email' };
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !widget.afterSignup,
@@ -109,30 +130,51 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
             const SizedBox(height: 10),
             Text(
               _codeSent
-                  ? 'We sent a 6-digit code by SMS to $_sentTo'
-                  : 'A verified phone is the first step to Identity Verified. People trust verified agents and owners more.',
+                  ? 'We sent a 6-digit code by $via to $_sentTo'
+                  : 'A confirmed phone is the first step to the Verified badge, and you need it to see '
+                      'phone numbers in listings.',
               style: const TextStyle(color: Zc.grey, fontSize: 15, height: 1.4),
             ),
-            if (demo) ...[
+            if (_codeSent && _testMode) ...[
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(12)),
-                child: const Text('Demo mode: no real SMS is sent. Use the code 123456.',
+                child: const Text('Test mode: messages are not sent yet. Use the code 123456.',
                     style: TextStyle(fontSize: 13)),
               ),
             ],
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             if (!_codeSent) ...[
-              const Text('Phone number', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                autofocus: true,
-                decoration: const InputDecoration(hintText: '+260 97 123 4567'),
-                onSubmitted: (_) => _send(),
-              ),
+              const Text('Where should we send the code?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Wrap(spacing: 10, runSpacing: 10, children: [
+                for (final (k, l) in const [('whatsapp', 'WhatsApp'), ('sms', 'SMS'), ('email', 'Email')])
+                  ZChip(label: l, selected: _channel == k, onTap: () => setState(() => _channel = k)),
+              ]),
+              const SizedBox(height: 18),
+              if (_channel == 'email') ...[
+                const Text('Email', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(hintText: 'you@example.com'),
+                  onSubmitted: (_) => _send(),
+                ),
+                const SizedBox(height: 8),
+                const Text('An email code confirms your email only. The "Phone confirmed" badge needs WhatsApp or SMS.',
+                    style: TextStyle(fontSize: 12, color: Zc.grey)),
+              ] else ...[
+                const Text('Phone number', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(hintText: '+260 97 123 4567'),
+                  onSubmitted: (_) => _send(),
+                ),
+              ],
               const SizedBox(height: 30),
               PrimaryButton(label: 'Send code', width: double.infinity, loading: _loading, onPressed: _send),
             ] else ...[
@@ -153,7 +195,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
               Center(
                 child: TextButton(
                   onPressed: _loading ? null : () => setState(() => _codeSent = false),
-                  child: const Text('Change number or resend code', style: TextStyle(color: Zc.green)),
+                  child: const Text('Change number, method or resend code', style: TextStyle(color: Zc.green)),
                 ),
               ),
             ],

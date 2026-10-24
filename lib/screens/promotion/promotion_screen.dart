@@ -200,7 +200,8 @@ class _CampaignTile extends StatelessWidget {
                 const SizedBox(height: 6),
                 Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   _chip(label, color),
-                  Text('${_fmtInt(s.views)} views · ${_fmtInt(s.clicks)} clicks · ${formatCtr(s.ctr)}',
+                  Text('${_fmtInt(s.views)} views · ${_fmtInt(s.clicks)} clicks · ${_fmtInt(s.calls)} calls · '
+                      '${_fmtInt(s.messages)} messages',
                       style: const TextStyle(fontSize: 12, color: Zc.text)),
                 ]),
               ]),
@@ -773,14 +774,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       ..writeln()
       ..writeln('Views: ${_fmtInt(s.views)}')
       ..writeln('Clicks: ${_fmtInt(s.clicks)}')
-      ..writeln('Click rate: ${formatCtr(s.ctr)}');
+      ..writeln('Click rate: ${formatCtr(s.ctr)}')
+      ..writeln('Calls: ${_fmtInt(s.calls)}')
+      ..writeln('Messages: ${_fmtInt(s.messages)}');
     if (s.days.isNotEmpty) {
       b
         ..writeln()
         ..writeln('By day:');
       for (final d in s.days) {
         final ctr = d.views == 0 ? 0.0 : d.clicks * 100 / d.views;
-        b.writeln('${formatShortDate(d.day)}: ${_fmtInt(d.views)} views, ${_fmtInt(d.clicks)} clicks, ${formatCtr(ctr)}');
+        b.writeln('${formatShortDate(d.day)}: ${_fmtInt(d.views)} views, ${_fmtInt(d.clicks)} clicks, '
+            '${formatCtr(ctr)}, ${d.calls} calls, ${d.messages} messages');
       }
     }
     return b.toString().trimRight();
@@ -819,14 +823,24 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                  child: Row(children: [
-                    _BigNumber(value: _fmtInt(s.views), label: 'views'),
-                    _BigNumber(value: _fmtInt(s.clicks), label: 'clicks'),
-                    _BigNumber(value: formatCtr(s.ctr), label: 'click rate'),
+                  child: Column(children: [
+                    Row(children: [
+                      _BigNumber(value: _fmtInt(s.views), label: 'views'),
+                      _BigNumber(value: _fmtInt(s.clicks), label: 'clicks'),
+                      _BigNumber(value: formatCtr(s.ctr), label: 'click rate'),
+                    ]),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      _BigNumber(value: _fmtInt(s.calls), label: 'calls'),
+                      _BigNumber(value: _fmtInt(s.messages), label: 'messages'),
+                      const Expanded(child: SizedBox()),
+                    ]),
                   ]),
                 ),
                 const SizedBox(height: 8),
-                const Text('Views — how many people saw the card. Clicks — opened the listing or tapped Call / Website.',
+                const Text(
+                    'Views — people who saw the card. Clicks — opened the listing or tapped Call / Website. '
+                    'Calls — opened the phone number. Messages — started a chat.',
                     style: TextStyle(fontSize: 12, color: Zc.grey)),
                 if (s.days.isNotEmpty) ...[
                   const SizedBox(height: 16),

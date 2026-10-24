@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/images.dart';
 import '../../models/models.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
+import '../../widgets/ads.dart';
 import '../../widgets/common.dart';
 import '../../widgets/reviews.dart';
+import '../../widgets/share.dart';
 import '../../widgets/zicons.dart';
+import '../promotion/crop_dialog.dart';
+import '../property_screen.dart';
 import '../support/ticket_chat_screen.dart';
+
+part 'admin_extra.dart';
 
 // ======================================================================
 // Кабинет команды Zumi. Доступен только role = 'admin' (проверяет сервер).
 // Разделы: Inbox · ID checks · Licences · Reports · Support · Reviews · Log
 // ======================================================================
 
-enum _Section { inbox, accounts, ids, licences, reports, support, reviews, log }
+enum _Section { inbox, accounts, listings, ids, licences, reports, phones, support, reviews, ads, log }
 
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
         _Section.accounts => 'New accounts',
+        _Section.listings => 'Listings to check',
+        _Section.phones => 'Phone views',
+        _Section.ads => 'Ads',
         _Section.ids => 'ID checks',
         _Section.licences => 'Licences',
         _Section.reports => 'Reports',
@@ -31,6 +42,9 @@ extension on _Section {
   IconData get icon => switch (this) {
         _Section.inbox => ZI.bell,
         _Section.accounts => ZI.userCircle,
+        _Section.listings => ZI.house,
+        _Section.phones => ZI.phone,
+        _Section.ads => ZI.bolt,
         _Section.ids => ZI.idCard,
         _Section.licences => ZI.badge,
         _Section.reports => ZI.flag,
@@ -71,6 +85,9 @@ class _AdminScreenState extends State<AdminScreen> {
   int _badge(_Section s) => switch (s) {
         _Section.inbox => _stats.total,
         _Section.accounts => _stats.accounts,
+        _Section.listings => _stats.listingsNew,
+        _Section.phones => 0,
+        _Section.ads => _stats.adRequests,
         _Section.ids => _stats.idChecks + _stats.ownership,
         _Section.licences => _stats.licences,
         _Section.reports => _stats.reports,
@@ -82,6 +99,9 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _body() => switch (_section) {
         _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),
+        _Section.listings => _ListingsQueue(onChanged: _refreshStats),
+        _Section.phones => const _PhoneViews(),
+        _Section.ads => _Ads(onChanged: _refreshStats),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
         _Section.licences => _Licences(onChanged: _refreshStats),
         _Section.reports => _Reports(onChanged: _refreshStats),
@@ -324,6 +344,8 @@ class _Inbox extends StatelessWidget {
     final tiles = [
       (_Section.reports, stats.reports, 'Scam & problem reports', 'Check first — people may lose money'),
       (_Section.accounts, stats.accounts, 'New accounts', 'Everyone who signed up — take a quick look'),
+      (_Section.listings, stats.listingsNew, 'Listings to check', 'First listings of new people'),
+      (_Section.ads, stats.adRequests, 'Ad requests', '"Your ad here" — people want to advertise'),
       (_Section.ids, stats.idChecks, 'ID checks', 'NRC / passport + selfie'),
       (_Section.ids, stats.ownership, 'Ownership documents', 'Title deeds and mandates'),
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),
@@ -508,6 +530,14 @@ class _AccountsState extends State<_Accounts> {
               _actionBtn('Open licence', () => widget.onOpen(_Section.licences)),
             _actionBtn('Block', () => _act(a, 'ban'), danger: true),
           ]),
+        ],
+        if (a.isAgent && !a.banned) ...[
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _grantPromotion(context, a),
+            icon: const Icon(ZI.bolt, size: 18, color: Zc.orange),
+            label: const Text('Give free promotion', style: TextStyle(color: Zc.orange)),
+          ),
         ],
       ]),
     );

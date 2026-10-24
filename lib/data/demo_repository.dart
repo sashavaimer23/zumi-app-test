@@ -83,6 +83,7 @@ class DemoRepository implements Repository {
     required String fullName,
     required String phone,
     required String role,
+    bool termsAccepted = true,
   }) async {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
@@ -229,6 +230,10 @@ class DemoRepository implements Repository {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
+  /// Объявления, одобренные модератором (или опубликованные уже проверенным автором)
+  final Set<String> _approved = {};
+  int _approvedCount(String userId) => _props.where((p) => p.ownerId == userId && _approved.contains(p.id)).length;
+
   @override
   Future<Property> createListing(ListingDraft d) async {
     final u = _requireUser();
@@ -269,7 +274,11 @@ class DemoRepository implements Repository {
       ownerIdentityVerified: u.identityVerified,
       ownerAvatarUrl: u.avatarUrl,
       agencyName: u.agencyName,
+      contactMode: u.contactMode,
+      // первые 2 объявления нового человека сначала смотрит модератор
+      status: u.isAdmin || _approvedCount(u.id) >= 2 ? 'active' : 'pending',
     );
+    if (p.status == 'active') _approved.add(p.id);
     _props.insert(0, p);
     return p;
   }
@@ -330,7 +339,10 @@ class DemoRepository implements Repository {
       throw AppException('Listing limit reached — buy an extra slot to publish again',
           code: 'LISTING_LIMIT_REACHED');
     }
-    if (i >= 0) _props[i] = _props[i].copyWith(status: status);
+    if (i < 0) return;
+    // без одобрения модератора объявление снова уходит на проверку
+    final s = status == 'active' && !_approved.contains(id) && _props[i].ownerId != null ? 'pending' : status;
+    _props[i] = _props[i].copyWith(status: s);
   }
 
   @override
@@ -342,7 +354,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<void> reportListing(String propertyId, String reason, String? details) async {
-    _requireUser();
+    _checkNotBanned(_requireUser());
     await _lag();
     if (!_reported.add(propertyId)) throw AppException('You have already reported this listing');
   }
@@ -364,7 +376,13 @@ class DemoRepository implements Repository {
 
   // В демо-режиме проверки одобряются сразу, чтобы можно было посмотреть весь путь
   @override
-  Future<void> updateProfile({String? fullName, String? agencyName, String? bio, String? whatsapp}) async {
+  Future<void> updateProfile({
+    String? fullName,
+    String? agencyName,
+    String? bio,
+    String? whatsapp,
+    String? contactMode,
+  }) async {
     final u = _requireUser();
     await _lag();
     _user = AppUser(
@@ -385,8 +403,14 @@ class DemoRepository implements Repository {
       idStatus: u.idStatus,
       idNote: u.idNote,
       licenceNote: u.licenceNote,
+      contactMode: contactMode ?? u.contactMode,
+      phoneChannel: u.phoneChannel,
+      emailVerified: u.emailVerified,
     );
     _known[u.id] = _user!;
+    for (var i = 0; i < _props.length; i++) {
+      if (_props[i].ownerId == u.id) _props[i] = _props[i].copyWith(contactMode: _user!.contactMode);
+    }
     _syncMyBadge();
     _userCtrl.add(_user);
   }
@@ -528,24 +552,62 @@ class DemoRepository implements Repository {
     return const PropertyCheckResult(true, 0);
   }
 
-  String? _pendingPhone;
-
   @override
-  Future<void> sendPhoneCode(String phone) async {
+  Future<bool> sendCode(String channel, String destination) async {
     _requireUser();
     await _lag();
-    _pendingPhone = phone; // демо: код всегда 123456
+    return true; // демо: код всегда 123456, ничего не отправляется
   }
 
   @override
-  Future<void> verifyPhoneCode(String phone, String code) async {
+  Future<void> verifyCode(String channel, String destination, String code) async {
     final u = _requireUser();
     await _lag();
-    if (_pendingPhone != phone || code.trim() != '123456') {
-      throw AppException('Wrong code. In demo mode the code is 123456');
+    if (code.trim() != '123456') throw AppException('Wrong code. In test mode the code is 123456');
+    if (channel == 'email') {
+      _setUser(u.copyWith(emailVerified: true));
+    } else {
+      _setUser(u.copyWith(phone: destination, phoneVerified: true, phoneChannel: channel));
+      _syncMyBadge();
     }
-    _setUser(u.copyWith(phone: phone, phoneVerified: true));
-    _syncMyBadge();
+  }
+
+  /// Кто смотрел номера: (кто, объявление, когда)
+  final List<(String, String, DateTime)> _reveals = [];
+
+  void _checkNotBanned(AppUser u) {
+    if (_bannedAccounts.contains(u.id)) {
+      throw AppException('Your account is blocked. Please contact Zumi support.', code: 'BLOCKED');
+    }
+  }
+
+  @override
+  Future<String> revealPhone(String propertyId) async {
+    final u = _requireUser();
+    _checkNotBanned(u);
+    await _lag();
+    final p = await getProperty(propertyId);
+    if (p == null) throw AppException('Listing not found');
+    if (p.ownerId == u.id) return p.contactPhone ?? '';
+    if (!u.phoneVerified) throw AppException('Confirm your phone to see numbers', code: 'PHONE_NOT_VERIFIED');
+    if (p.chatOnly) throw AppException('This author prefers chat — send a message instead', code: 'CHAT_ONLY');
+    if ((p.contactPhone ?? '').isEmpty) throw AppException('No phone number in this listing — use chat');
+    final dayAgo = DateTime.now().subtract(const Duration(days: 1));
+    final mine = _reveals.where((r) => r.$1 == u.id && r.$3.isAfter(dayAgo));
+    if (!mine.any((r) => r.$2 == propertyId)) {
+      if (mine.length >= 15) {
+        throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
+      }
+      _reveals.add((u.id, propertyId, DateTime.now()));
+      _bumpCampaigns(propertyId, call: true);
+    }
+    return p.contactPhone!;
+  }
+
+  @override
+  Future<String?> myListingPhone(String propertyId) async {
+    final p = await getProperty(propertyId);
+    return p != null && p.ownerId == _user?.id ? p.contactPhone : null;
   }
 
   @override
@@ -698,6 +760,7 @@ class DemoRepository implements Repository {
   @override
   Future<void> writeReview({required String targetId, required int rating, String? body, String? propertyId}) async {
     final u = _requireUser();
+    _checkNotBanned(u);
     if (targetId == u.id) throw AppException('You cannot review yourself');
     if (_reviews.any((r) => r.targetId == targetId && r.authorId == u.id)) {
       throw AppException('You have already reviewed this person');
@@ -721,6 +784,8 @@ class DemoRepository implements Repository {
     _requireAdmin();
     return AdminStats(
       accounts: _newAccounts.length + _demoNewAccounts.where((a) => a.reviewedAt == null).length,
+      listingsNew: _props.where((p) => p.status == 'pending').length,
+      adRequests: _adRequests.where((r) => r.status == 'new').length,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
       ownership: _vQueue.where((v) => v.kind == 'ownership').length,
       licences: _licences.length,
@@ -931,7 +996,17 @@ class DemoRepository implements Repository {
 
   // ---------------- продвижение (демо: всё в памяти) ----------------
   final List<Campaign> _campaigns = [];
-  final Map<String, Map<String, (int, int)>> _campStats = {}; // id → день → (показы, клики)
+  final Map<String, Map<String, (int, int, int, int)>> _campStats = {}; // id → день → (показы, клики, звонки, сообщения)
+
+  /// +1 звонок или сообщение у идущих кампаний этого объявления
+  void _bumpCampaigns(String propertyId, {bool call = false}) {
+    final day = isoDay(DateTime.now());
+    for (final c in _campaigns.where((c) => c.propertyId == propertyId && c.isLive)) {
+      final m = _campStats.putIfAbsent(c.id, () => {});
+      final (v, k, calls, msgs) = m[day] ?? (0, 0, 0, 0);
+      m[day] = call ? (v, k, calls + 1, msgs) : (v, k, calls, msgs + 1);
+    }
+  }
 
   @override
   Future<List<Campaign>> myCampaigns() async {
@@ -980,7 +1055,9 @@ class DemoRepository implements Repository {
   Future<CampaignStats> campaignStats(String id) async {
     final m = _campStats[id] ?? const {};
     final keys = m.keys.toList()..sort();
-    return CampaignStats([for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2)]);
+    return CampaignStats([
+      for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2, m[k]!.$3, m[k]!.$4),
+    ]);
   }
 
   @override
@@ -1000,8 +1077,193 @@ class DemoRepository implements Repository {
     if (i < 0 || !_campaigns[i].isLive) return;
     final day = isoDay(DateTime.now());
     final m = _campStats.putIfAbsent(campaignId, () => {});
+    final (v, c, calls, msgs) = m[day] ?? (0, 0, 0, 0);
+    m[day] = kind == 'click' ? (v, c + 1, calls, msgs) : (v + 1, c, calls, msgs);
+  }
+
+  // ---------------- реклама (демо) ----------------
+  final List<Ad> _ads = [];
+  final Map<String, Map<String, (int, int)>> _adStats = {};
+  late final List<AdRequest> _adRequests = [
+    AdRequest(id: 'ar1', name: 'Mutale Chileshe', company: 'Zambezi Home Loans', contact: 'mutale@zhl.co.zm',
+        placement: 'home_hero', message: 'We would like the top banner for 2 weeks in November.', createdAt: _ago(90)),
+  ];
+
+  @override
+  Future<List<Ad>> liveAds(String placement) async =>
+      _ads.where((a) => a.placement == placement && a.isLive).toList()..shuffle();
+
+  @override
+  Future<void> logAdEvent(String adId, String kind) async {
+    final i = _ads.indexWhere((a) => a.id == adId);
+    if (i < 0 || !_ads[i].isLive) return;
+    final m = _adStats.putIfAbsent(adId, () => {});
+    final day = isoDay(DateTime.now());
     final (v, c) = m[day] ?? (0, 0);
     m[day] = kind == 'click' ? (v, c + 1) : (v + 1, c);
+  }
+
+  @override
+  Future<void> submitAdRequest({
+    required String name,
+    String? company,
+    required String contact,
+    String? placement,
+    String? message,
+  }) async {
+    await _lag();
+    _adRequests.insert(
+      0,
+      AdRequest(id: _uuid.v4(), name: name.trim(), company: company, contact: contact.trim(), placement: placement,
+          message: message, createdAt: DateTime.now()),
+    );
+  }
+
+  @override
+  Future<List<Ad>> adminAds() async {
+    _requireAdmin();
+    await _lag();
+    return List.of(_ads)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<Ad> adminSaveAd(AdDraft d, {required bool launch}) async {
+    _requireAdmin();
+    await _lag();
+    final id = d.id ?? _uuid.v4();
+    final today = DateTime.now();
+    final ad = Ad(
+      id: id,
+      advertiser: d.advertiser.trim(),
+      title: d.title.trim(),
+      targetType: d.targetType,
+      target: d.target.trim(),
+      placement: d.placement,
+      imageUrl: d.image != null ? MemoryImages.put('ad-$id-${today.millisecondsSinceEpoch}', d.image!) : d.imageUrl,
+      startsOn: d.startsOn ?? today,
+      endsOn: d.endsOn ?? today.add(const Duration(days: 6)),
+      status: launch ? 'active' : 'draft',
+      createdAt: today,
+    );
+    _ads.removeWhere((a) => a.id == id);
+    _ads.add(ad);
+    _log(launch ? 'launch' : 'draft', 'ad', ad.title);
+    return ad;
+  }
+
+  @override
+  Future<void> adminSetAdStatus(String id, String status) async {
+    _requireAdmin();
+    final i = _ads.indexWhere((a) => a.id == id);
+    if (i >= 0) _ads[i] = _ads[i].copyWith(status: status);
+    _log(status, 'ad', i >= 0 ? _ads[i].title : id);
+  }
+
+  @override
+  Future<CampaignStats> adStats(String id) async {
+    final m = _adStats[id] ?? const {};
+    final keys = m.keys.toList()..sort();
+    return CampaignStats([for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2)]);
+  }
+
+  @override
+  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true}) async {
+    _requireAdmin();
+    return _adRequests.where((r) => !onlyNew || r.status == 'new').toList();
+  }
+
+  @override
+  Future<void> adminSetAdRequestStatus(String id, String status) async {
+    _requireAdmin();
+    final i = _adRequests.indexWhere((r) => r.id == id);
+    if (i < 0) return;
+    final r = _adRequests[i];
+    _adRequests[i] = AdRequest(id: r.id, name: r.name, company: r.company, contact: r.contact,
+        placement: r.placement, message: r.message, status: status, createdAt: r.createdAt);
+  }
+
+  // ---------------- проверка объявлений, номера, бесплатное продвижение ----------------
+  @override
+  Future<List<Property>> adminPendingListings() async {
+    _requireAdmin();
+    await _lag();
+    return _props.where((p) => p.status == 'pending').toList();
+  }
+
+  @override
+  Future<void> adminReviewListing(String id, bool approve, {String? note}) async {
+    _requireAdmin();
+    final i = _props.indexWhere((p) => p.id == id);
+    if (i < 0) return;
+    if (approve) {
+      _approved.add(id);
+      _props[i] = _props[i].copyWith(status: 'active', confirmedAt: DateTime.now());
+    } else {
+      final p = _props[i];
+      _props[i] = Property(
+        id: p.id, ownerId: p.ownerId, title: p.title, description: p.description, dealType: p.dealType,
+        propertyType: p.propertyType, price: p.price, currency: p.currency, rentPeriod: p.rentPeriod,
+        bedrooms: p.bedrooms, bathrooms: p.bathrooms, areaSqm: p.areaSqm, amenities: p.amenities, areaId: p.areaId,
+        areaName: p.areaName, city: p.city, lat: p.lat, lng: p.lng, status: 'archived', images: p.images,
+        listedBy: p.listedBy, contactName: p.contactName, contactPhone: p.contactPhone, createdAt: p.createdAt,
+        ownerAvatarUrl: p.ownerAvatarUrl, contactMode: p.contactMode,
+        moderationNote: (note ?? '').trim().isEmpty ? 'Not approved' : note!.trim(),
+      );
+    }
+    _log(approve ? 'approve' : 'reject', 'listing', _props[i].title, note);
+  }
+
+  @override
+  Future<List<PhoneWatcher>> adminPhoneWatchers({int days = 7}) async {
+    _requireAdmin();
+    final since = DateTime.now().subtract(Duration(days: days));
+    final byUser = <String, List<(String, String, DateTime)>>{};
+    for (final r in _reveals.where((r) => r.$3.isAfter(since))) {
+      byUser.putIfAbsent(r.$1, () => []).add(r);
+    }
+    final list = [
+      for (final e in byUser.entries)
+        PhoneWatcher(
+          userId: e.key,
+          fullName: _known[e.key]?.fullName,
+          email: _known[e.key]?.email,
+          phone: _known[e.key]?.phone,
+          reveals: e.value.length,
+          listings: e.value.map((r) => r.$2).toSet().length,
+          lastAt: e.value.map((r) => r.$3).reduce((a, b) => a.isAfter(b) ? a : b),
+          banned: _bannedAccounts.contains(e.key),
+        ),
+      // пример «подозрительного» — так выглядит бот
+      PhoneWatcher(userId: 'u-bot', fullName: 'John K', email: 'jk2026@mail.com', phone: '+260 95 555 0909',
+          reveals: 15, listings: 15, lastAt: _ago(8)),
+    ]..sort((a, b) => b.reveals - a.reveals);
+    return list;
+  }
+
+  @override
+  Future<List<Property>> adminAgentListings(String agentId) async {
+    _requireAdmin();
+    return _props.where((p) => p.ownerId == agentId && p.status == 'active').toList();
+  }
+
+  @override
+  Future<void> adminGrantPromotion(String agentId, String propertyId, int days, {String placement = 'search_top'}) async {
+    _requireAdmin();
+    final agent = _known[agentId];
+    final t = DateTime.now();
+    final start = DateTime(t.year, t.month, t.day);
+    _campaigns.add(Campaign(
+      id: _uuid.v4(),
+      ownerId: agentId,
+      propertyId: propertyId,
+      advertiser: agent?.agencyName ?? agent?.fullName ?? 'Agent',
+      contact: agent?.whatsapp ?? agent?.phone,
+      placement: placement,
+      startsOn: start,
+      endsOn: start.add(Duration(days: days - 1)),
+      createdAt: t,
+    ));
+    _log('grant_promotion', 'campaign', '${agent?.fullName ?? agentId} · $days days');
   }
 
   // ---------------- чаты ----------------
@@ -1011,8 +1273,10 @@ class DemoRepository implements Repository {
     final p = await getProperty(propertyId);
     if (p == null) throw AppException('Listing not found');
     if (p.ownerId == u.id) throw AppException('This is your own listing');
+    _checkNotBanned(u);
     final existing = _convs.values.where((c) => c.propertyId == propertyId);
     if (existing.isNotEmpty) return existing.first.id;
+    _bumpCampaigns(propertyId);
     final id = _uuid.v4();
     _convs[id] = Conversation(
       id: id,
@@ -1044,6 +1308,7 @@ class DemoRepository implements Repository {
   @override
   Future<void> sendMessage(String conversationId, String body) async {
     final u = _requireUser();
+    _checkNotBanned(u);
     final list = _msgs.putIfAbsent(conversationId, () => []);
     list.add(ChatMessage(id: _uuid.v4(), senderId: u.id, body: body, createdAt: DateTime.now()));
     _touch(conversationId, body);

@@ -40,7 +40,7 @@ class SupabaseRepository implements Repository {
       final row = await _db
           .from('profiles')
           .select('id, role, full_name, agency_name, phone_verified_at, id_verified_at, '
-              'agent_licence_no, licence_verified_at, avatar_url, bio, whatsapp, created_at')
+              'agent_licence_no, licence_verified_at, avatar_url, bio, whatsapp, created_at, contact_mode')
           .eq('id', u.id)
           .maybeSingle();
       Map<String, dynamic>? ver;
@@ -51,7 +51,8 @@ class SupabaseRepository implements Repository {
         id: u.id,
         email: u.email,
         fullName: row?['full_name'] as String? ?? u.userMetadata?['full_name'] as String?,
-        phone: (u.phone?.isNotEmpty ?? false) ? '+${u.phone!.replaceAll('+', '')}' : u.userMetadata?['phone'] as String?,
+        phone: (ver?['phone'] as String?) ??
+            ((u.phone?.isNotEmpty ?? false) ? '+${u.phone!.replaceAll('+', '')}' : u.userMetadata?['phone'] as String?),
         role: (row?['role'] as String?) ?? 'owner',
         agencyName: row?['agency_name'] as String?,
         phoneVerified: row?['phone_verified_at'] != null,
@@ -65,6 +66,9 @@ class SupabaseRepository implements Repository {
         idStatus: ver?['id_status'] as String?,
         idNote: ver?['id_note'] as String?,
         licenceNote: ver?['licence_note'] as String?,
+        contactMode: (row?['contact_mode'] as String?) ?? 'phone',
+        phoneChannel: ver?['phone_channel'] as String?,
+        emailVerified: (ver?['email_verified'] as bool?) ?? false,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
@@ -85,6 +89,20 @@ class SupabaseRepository implements Repository {
         throw AppException('Your account is blocked. Please contact Zumi support.', code: 'BLOCKED');
       }
       if (e.message.contains('NOT_ADMIN')) throw AppException('Only the Zumi team can do this');
+      if (e.message.contains('PHONE_NOT_VERIFIED')) {
+        throw AppException('Confirm your phone to see numbers', code: 'PHONE_NOT_VERIFIED');
+      }
+      if (e.message.contains('CHAT_ONLY')) {
+        throw AppException('This author prefers chat — send a message instead', code: 'CHAT_ONLY');
+      }
+      if (e.message.contains('REVEAL_LIMIT')) {
+        throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
+      }
+      if (e.message.contains('NO_PHONE')) throw AppException('No phone number in this listing — use chat');
+      if (e.message.contains('TOO_MANY_REQUESTS')) throw AppException('Too many requests. Please try again later.');
+      if (e.message.contains('TOO_MANY_CODES')) throw AppException('Too many codes. Please wait an hour and try again.');
+      if (e.message.contains('TOO_MANY_ATTEMPTS')) throw AppException('Too many wrong codes. Request a new code.');
+      if (e.message.contains('CODE_EXPIRED')) throw AppException('The code has expired. Request a new one.');
       if (e.message.contains('CAMPAIGN_LIMIT')) {
         throw AppException('You can run up to 3 campaigns at the same time. Stop one to start a new one.');
       }
@@ -117,12 +135,13 @@ class SupabaseRepository implements Repository {
     required String fullName,
     required String phone,
     required String role,
+    bool termsAccepted = true,
   }) =>
       _guard(() async {
         final res = await _db.auth.signUp(
           email: email,
           password: password,
-          data: {'full_name': fullName, 'phone': phone, 'role': role},
+          data: {'full_name': fullName, 'phone': phone, 'role': role, 'terms_accepted': termsAccepted},
         );
         if (res.session == null) {
           throw AppException('Check your email to confirm the account, then sign in.', code: 'CONFIRM_EMAIL');
@@ -161,7 +180,7 @@ class SupabaseRepository implements Repository {
   Future<void> deleteAccount() => _guard(() async {
         final uid = _requireUserId();
         // файлы удаляем через Storage API (из SQL их удалить нельзя)
-        for (final bucket in const [_bucket, 'avatars', 'verification-docs']) {
+        for (final bucket in const [_bucket, 'avatars', 'verification-docs', 'campaign-images']) {
           try {
             await _removeFolder(bucket, uid);
           } catch (_) {/* не критично */}
@@ -511,7 +530,13 @@ class SupabaseRepository implements Repository {
   }
 
   @override
-  Future<void> updateProfile({String? fullName, String? agencyName, String? bio, String? whatsapp}) =>
+  Future<void> updateProfile({
+    String? fullName,
+    String? agencyName,
+    String? bio,
+    String? whatsapp,
+    String? contactMode,
+  }) =>
       _guard(() async {
         final uid = _requireUserId();
         String? clean(String v) => v.trim().isEmpty ? null : v.trim();
@@ -520,6 +545,7 @@ class SupabaseRepository implements Repository {
           if (agencyName != null) 'agency_name': clean(agencyName),
           if (bio != null) 'bio': clean(bio),
           if (whatsapp != null) 'whatsapp': clean(whatsapp),
+          if (contactMode != null) 'contact_mode': contactMode,
         }).eq('id', uid);
         await _reloadUser();
       });
@@ -652,21 +678,36 @@ class SupabaseRepository implements Repository {
       });
 
   @override
-  Future<void> sendPhoneCode(String phone) => _guard(() async {
+  Future<bool> sendCode(String channel, String destination) => _guard(() async {
         _requireUserId();
-        // Supabase отправляет SMS с кодом (нужен SMS-провайдер: Authentication → Providers → Phone)
-        await _db.auth.updateUser(UserAttributes(phone: phone));
+        // код создаёт сервер; в тестовом режиме он всегда 123456
+        final res = await _db.rpc('request_verification_code', params: {'p_channel': channel, 'p_destination': destination});
+        return (Map<String, dynamic>.from(res as Map)['test_mode'] as bool?) ?? false;
       });
 
   @override
-  Future<void> verifyPhoneCode(String phone, String code) => _guard(() async {
-        final res = await _db.auth.verifyOTP(type: OtpType.phoneChange, phone: phone, token: code);
-        final u = res.user ?? _db.auth.currentUser;
-        if (u != null) {
-          _user = (await _loadProfile(u)).copyWith(phone: phone, phoneVerified: true);
-          _userCtrl.add(_user);
-        }
+  Future<void> verifyCode(String channel, String destination, String code) => _guard(() async {
+        final res = await _db.rpc('verify_verification_code',
+            params: {'p_channel': channel, 'p_destination': destination, 'p_code': code});
+        if (res != 'ok') throw AppException('Wrong code. Please check and try again.');
+        await _reloadUser();
       });
+
+  @override
+  Future<String> revealPhone(String propertyId) => _guard(() async {
+        _requireUserId();
+        final res = await _db.rpc('reveal_phone', params: {'pid': propertyId});
+        return (res as String?) ?? '';
+      });
+
+  @override
+  Future<String?> myListingPhone(String propertyId) async {
+    try {
+      return await _db.rpc('my_listing_phone', params: {'pid': propertyId}) as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Future<void> confirmListing(String propertyId) => _guard(() async {
@@ -918,10 +959,15 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<CampaignStats> campaignStats(String id) => _guard(() async {
-        final rows = await _db.from('campaign_stats').select('day, views, clicks').eq('campaign_id', id).order('day');
+        final rows = await _db
+            .from('campaign_stats')
+            .select('day, views, clicks, calls, messages')
+            .eq('campaign_id', id)
+            .order('day');
         return CampaignStats([
           for (final r in rows)
-            CampaignDay(DateTime.parse(r['day'] as String), (r['views'] as num).toInt(), (r['clicks'] as num).toInt()),
+            CampaignDay(DateTime.parse(r['day'] as String), (r['views'] as num).toInt(), (r['clicks'] as num).toInt(),
+                ((r['calls'] as num?) ?? 0).toInt(), ((r['messages'] as num?) ?? 0).toInt()),
         ]);
       });
 
@@ -956,6 +1002,147 @@ class SupabaseRepository implements Repository {
       await _db.rpc('log_campaign_event', params: {'cid': campaignId, 'kind': kind});
     } catch (_) {/* не критично */}
   }
+
+  // ---------------- реклама ----------------
+  @override
+  Future<List<Ad>> liveAds(String placement) async {
+    try {
+      final today = isoDay(DateTime.now());
+      final rows = await _db
+          .from('ads')
+          .select()
+          .eq('placement', placement)
+          .eq('status', 'active')
+          .lte('starts_on', today)
+          .gte('ends_on', today)
+          .limit(10);
+      return rows.map(Ad.fromMap).toList()..shuffle();
+    } catch (_) {
+      return const []; // реклама не должна ломать экран
+    }
+  }
+
+  @override
+  Future<void> logAdEvent(String adId, String kind) async {
+    try {
+      await _db.rpc('log_ad_event', params: {'aid': adId, 'kind': kind});
+    } catch (_) {/* не критично */}
+  }
+
+  @override
+  Future<void> submitAdRequest({
+    required String name,
+    String? company,
+    required String contact,
+    String? placement,
+    String? message,
+  }) =>
+      _guard(() async {
+        await _db.from('ad_requests').insert({
+          'user_id': _db.auth.currentUser?.id,
+          'name': name.trim(),
+          'company': (company ?? '').trim().isEmpty ? null : company!.trim(),
+          'contact': contact.trim(),
+          'placement': placement,
+          'message': (message ?? '').trim().isEmpty ? null : message!.trim(),
+        });
+      });
+
+  @override
+  Future<List<Ad>> adminAds() => _guard(() async {
+        final rows = await _db.from('ads').select().order('created_at', ascending: false).limit(200);
+        return rows.map(Ad.fromMap).toList();
+      });
+
+  @override
+  Future<Ad> adminSaveAd(AdDraft d, {required bool launch}) => _guard(() async {
+        _requireUserId();
+        var imageUrl = d.imageUrl;
+        if (d.image != null) {
+          final path = 'ads/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final store = _db.storage.from('ad-images');
+          await store.uploadBinary(path, d.image!, fileOptions: const FileOptions(contentType: 'image/jpeg'));
+          imageUrl = store.getPublicUrl(path);
+        }
+        final today = DateTime.now();
+        final values = {
+          'advertiser': d.advertiser.trim(),
+          'title': d.title.trim(),
+          'target_type': d.targetType,
+          'target': d.target.trim(),
+          'placement': d.placement,
+          'image_url': imageUrl,
+          'starts_on': isoDay(d.startsOn ?? today),
+          'ends_on': isoDay(d.endsOn ?? today.add(const Duration(days: 6))),
+          'status': launch ? 'active' : 'draft',
+        };
+        final row = d.id == null
+            ? await _db.from('ads').insert({...values, 'created_by': _db.auth.currentUser?.id}).select().single()
+            : await _db.from('ads').update(values).eq('id', d.id!).select().single();
+        return Ad.fromMap(row);
+      });
+
+  @override
+  Future<void> adminSetAdStatus(String id, String status) => _guard(() async {
+        await _db.from('ads').update({'status': status}).eq('id', id);
+      });
+
+  @override
+  Future<CampaignStats> adStats(String id) => _guard(() async {
+        final rows = await _db.from('ad_stats').select('day, views, clicks').eq('ad_id', id).order('day');
+        return CampaignStats([
+          for (final r in rows)
+            CampaignDay(DateTime.parse(r['day'] as String), (r['views'] as num).toInt(), (r['clicks'] as num).toInt()),
+        ]);
+      });
+
+  @override
+  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true}) => _guard(() async {
+        var q = _db.from('ad_requests').select();
+        if (onlyNew) q = q.eq('status', 'new');
+        final rows = await q.order('created_at', ascending: false).limit(100);
+        return rows.map(AdRequest.fromMap).toList();
+      });
+
+  @override
+  Future<void> adminSetAdRequestStatus(String id, String status) => _guard(() async {
+        await _db.from('ad_requests').update({'status': status}).eq('id', id);
+      });
+
+  @override
+  Future<List<Property>> adminPendingListings() => _guard(() async {
+        final rows = await _db.from('property_feed').select().eq('status', 'pending').order('created_at').limit(100);
+        return rows.map(Property.fromMap).toList();
+      });
+
+  @override
+  Future<void> adminReviewListing(String id, bool approve, {String? note}) => _guard(() async {
+        await _db.rpc('admin_review_listing', params: {'pid': id, 'approve': approve, 'p_note': note});
+      });
+
+  @override
+  Future<List<PhoneWatcher>> adminPhoneWatchers({int days = 7}) => _guard(() async {
+        final rows = await _db.rpc('admin_phone_watchers', params: {'days': days}) as List;
+        return rows.map((r) => PhoneWatcher.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<List<Property>> adminAgentListings(String agentId) => _guard(() async {
+        final rows = await _db
+            .from('property_feed')
+            .select()
+            .eq('owner_id', agentId)
+            .eq('status', 'active')
+            .order('created_at', ascending: false);
+        return rows.map(Property.fromMap).toList();
+      });
+
+  @override
+  Future<void> adminGrantPromotion(String agentId, String propertyId, int days, {String placement = 'search_top'}) =>
+      _guard(() async {
+        await _db.rpc('admin_grant_promotion',
+            params: {'agent': agentId, 'pid': propertyId, 'days': days, 'p_placement': placement});
+      });
 
   // ---------------- чаты ----------------
   @override

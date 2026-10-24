@@ -59,7 +59,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 85);
       if (f == null) return;
       setState(() => _uploading = true);
-      await repo.uploadAvatar(PickedPhoto(f.name, await f.readAsBytes()));
+      final bytes = await f.readAsBytes();
+      if (bytes.lengthInBytes > 15 * 1024 * 1024) {
+        if (mounted) showSnack(context, 'This photo is too large. Please choose one under 15 MB.');
+        return;
+      }
+      // фото уменьшается до 400×400 перед загрузкой (на сервере лимит 5 MB)
+      await repo.uploadAvatar(PickedPhoto(f.name, bytes));
       if (mounted) showSnack(context, 'Photo updated');
     } catch (e) {
       if (mounted) showSnack(context, '$e');
@@ -233,12 +239,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _dirty ? () => _save(u) : null,
               ),
 
+              // ---------- как с вами связываются ----------
+              const _Section('How people contact you'),
+              for (final (mode, title, sub) in const [
+                ('phone', 'Show my number', 'People with a confirmed phone can tap "Show number" (max 15 numbers a day each).'),
+                ('chat', 'Chat only', 'Your number is never shown. People write to you in Zumi chat.'),
+              ])
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  value: mode,
+                  groupValue: u.contactMode,
+                  activeColor: Zc.orange,
+                  title: Text(title, style: const TextStyle(fontSize: 15)),
+                  subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  onChanged: (v) async {
+                    if (v == null) return;
+                    try {
+                      await app.repo.updateProfile(contactMode: v);
+                      app.dataChanged();
+                      if (context.mounted) showSnack(context, v == 'chat' ? 'Chat only — your number is hidden' : 'Your number can be shown');
+                    } catch (e) {
+                      if (context.mounted) showSnack(context, '$e');
+                    }
+                  },
+                ),
+
               // ---------- проверка ----------
               const _Section('Phone & verification'),
               _Row(
                 icon: ZI.mobile,
                 title: (u.phone ?? '').isEmpty ? 'No phone number' : u.phone!,
-                subtitle: u.phoneVerified ? 'Confirmed by SMS' : 'Not confirmed yet',
+                subtitle: u.phoneVerified
+                    ? 'Confirmed by ${u.phoneChannel == 'whatsapp' ? 'WhatsApp' : 'SMS'}'
+                    : 'Not confirmed yet',
                 trailing: u.phoneVerified ? 'Change' : 'Verify',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen())),
               ),

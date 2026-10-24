@@ -334,6 +334,18 @@ class _MyListingTile extends StatelessWidget {
                 if (p.isPromoted) ...[const SizedBox(width: 8), const Icon(ZI.bolt, size: 14, color: Zc.orange)],
                 if (p.isVerified) ...[const SizedBox(width: 8), const VerifiedMark(size: 14)],
               ]),
+              if (p.isPending)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text('The Zumi team checks first listings — usually about 15 minutes.',
+                      style: TextStyle(fontSize: 11, color: Zc.grey)),
+                ),
+              if (p.status == 'archived' && (p.moderationNote ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Not approved: ${p.moderationNote}. Edit the listing and publish again.',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFD64545))),
+                ),
             ]),
           ),
           PopupMenuButton<String>(
@@ -404,7 +416,11 @@ class _MyListingTile extends StatelessWidget {
                   value: 'archive',
                   child: Text(p.dealType == DealType.sale ? 'Mark as sold' : 'Mark as rented'),
                 ),
-              if (!active) const PopupMenuItem(value: 'activate', child: Text('Publish again')),
+              if (!active && !p.isPending)
+                PopupMenuItem(
+                  value: 'activate',
+                  child: Text((p.moderationNote ?? '').isNotEmpty ? 'Send for review again' : 'Publish again'),
+                ),
               const PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
@@ -418,6 +434,7 @@ class _MyListingTile extends StatelessWidget {
         'sold' => 'Sold',
         'rented' => 'Rented',
         'draft' => 'Draft',
+        'pending' => 'Under review',
         _ => 'Archived',
       };
 }
