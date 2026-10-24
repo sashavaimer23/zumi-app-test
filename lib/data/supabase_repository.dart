@@ -85,6 +85,13 @@ class SupabaseRepository implements Repository {
         throw AppException('Your account is blocked. Please contact Zumi support.', code: 'BLOCKED');
       }
       if (e.message.contains('NOT_ADMIN')) throw AppException('Only the Zumi team can do this');
+      if (e.message.contains('CAMPAIGN_LIMIT')) {
+        throw AppException('You can run up to 3 campaigns at the same time. Stop one to start a new one.');
+      }
+      if (e.message.contains('AGENTS_ONLY')) throw AppException('Promotion campaigns are for agents');
+      if (e.message.contains('NOT_YOUR_LISTING')) throw AppException('Choose one of your active listings');
+      if (e.message.contains('START_IN_PAST')) throw AppException('The start date cannot be in the past');
+      if (e.message.contains('CAMPAIGN_STOPPED')) throw AppException('A stopped campaign cannot be started again');
       if (e.message.contains('NO_OWNER')) {
         throw AppException('This is a demo listing — chat is not available', code: 'NO_OWNER');
       }
@@ -866,6 +873,89 @@ class SupabaseRepository implements Repository {
         final rows = await _db.from('admin_audit_feed').select().order('id', ascending: false).limit(100);
         return rows.map(AuditEntry.fromMap).toList();
       });
+
+  // ---------------- продвижение ----------------
+  static const _campaignBucket = 'campaign-images';
+
+  @override
+  Future<List<Campaign>> myCampaigns() => _guard(() async {
+        final uid = _requireUserId();
+        final rows = await _db.from('campaigns').select().eq('owner_id', uid).order('created_at', ascending: false);
+        return rows.map(Campaign.fromMap).toList();
+      });
+
+  @override
+  Future<Campaign> createCampaign(CampaignDraft d) => _guard(() async {
+        final uid = _requireUserId();
+        String? imageUrl;
+        if (d.image != null) {
+          final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final store = _db.storage.from(_campaignBucket);
+          await store.uploadBinary(path, d.image!, fileOptions: const FileOptions(contentType: 'image/jpeg'));
+          imageUrl = store.getPublicUrl(path);
+        }
+        final row = await _db
+            .from('campaigns')
+            .insert({
+              'owner_id': uid,
+              'property_id': d.property!.id,
+              'advertiser': d.advertiser.trim(),
+              'contact': d.contact.trim().isEmpty ? null : d.contact.trim(),
+              'placement': d.placement,
+              'image_url': imageUrl,
+              'starts_on': isoDay(d.startsOn!),
+              'ends_on': isoDay(d.endsOn!),
+            })
+            .select()
+            .single();
+        return Campaign.fromMap(row);
+      });
+
+  @override
+  Future<void> setCampaignStatus(String id, String status) => _guard(() async {
+        await _db.from('campaigns').update({'status': status}).eq('id', id);
+      });
+
+  @override
+  Future<CampaignStats> campaignStats(String id) => _guard(() async {
+        final rows = await _db.from('campaign_stats').select('day, views, clicks').eq('campaign_id', id).order('day');
+        return CampaignStats([
+          for (final r in rows)
+            CampaignDay(DateTime.parse(r['day'] as String), (r['views'] as num).toInt(), (r['clicks'] as num).toInt()),
+        ]);
+      });
+
+  @override
+  Future<List<(Campaign, Property)>> liveCampaigns(String placement, {SearchFilters? filters}) async {
+    try {
+      final today = isoDay(DateTime.now());
+      final rows = await _db
+          .from('campaigns')
+          .select()
+          .eq('placement', placement)
+          .eq('status', 'active')
+          .lte('starts_on', today)
+          .gte('ends_on', today)
+          .limit(30);
+      final campaigns = rows.map(Campaign.fromMap).toList();
+      if (campaigns.isEmpty) return const [];
+      final props = {for (final p in await byIds(campaigns.map((c) => c.propertyId).toSet().toList())) p.id: p};
+      final out = <(Campaign, Property)>[
+        for (final c in campaigns)
+          if (props[c.propertyId] != null && campaignFits(props[c.propertyId]!, filters)) (c, props[c.propertyId]!),
+      ]..shuffle(); // честная ротация, если кампаний больше, чем мест
+      return out;
+    } catch (_) {
+      return const []; // реклама не должна ломать ленту
+    }
+  }
+
+  @override
+  Future<void> logCampaignEvent(String campaignId, String kind) async {
+    try {
+      await _db.rpc('log_campaign_event', params: {'cid': campaignId, 'kind': kind});
+    } catch (_) {/* не критично */}
+  }
 
   // ---------------- чаты ----------------
   @override

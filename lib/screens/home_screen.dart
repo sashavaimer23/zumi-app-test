@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/promo_card.dart';
 import '../widgets/results.dart';
 import '../widgets/wide_card.dart';
 import 'neighborhoods_screen.dart';
@@ -116,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
               });
 
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FeaturedRow(key: ValueKey('featured$_token'), city: _filters.city),
               const SizedBox(height: 6),
               SectionHeader('Popular neighbourhoods', onSeeAll: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const NeighborhoodsScreen()));

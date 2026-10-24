@@ -8,6 +8,7 @@ import '../screens/property_screen.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'promo_card.dart';
 import 'wide_card.dart';
 import 'zicons.dart';
 
@@ -103,6 +104,7 @@ class ResultsSliver extends StatefulWidget {
 
 class _ResultsSliverState extends State<ResultsSliver> {
   final List<Property> _items = [];
+  List<(Campaign, Property)> _promo = const []; // продвигаемые — первыми в списке
   bool _loading = false;
   bool _end = false;
   Object? _error;
@@ -111,7 +113,11 @@ class _ResultsSliverState extends State<ResultsSliver> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadMore();
+      if (!mounted) return;
+      _loadMore();
+      context.read<AppState>().repo.liveCampaigns('search_top', filters: widget.filters).then((list) {
+        if (mounted) setState(() => _promo = list.take(2).toList());
+      });
     });
   }
 
@@ -172,13 +178,17 @@ class _ResultsSliverState extends State<ResultsSliver> {
     }
 
     final desk = isDesktop(context);
+    final promoIds = {for (final (_, p) in _promo) p.id};
+    final items = promoIds.isEmpty ? _items : _items.where((p) => !promoIds.contains(p.id)).toList();
+    final n = _promo.length;
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: desk ? desktopSide(context) : 16),
       sliver: SliverList.builder(
-        itemCount: _items.length + 1,
+        itemCount: n + items.length + 1,
         itemBuilder: (_, i) {
-          if (i == _items.length) return _footer();
-          final p = _items[i];
+          if (i < n) return PromotedCard(campaign: _promo[i].$1, property: _promo[i].$2, wide: desk);
+          if (i == n + items.length) return _footer();
+          final p = items[i - n];
           return desk
               ? PropertyWideCard(p: p, onTap: () => openProperty(context, p))
               : PropertyCard(p: p, onTap: () => openProperty(context, p));

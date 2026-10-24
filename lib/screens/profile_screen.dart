@@ -11,6 +11,7 @@ import '../widgets/share.dart';
 import '../widgets/trust.dart';
 import 'admin/admin_screen.dart';
 import 'post/post_wizard.dart';
+import 'promotion/promotion_screen.dart';
 import 'public_profile_screen.dart';
 import 'settings_screen.dart';
 import 'support/support_screen.dart';
@@ -198,6 +199,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   highlight: true,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
                 ),
+              if (user.isAgent || user.isAdmin)
+                _MenuTile(
+                  icon: ZI.bolt,
+                  title: 'Promotion',
+                  subtitle: 'Campaigns that show your listings first · views and clicks',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromotionScreen())),
+                ),
               _MenuTile(
                 icon: ZI.settings,
                 title: 'Settings',
@@ -347,7 +355,11 @@ class _MyListingTile extends StatelessWidget {
                     );
                     return;
                   case 'promote':
-                    showSnack(context, 'Promotion will be available with payments (coming soon).');
+                    if (app.user?.isAgent ?? false) {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const PromotionScreen()));
+                    } else {
+                      showSnack(context, 'Promotion will be available with payments (coming soon).');
+                    }
                     return;
                   case 'verify':
                     await Navigator.push(

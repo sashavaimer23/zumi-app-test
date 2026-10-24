@@ -143,6 +143,18 @@ abstract class Repository {
   Future<void> adminModerateReview(String id, String action, {String? reply});
   Future<List<AuditEntry>> adminAudit();
 
+  // --- продвижение (кабинет агента)
+  Future<List<Campaign>> myCampaigns();
+  Future<Campaign> createCampaign(CampaignDraft d);
+  Future<void> setCampaignStatus(String id, String status);
+  Future<CampaignStats> campaignStats(String id);
+
+  /// Идущие сегодня кампании для места показа + их объявления
+  Future<List<(Campaign, Property)>> liveCampaigns(String placement, {SearchFilters? filters});
+
+  /// Показ или клик (для статистики)
+  Future<void> logCampaignEvent(String campaignId, String kind);
+
   // --- чаты
   Future<String> startConversation(String propertyId);
   Future<List<Conversation>> conversations();

@@ -929,6 +929,81 @@ class DemoRepository implements Repository {
     return List.of(_audit);
   }
 
+  // ---------------- продвижение (демо: всё в памяти) ----------------
+  final List<Campaign> _campaigns = [];
+  final Map<String, Map<String, (int, int)>> _campStats = {}; // id → день → (показы, клики)
+
+  @override
+  Future<List<Campaign>> myCampaigns() async {
+    final u = _requireUser();
+    await _lag();
+    return _campaigns.where((c) => c.ownerId == u.id).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<Campaign> createCampaign(CampaignDraft d) async {
+    final u = _requireUser();
+    if (!u.isAgent && !u.isAdmin) throw AppException('Promotion campaigns are for agents');
+    await _lag();
+    final live = _campaigns.where((c) => c.ownerId == u.id && c.status == 'active' && c.phase != 'finished').length;
+    if (live >= 3) {
+      throw AppException('You can run up to 3 campaigns at the same time. Stop one to start a new one.');
+    }
+    final id = _uuid.v4();
+    final c = Campaign(
+      id: id,
+      ownerId: u.id,
+      propertyId: d.property!.id,
+      advertiser: d.advertiser.trim(),
+      contact: d.contact.trim().isEmpty ? null : d.contact.trim(),
+      placement: d.placement,
+      imageUrl: d.image == null ? null : MemoryImages.put('campaign-$id', d.image!),
+      startsOn: d.startsOn!,
+      endsOn: d.endsOn!,
+      createdAt: DateTime.now(),
+    );
+    _campaigns.add(c);
+    return c;
+  }
+
+  @override
+  Future<void> setCampaignStatus(String id, String status) async {
+    final i = _campaigns.indexWhere((c) => c.id == id);
+    if (i < 0) return;
+    if (_campaigns[i].status == 'stopped' && status != 'stopped') {
+      throw AppException('A stopped campaign cannot be started again');
+    }
+    _campaigns[i] = _campaigns[i].copyWith(status: status);
+  }
+
+  @override
+  Future<CampaignStats> campaignStats(String id) async {
+    final m = _campStats[id] ?? const {};
+    final keys = m.keys.toList()..sort();
+    return CampaignStats([for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2)]);
+  }
+
+  @override
+  Future<List<(Campaign, Property)>> liveCampaigns(String placement, {SearchFilters? filters}) async {
+    final out = <(Campaign, Property)>[];
+    for (final c in _campaigns) {
+      if (c.placement != placement || !c.isLive) continue;
+      final p = await getProperty(c.propertyId);
+      if (p != null && campaignFits(p, filters)) out.add((c, p));
+    }
+    return out..shuffle();
+  }
+
+  @override
+  Future<void> logCampaignEvent(String campaignId, String kind) async {
+    final i = _campaigns.indexWhere((c) => c.id == campaignId);
+    if (i < 0 || !_campaigns[i].isLive) return;
+    final day = isoDay(DateTime.now());
+    final m = _campStats.putIfAbsent(campaignId, () => {});
+    final (v, c) = m[day] ?? (0, 0);
+    m[day] = kind == 'click' ? (v, c + 1) : (v + 1, c);
+  }
+
   // ---------------- чаты ----------------
   @override
   Future<String> startConversation(String propertyId) async {

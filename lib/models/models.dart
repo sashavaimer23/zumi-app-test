@@ -1111,3 +1111,132 @@ String timeAgo(DateTime t) {
 
 /// Кому принадлежат отзывы для объявления (автор). Демо-объявления — по имени контакта.
 String? reviewTargetFor(Property p) => p.ownerId ?? (p.isDemo ? 'demo:${p.contactName}' : null);
+
+// ======================================================================
+// Продвижение: кампании агента
+// ======================================================================
+
+/// Где показывается продвигаемое объявление
+const campaignPlacements = <String, (String, String)>{
+  'search_top': ('Top of search results', 'First in the list of listings — on the home page and in search'),
+  'home_featured': ('Featured on the home page', 'In the "Featured" row on the home page'),
+};
+
+class Campaign {
+  final String id;
+  final String ownerId;
+  final String propertyId;
+  final String advertiser;
+  final String? contact; // ссылка или телефон
+  final String placement;
+  final String? imageUrl;
+  final DateTime startsOn;
+  final DateTime endsOn;
+  final String status; // active | paused | stopped
+  final DateTime createdAt;
+
+  const Campaign({
+    required this.id,
+    required this.ownerId,
+    required this.propertyId,
+    required this.advertiser,
+    this.contact,
+    required this.placement,
+    this.imageUrl,
+    required this.startsOn,
+    required this.endsOn,
+    this.status = 'active',
+    required this.createdAt,
+  });
+
+  factory Campaign.fromMap(Map<String, dynamic> m) => Campaign(
+        id: m['id'] as String,
+        ownerId: m['owner_id'] as String,
+        propertyId: m['property_id'] as String,
+        advertiser: m['advertiser'] as String,
+        contact: m['contact'] as String?,
+        placement: m['placement'] as String,
+        imageUrl: m['image_url'] as String?,
+        startsOn: DateTime.parse(m['starts_on'] as String),
+        endsOn: DateTime.parse(m['ends_on'] as String),
+        status: (m['status'] as String?) ?? 'active',
+        createdAt: _dt(m['created_at']),
+      );
+
+  Campaign copyWith({String? status}) => Campaign(
+        id: id, ownerId: ownerId, propertyId: propertyId, advertiser: advertiser, contact: contact,
+        placement: placement, imageUrl: imageUrl, startsOn: startsOn, endsOn: endsOn,
+        status: status ?? this.status, createdAt: createdAt,
+      );
+
+  static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Что происходит сейчас: scheduled · live · paused · finished · stopped
+  String get phase {
+    final today = _day(DateTime.now());
+    if (status == 'stopped') return 'stopped';
+    if (_day(endsOn).isBefore(today)) return 'finished';
+    if (status == 'paused') return 'paused';
+    if (_day(startsOn).isAfter(today)) return 'scheduled';
+    return 'live';
+  }
+
+  bool get isLive => phase == 'live';
+  int get days => _day(endsOn).difference(_day(startsOn)).inDays + 1;
+  String get placementLabel => campaignPlacements[placement]?.$1 ?? placement;
+
+  /// Контакт — ссылка на сайт или телефон
+  bool get contactIsLink {
+    final c = (contact ?? '').trim().toLowerCase();
+    return c.startsWith('http') || c.startsWith('www.') || (c.contains('.') && !RegExp(r'^[+\d\s()-]+$').hasMatch(c));
+  }
+}
+
+/// Черновик новой кампании (мастер «New campaign»)
+class CampaignDraft {
+  Property? property;
+  String advertiser = '';
+  String contact = '';
+  String placement = 'search_top';
+  Uint8List? image; // уже обрезано 3:2 и сжато
+  DateTime? startsOn;
+  DateTime? endsOn;
+}
+
+class CampaignDay {
+  final DateTime day;
+  final int views;
+  final int clicks;
+  const CampaignDay(this.day, this.views, this.clicks);
+}
+
+class CampaignStats {
+  final List<CampaignDay> days;
+  const CampaignStats(this.days);
+  int get views => days.fold(0, (a, d) => a + d.views);
+  int get clicks => days.fold(0, (a, d) => a + d.clicks);
+  double get ctr => views == 0 ? 0 : clicks * 100 / views;
+}
+
+/// «2.4%»
+String formatCtr(double v) => '${v.toStringAsFixed(v >= 10 || v == 0 ? 0 : 1)}%';
+
+/// «24 Oct 2026»
+String formatShortDate(DateTime d) {
+  const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${d.day} ${m[d.month - 1]} ${d.year}';
+}
+
+/// Подходит ли продвигаемое объявление к тому, что человек сейчас смотрит
+bool campaignFits(Property p, SearchFilters? f) {
+  if (p.status != 'active') return false;
+  if (f == null) return true;
+  if (f.dealType != null && p.dealType != f.dealType) return false;
+  if (f.propertyType != null && p.propertyType != f.propertyType) return false;
+  if (f.areaId != null && p.areaId != f.areaId) return false;
+  if (f.city.isNotEmpty && p.city != null && p.city != f.city) return false;
+  return true;
+}
+
+String isoDay(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
