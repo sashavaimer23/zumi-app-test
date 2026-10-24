@@ -785,7 +785,6 @@ class DemoRepository implements Repository {
     return AdminStats(
       accounts: _newAccounts.length + _demoNewAccounts.where((a) => a.reviewedAt == null).length,
       listingsNew: _props.where((p) => p.status == 'pending').length,
-      adRequests: _adRequests.where((r) => r.status == 'new').length,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
       ownership: _vQueue.where((v) => v.kind == 'ownership').length,
       licences: _licences.length,
@@ -1084,10 +1083,6 @@ class DemoRepository implements Repository {
   // ---------------- реклама (демо) ----------------
   final List<Ad> _ads = [];
   final Map<String, Map<String, (int, int)>> _adStats = {};
-  late final List<AdRequest> _adRequests = [
-    AdRequest(id: 'ar1', name: 'Mutale Chileshe', company: 'Zambezi Home Loans', contact: 'mutale@zhl.co.zm',
-        placement: 'home_hero', message: 'We would like the top banner for 2 weeks in November.', createdAt: _ago(90)),
-  ];
 
   @override
   Future<List<Ad>> liveAds(String placement) async =>
@@ -1101,22 +1096,6 @@ class DemoRepository implements Repository {
     final day = isoDay(DateTime.now());
     final (v, c) = m[day] ?? (0, 0);
     m[day] = kind == 'click' ? (v, c + 1) : (v + 1, c);
-  }
-
-  @override
-  Future<void> submitAdRequest({
-    required String name,
-    String? company,
-    required String contact,
-    String? placement,
-    String? message,
-  }) async {
-    await _lag();
-    _adRequests.insert(
-      0,
-      AdRequest(id: _uuid.v4(), name: name.trim(), company: company, contact: contact.trim(), placement: placement,
-          message: message, createdAt: DateTime.now()),
-    );
   }
 
   @override
@@ -1164,22 +1143,6 @@ class DemoRepository implements Repository {
     final m = _adStats[id] ?? const {};
     final keys = m.keys.toList()..sort();
     return CampaignStats([for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2)]);
-  }
-
-  @override
-  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true}) async {
-    _requireAdmin();
-    return _adRequests.where((r) => !onlyNew || r.status == 'new').toList();
-  }
-
-  @override
-  Future<void> adminSetAdRequestStatus(String id, String status) async {
-    _requireAdmin();
-    final i = _adRequests.indexWhere((r) => r.id == id);
-    if (i < 0) return;
-    final r = _adRequests[i];
-    _adRequests[i] = AdRequest(id: r.id, name: r.name, company: r.company, contact: r.contact,
-        placement: r.placement, message: r.message, status: status, createdAt: r.createdAt);
   }
 
   // ---------------- проверка объявлений, номера, бесплатное продвижение ----------------

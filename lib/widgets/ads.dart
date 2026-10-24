@@ -9,13 +9,12 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import 'common.dart';
-import 'zicons.dart';
 
 // ======================================================================
 // Реклама в приложении: большой баннер на главной (3:1), тонкая полоска
 // в ленте (6:1, не чаще одной на 8 карточек) и блок на странице объявления (2:1).
 // На каждом баннере — пометка «Sponsored». Пока место не продано —
-// шаблон «Здесь может быть ваша реклама» с формой заявки.
+// показывается готовый макет-образец. Размещает рекламу только команда Zumi.
 // ======================================================================
 
 /// Объявления о рекламе на 5 минут — чтобы не спрашивать сервер на каждой карточке
@@ -101,7 +100,9 @@ class AdBanner extends StatelessWidget {
   }
 }
 
-/// Шаблон на свободное место: «Здесь может быть ваша реклама»
+/// Пока место не занято — готовый рекламный макет (образец).
+/// Рекламу размещает только команда Zumi по договору, через панель команды → Ads.
+/// Команда видит на образце пометку «Sample», остальные — обычный баннер.
 class AdPlaceholder extends StatelessWidget {
   const AdPlaceholder({super.key, required this.placement, this.radius = 14});
   final String placement;
@@ -111,42 +112,78 @@ class AdPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final place = adPlacements[placement]!;
     final strip = placement == 'feed_strip';
+    final block = placement == 'listing_block';
+    final team = context.select<AppState, bool>((a) => a.user?.isAdmin ?? false);
     return GestureDetector(
-      onTap: () => showAdRequestSheet(context, placement: placement),
+      onTap: team ? () => showSnack(context, 'Sample ad. Add a real one in the team panel → Ads.') : null,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: AspectRatio(
           aspectRatio: place.ratio,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF245045), Color(0xFF0F5D4E)]),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: strip ? 14 : 22, vertical: strip ? 6 : 16),
-            child: Row(children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Your ad here',
-                        maxLines: 1,
-                        style: TextStyle(color: Colors.white, fontSize: strip ? 14 : 20, fontWeight: FontWeight.w700)),
-                    if (!strip) ...[
-                      const SizedBox(height: 4),
-                      const Text('Reach people looking for homes in Zambia',
-                          maxLines: 2, style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
-                    ],
-                  ],
+          child: Stack(fit: StackFit.expand, children: [
+            Image.asset(strip ? 'assets/images/p5.jpg' : 'assets/images/p3.jpg', fit: BoxFit.cover),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xF2163E35), Color(0xB3163E35), Color(0x10163E35)],
+                  stops: [0, 0.55, 1],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: strip ? 10 : 14, vertical: strip ? 5 : 9),
-                decoration: BoxDecoration(color: Zc.orange, borderRadius: BorderRadius.circular(20)),
-                child: Text('Advertise',
-                    style: TextStyle(color: Colors.white, fontSize: strip ? 12 : 14, fontWeight: FontWeight.w600)),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(strip ? 14 : 22, strip ? 6 : 16, strip ? 14 : 22, strip ? 6 : 16),
+              child: Row(children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: strip
+                        ? const [
+                            Text('Kafue Living · Furniture for your new home',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                            Text('20% off sofas & beds this month',
+                                maxLines: 1, style: TextStyle(color: Color(0xE6FFFFFF), fontSize: 12)),
+                          ]
+                        : [
+                            const Text('KAFUE LIVING',
+                                style: TextStyle(
+                                    color: Color(0xFFF4B88E), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 6),
+                            Text(block ? 'Furnish your new home' : 'Moving in? Furnish your new home for less',
+                                maxLines: 2,
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: block ? 20 : 26, fontWeight: FontWeight.w700, height: 1.15)),
+                            const SizedBox(height: 6),
+                            const Text('20% off sofas, beds and dining sets · Free delivery in Lusaka',
+                                maxLines: 2, style: TextStyle(color: Color(0xE6FFFFFF), fontSize: 13)),
+                          ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: strip ? 10 : 16, vertical: strip ? 5 : 10),
+                  decoration: BoxDecoration(color: Zc.orange, borderRadius: BorderRadius.circular(20)),
+                  child: Text('Shop now',
+                      style: TextStyle(color: Colors.white, fontSize: strip ? 12 : 14, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+            Positioned(top: strip ? 6 : 10, right: strip ? 6 : 10, child: SponsoredTag(small: strip)),
+            if (team)
+              Positioned(
+                bottom: strip ? 4 : 10,
+                right: strip ? 6 : 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xCCFFFFFF), borderRadius: BorderRadius.circular(6)),
+                  child: const Text('Sample', style: TextStyle(fontSize: 10, color: Zc.green, fontWeight: FontWeight.w700)),
+                ),
               ),
-            ]),
-          ),
+          ]),
         ),
       ),
     );
@@ -189,9 +226,9 @@ class _HomeHeroAdsState extends State<HomeHeroAds> {
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) return const SizedBox.shrink();
         final ads = snap.data ?? const <Ad>[];
-        if (ads.isEmpty) return const AdPlaceholder(placement: 'home_hero');
+        if (ads.isEmpty) return const _HeroBox(child: AdPlaceholder(placement: 'home_hero'));
         _auto(ads.length);
-        return Column(children: [
+        return _HeroBox(child: Column(children: [
           AspectRatio(
             aspectRatio: 3,
             child: PageView.builder(
@@ -221,10 +258,22 @@ class _HomeHeroAdsState extends State<HomeHeroAds> {
                   ),
               ]),
             ),
-        ]);
+        ]));
       },
     );
   }
+}
+
+/// На компьютере баннер не растягивается во всю ширину — иначе он слишком высокий
+class _HeroBox extends StatelessWidget {
+  const _HeroBox({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 960), child: child),
+      );
 }
 
 /// Лента: тонкая полоска между объявлениями. slot — номер полоски (0, 1, 2…) для ротации.
@@ -265,131 +314,6 @@ class ListingAdBlock extends StatelessWidget {
           child: ads.isEmpty ? const AdPlaceholder(placement: 'listing_block') : AdBanner(ad: ads.first),
         );
       },
-    );
-  }
-}
-
-// ----------------------------------------------------------------------
-// Заявка на рекламу — приходит в кабинет модератора
-// ----------------------------------------------------------------------
-Future<void> showAdRequestSheet(BuildContext context, {String? placement}) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Zc.bg,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (_) => _AdRequestForm(placement: placement),
-  );
-}
-
-class _AdRequestForm extends StatefulWidget {
-  const _AdRequestForm({this.placement});
-  final String? placement;
-
-  @override
-  State<_AdRequestForm> createState() => _AdRequestFormState();
-}
-
-class _AdRequestFormState extends State<_AdRequestForm> {
-  final _name = TextEditingController();
-  final _company = TextEditingController();
-  final _contact = TextEditingController();
-  final _message = TextEditingController();
-  late String? _placement = widget.placement;
-  bool _sending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final u = context.read<AppState>().user;
-    _name.text = u?.fullName ?? '';
-    _contact.text = u?.email ?? '';
-  }
-
-  @override
-  void dispose() {
-    for (final c in [_name, _company, _contact, _message]) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    if (_name.text.trim().length < 2) {
-      showSnack(context, 'Please write your name');
-      return;
-    }
-    if (_contact.text.trim().length < 5) {
-      showSnack(context, 'Please add a phone number or email so we can reply');
-      return;
-    }
-    setState(() => _sending = true);
-    final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await context.read<AppState>().repo.submitAdRequest(
-            name: _name.text,
-            company: _company.text,
-            contact: _contact.text,
-            placement: _placement,
-            message: _message.text,
-          );
-      nav.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Thank you! The Zumi team will contact you soon.')));
-    } catch (e) {
-      if (mounted) showSnack(context, '$e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.viewInsetsOf(context).bottom + 20),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text('Advertise on Zumi', style: zHeadline(context, size: 26))),
-            IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(ZI.close, color: Zc.grey)),
-          ]),
-          const SizedBox(height: 4),
-          const Text('Leave your details — the Zumi team will reply with prices and free dates.',
-              style: TextStyle(color: Zc.grey)),
-          const SizedBox(height: 18),
-          TextField(controller: _name, decoration: const InputDecoration(hintText: 'Your name')),
-          const SizedBox(height: 10),
-          TextField(controller: _company, decoration: const InputDecoration(hintText: 'Company (optional)')),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _contact,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(hintText: 'Phone or email'),
-          ),
-          const SizedBox(height: 14),
-          const Text('Where would you like to appear?', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final p in adPlacements.values)
-              ZChip(
-                label: p.label,
-                selected: _placement == p.key,
-                onTap: () => setState(() => _placement = _placement == p.key ? null : p.key),
-              ),
-          ]),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _message,
-            minLines: 2,
-            maxLines: 5,
-            maxLength: 1000,
-            decoration: const InputDecoration(hintText: 'Message (optional): dates, budget, what you advertise'),
-          ),
-          const SizedBox(height: 10),
-          PrimaryButton(label: 'Send request', width: double.infinity, loading: _sending, onPressed: _send),
-        ]),
-      ),
     );
   }
 }

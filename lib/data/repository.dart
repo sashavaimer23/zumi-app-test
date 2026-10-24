@@ -172,21 +172,12 @@ abstract class Repository {
   // --- реклама (баннеры)
   Future<List<Ad>> liveAds(String placement);
   Future<void> logAdEvent(String adId, String kind);
-  Future<void> submitAdRequest({
-    required String name,
-    String? company,
-    required String contact,
-    String? placement,
-    String? message,
-  });
 
   // --- кабинет команды: реклама, проверка объявлений, номера, бесплатное продвижение
   Future<List<Ad>> adminAds();
   Future<Ad> adminSaveAd(AdDraft d, {required bool launch});
   Future<void> adminSetAdStatus(String id, String status);
   Future<CampaignStats> adStats(String id);
-  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true});
-  Future<void> adminSetAdRequestStatus(String id, String status);
   Future<List<Property>> adminPendingListings();
   Future<void> adminReviewListing(String id, bool approve, {String? note});
   Future<List<PhoneWatcher>> adminPhoneWatchers({int days = 7});

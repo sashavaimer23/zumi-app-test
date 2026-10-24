@@ -914,11 +914,10 @@ class Rating {
 }
 
 class AdminStats {
-  final int accounts, listingsNew, adRequests, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
+  final int accounts, listingsNew, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
   const AdminStats({
     this.accounts = 0,
     this.listingsNew = 0,
-    this.adRequests = 0,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -930,14 +929,13 @@ class AdminStats {
   });
 
   int get total =>
-      accounts + listingsNew + adRequests + idChecks + ownership + licences + reports + tickets + reviews;
+      accounts + listingsNew + idChecks + ownership + licences + reports + tickets + reviews;
 
   factory AdminStats.fromMap(Map<String, dynamic> m) {
     int n(String k) => ((m[k] as num?) ?? 0).toInt();
     return AdminStats(
       accounts: n('accounts'),
       listingsNew: n('listings_new'),
-      adRequests: n('ad_requests'),
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),
@@ -1374,39 +1372,6 @@ class AdDraft {
   String? imageUrl;
   DateTime? startsOn;
   DateTime? endsOn;
-}
-
-class AdRequest {
-  final String id;
-  final String name;
-  final String? company;
-  final String contact;
-  final String? placement;
-  final String? message;
-  final String status; // new | done
-  final DateTime createdAt;
-
-  const AdRequest({
-    required this.id,
-    required this.name,
-    this.company,
-    required this.contact,
-    this.placement,
-    this.message,
-    this.status = 'new',
-    required this.createdAt,
-  });
-
-  factory AdRequest.fromMap(Map<String, dynamic> m) => AdRequest(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        company: m['company'] as String?,
-        contact: m['contact'] as String,
-        placement: m['placement'] as String?,
-        message: m['message'] as String?,
-        status: (m['status'] as String?) ?? 'new',
-        createdAt: _dt(m['created_at']),
-      );
 }
 
 /// Кто чаще всех смотрит номера (кабинет команды)

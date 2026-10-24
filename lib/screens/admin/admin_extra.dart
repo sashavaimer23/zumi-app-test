@@ -191,15 +191,13 @@ class _Ads extends StatefulWidget {
 }
 
 class _AdsState extends State<_Ads> {
-  bool _requests = false;
   late Future<List<dynamic>> _future = _load();
 
   Future<List<dynamic>> _load() async {
     final repo = context.read<AppState>().repo;
     final ads = await repo.adminAds();
     final stats = await Future.wait(ads.map((a) => repo.adStats(a.id)));
-    final reqs = await repo.adminAdRequests(onlyNew: false);
-    return [ads, stats, reqs];
+    return [ads, stats];
   }
 
   void _reload() {
@@ -242,24 +240,13 @@ class _AdsState extends State<_Ads> {
       title: 'Ads',
       subtitle: 'Banners on the home page, between listings and on listing pages. '
           'Each banner is marked "Sponsored".',
-      trailing: Wrap(spacing: 10, runSpacing: 8, children: [
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, label: Text('Campaigns')),
-            ButtonSegment(value: true, label: Text('Requests')),
-          ],
-          selected: {_requests},
-          onSelectionChanged: (s) => setState(() => _requests = s.first),
-        ),
-        if (!_requests) _actionBtn('+ New campaign', () => _open(), primary: true),
-      ]),
+      trailing: _actionBtn('+ New campaign', () => _open(), primary: true),
       child: _Loader<List<dynamic>>(
         future: _future,
         builder: (data) {
           final ads = data[0] as List<Ad>;
           final stats = data[1] as List<CampaignStats>;
-          final reqs = data[2] as List<AdRequest>;
-          return _requests ? _requestList(reqs) : _adList(ads, stats);
+          return _adList(ads, stats);
         },
       ),
     );
@@ -267,7 +254,7 @@ class _AdsState extends State<_Ads> {
 
   Widget _adList(List<Ad> ads, List<CampaignStats> stats) {
     if (ads.isEmpty) {
-      return _emptyDone('No ad campaigns yet. Until an ad is sold, people see "Your ad here" with a request form.');
+      return _emptyDone('No ad campaigns yet. Until you add one, people see a sample banner.');
     }
     return Column(children: [
       for (var i = 0; i < ads.length; i++)
@@ -351,42 +338,6 @@ class _AdsState extends State<_Ads> {
         ],
       ),
     );
-  }
-
-  Widget _requestList(List<AdRequest> reqs) {
-    if (reqs.isEmpty) return _emptyDone('No ad requests yet.');
-    return Column(children: [
-      for (final r in reqs)
-        _Card(
-          highlight: r.status == 'new',
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text([r.name, if ((r.company ?? '').isNotEmpty) r.company!].join(' · '),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              Text(timeAgo(r.createdAt), style: const TextStyle(fontSize: 12, color: Zc.grey)),
-            ]),
-            SelectableText(r.contact, style: const TextStyle(color: Zc.green)),
-            if (r.placement != null)
-              Text('Wants: ${adPlacements[r.placement]?.label ?? r.placement}',
-                  style: const TextStyle(fontSize: 13, color: Zc.grey)),
-            if ((r.message ?? '').isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(r.message!, style: const TextStyle(fontSize: 14)),
-            ],
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              if (r.status == 'new')
-                _actionBtn('Mark as done', () async {
-                  await context.read<AppState>().repo.adminSetAdRequestStatus(r.id, 'done');
-                  _reload();
-                }, primary: true),
-              _actionBtn('Create campaign', () => _open()),
-            ]),
-          ]),
-        ),
-    ]);
   }
 }
 

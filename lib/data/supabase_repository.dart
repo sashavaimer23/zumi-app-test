@@ -1030,25 +1030,6 @@ class SupabaseRepository implements Repository {
   }
 
   @override
-  Future<void> submitAdRequest({
-    required String name,
-    String? company,
-    required String contact,
-    String? placement,
-    String? message,
-  }) =>
-      _guard(() async {
-        await _db.from('ad_requests').insert({
-          'user_id': _db.auth.currentUser?.id,
-          'name': name.trim(),
-          'company': (company ?? '').trim().isEmpty ? null : company!.trim(),
-          'contact': contact.trim(),
-          'placement': placement,
-          'message': (message ?? '').trim().isEmpty ? null : message!.trim(),
-        });
-      });
-
-  @override
   Future<List<Ad>> adminAds() => _guard(() async {
         final rows = await _db.from('ads').select().order('created_at', ascending: false).limit(200);
         return rows.map(Ad.fromMap).toList();
@@ -1094,19 +1075,6 @@ class SupabaseRepository implements Repository {
           for (final r in rows)
             CampaignDay(DateTime.parse(r['day'] as String), (r['views'] as num).toInt(), (r['clicks'] as num).toInt()),
         ]);
-      });
-
-  @override
-  Future<List<AdRequest>> adminAdRequests({bool onlyNew = true}) => _guard(() async {
-        var q = _db.from('ad_requests').select();
-        if (onlyNew) q = q.eq('status', 'new');
-        final rows = await q.order('created_at', ascending: false).limit(100);
-        return rows.map(AdRequest.fromMap).toList();
-      });
-
-  @override
-  Future<void> adminSetAdRequestStatus(String id, String status) => _guard(() async {
-        await _db.from('ad_requests').update({'status': status}).eq('id', id);
       });
 
   @override

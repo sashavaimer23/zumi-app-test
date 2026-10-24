@@ -31,22 +31,13 @@ create table if not exists public.ad_stats (
   primary key (ad_id, day)
 );
 
--- заявки «Здесь может быть ваша реклама»
-create table if not exists public.ad_requests (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid references public.profiles(id) on delete set null,
-  name       text not null check (length(trim(name)) between 2 and 80),
-  company    text check (company is null or length(company) <= 120),
-  contact    text not null check (length(trim(contact)) between 5 and 120),
-  placement  text check (placement is null or placement in ('home_hero', 'feed_strip', 'listing_block')),
-  message    text check (message is null or length(message) <= 1000),
-  status     text not null default 'new' check (status in ('new', 'done')),
-  created_at timestamptz not null default now()
-);
+-- Рекламу размещает только команда Zumi (по договору с рекламодателем).
+-- Публичной формы заявок нет: никто, кроме админа, не может создать или изменить рекламу.
+drop table if exists public.ad_requests cascade;
+drop function if exists public.limit_ad_requests();
 
 alter table public.ads         enable row level security;
 alter table public.ad_stats    enable row level security;
-alter table public.ad_requests enable row level security;
 
 drop policy if exists "live ads readable" on public.ads;
 create policy "live ads readable" on public.ads for select
@@ -56,27 +47,6 @@ create policy "admins manage ads" on public.ads for all
   using (public.is_admin()) with check (public.is_admin());
 drop policy if exists "admins read ad stats" on public.ad_stats;
 create policy "admins read ad stats" on public.ad_stats for select using (public.is_admin());
-
-drop policy if exists "anyone sends ad request" on public.ad_requests;
-create policy "anyone sends ad request" on public.ad_requests for insert
-  with check (status = 'new' and (user_id is null or user_id = auth.uid()));
-drop policy if exists "admins manage ad requests" on public.ad_requests;
-create policy "admins manage ad requests" on public.ad_requests for all
-  using (public.is_admin()) with check (public.is_admin());
-
--- не больше 3 заявок в час с одного контакта — защита от спама
-create or replace function public.limit_ad_requests()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  if (select count(*) from ad_requests
-       where contact = new.contact and created_at > now() - interval '1 hour') >= 3 then
-    raise exception 'TOO_MANY_REQUESTS';
-  end if;
-  return new;
-end $$;
-drop trigger if exists limit_ad_requests on public.ad_requests;
-create trigger limit_ad_requests before insert on public.ad_requests
-  for each row execute function public.limit_ad_requests();
 
 create or replace function public.log_ad_event(aid uuid, kind text)
 returns void language plpgsql security definer set search_path = public as $$
@@ -560,7 +530,6 @@ begin
     'reports',      (select count(*) from listing_reports where status = 'new'),
     'tickets',      (select count(*) from support_tickets where status = 'open'),
     'reviews',      (select count(*) from reviews where flags_count > 0 and status = 'published'),
-    'ad_requests',  (select count(*) from ad_requests where status = 'new'),
     'listings',     (select count(*) from properties where status = 'active'),
     'users',        (select count(*) from profiles)
   );
