@@ -28,6 +28,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _loading = false;
   String _role = 'owner';
   bool _consent = false;
+  bool _marketing = false; // новости и предложения — по желанию, по умолчанию выключено
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -62,6 +63,7 @@ class _AuthScreenState extends State<AuthScreen> {
           role: _role,
           termsAccepted: _consent,
           licenceNo: _role == 'agent' ? _licence.text.trim() : null,
+          marketing: _marketing,
         );
         // после регистрации — предлагаем подтвердить телефон по SMS (можно пропустить)
         if (!widget.embedded) nav.pop(true);
@@ -207,6 +209,24 @@ class _AuthScreenState extends State<AuthScreen> {
                         const Text(', and to Zumi processing my data to run my account.',
                             style: TextStyle(fontSize: 13, color: Zc.text)),
                       ]),
+                    ),
+                  ),
+                ]),
+                // отдельная галочка — не обязательна, по умолчанию не отмечена
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Checkbox(
+                    value: _marketing,
+                    activeColor: Zc.orange,
+                    onChanged: (v) => setState(() => _marketing = v ?? false),
+                  ),
+                  const Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Send me Zumi news and offers by WhatsApp or email (optional). '
+                        'You can turn this off any time in Settings.',
+                        style: TextStyle(fontSize: 13, color: Zc.text),
+                      ),
                     ),
                   ),
                 ]),

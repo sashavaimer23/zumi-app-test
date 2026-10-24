@@ -70,6 +70,8 @@ class SupabaseRepository implements Repository {
         contactMode: (row?['contact_mode'] as String?) ?? 'phone',
         phoneChannel: ver?['phone_channel'] as String?,
         emailVerified: (ver?['email_verified'] as bool?) ?? false,
+        marketingEmail: (ver?['marketing_email'] as bool?) ?? false,
+        marketingWhatsapp: (ver?['marketing_whatsapp'] as bool?) ?? false,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
@@ -150,6 +152,7 @@ class SupabaseRepository implements Repository {
     required String role,
     bool termsAccepted = true,
     String? licenceNo,
+    bool marketing = false,
   }) =>
       _guard(() async {
         final res = await _db.auth.signUp(
@@ -160,6 +163,7 @@ class SupabaseRepository implements Repository {
             'phone': phone,
             'role': role,
             'terms_accepted': termsAccepted,
+            'marketing': marketing,
             if (role == 'agent' && (licenceNo ?? '').trim().isNotEmpty) 'licence_no': licenceNo!.trim(),
           },
         );
@@ -172,6 +176,13 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<void> signOut() => _db.auth.signOut();
+
+  @override
+  Future<void> setMarketing(String channel, bool on) => _guard(() async {
+        _requireUserId();
+        await _db.rpc('set_marketing', params: {'p_channel': channel, 'p_on': on});
+        await _reloadUser();
+      });
 
   @override
   Future<void> refreshUser() => _reloadUser();

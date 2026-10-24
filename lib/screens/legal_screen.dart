@@ -130,8 +130,9 @@ const _privacy = <(String, String)>[
   ),
   (
     'What we collect',
-    '• Account: name, email, phone number, account type (owner or agent), and the date you accepted the '
-        'Terms and this Privacy Policy.\n'
+    '• Account: name, email, phone number, account type (owner or agent), the date you accepted the '
+        'Terms and this Privacy Policy, and — only if you tick the box — the date you agreed to receive Zumi news '
+        'and offers by WhatsApp and/or email (you can turn each off any time in Settings).\n'
         '• Profile: photo, agency name, "about you" and business WhatsApp number (agents), ZIEA licence number '
         '(agents), and how people may contact you (phone or chat only).\n'
         '• Listings: photos, description, price, location on the map, contact number you add.\n'

@@ -20,8 +20,12 @@ abstract class Repository {
     required String role,
     bool termsAccepted = true,
     String? licenceNo, // агент может сразу указать номер ZIEA
+    bool marketing = false, // согласие на новости и предложения (по умолчанию нет)
   });
   Future<void> signOut();
+
+  /// Новости и предложения Zumi: channel = 'email' | 'whatsapp', включить / выключить (Settings)
+  Future<void> setMarketing(String channel, bool on);
 
   /// Перечитать свой профиль с сервера (статусы проверок могли измениться)
   Future<void> refreshUser();

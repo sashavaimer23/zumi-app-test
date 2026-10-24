@@ -497,6 +497,8 @@ class AppUser {
   final String contactMode;   // 'phone' | 'chat' — показывать ли номер в объявлениях
   final String? phoneChannel; // чем подтверждён телефон: whatsapp | sms
   final bool emailVerified;   // почта подтверждена кодом
+  final bool marketingEmail;    // новости и предложения Zumi на почту
+  final bool marketingWhatsapp; // новости и предложения Zumi в WhatsApp
 
   const AppUser({
     required this.id,
@@ -519,6 +521,8 @@ class AppUser {
     this.contactMode = 'phone',
     this.phoneChannel,
     this.emailVerified = false,
+    this.marketingEmail = false,
+    this.marketingWhatsapp = false,
   });
 
   bool get profileComplete => (fullName ?? '').trim().length > 1;
@@ -554,6 +558,8 @@ class AppUser {
     String? contactMode,
     String? phoneChannel,
     bool? emailVerified,
+    bool? marketingEmail,
+    bool? marketingWhatsapp,
   }) =>
       AppUser(
         id: id,
@@ -576,6 +582,8 @@ class AppUser {
         contactMode: contactMode ?? this.contactMode,
         phoneChannel: phoneChannel ?? this.phoneChannel,
         emailVerified: emailVerified ?? this.emailVerified,
+        marketingEmail: marketingEmail ?? this.marketingEmail,
+        marketingWhatsapp: marketingWhatsapp ?? this.marketingWhatsapp,
       );
 
   bool get isAgent => role == 'agent';

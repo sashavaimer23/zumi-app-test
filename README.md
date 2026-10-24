@@ -62,6 +62,8 @@ flutter run
    - `supabase/011_docs_licence.sql` — удаление фото документов после решения (и через 30 дней без решения),
      пометка «ZIEA licence not verified», продвижение только с проверенной лицензией, правило
      «публиковать только после проверки лицензии» (кнопка в кабинете → Licences).
+   - `supabase/012_marketing.sql` — галочка «новости и предложения Zumi» (WhatsApp / почта) при регистрации
+     и в Settings; список согласившихся для рассылки: `select * from admin_marketing_list();`
 4. Скопируйте Project URL и anon key в Settings → API.
 5. Запустите приложение с ключами:
 
@@ -209,7 +211,7 @@ update public.profiles set role = 'admin'
 
 ## Перед запуском (чек-лист)
 
-1. Выполнить все SQL-файлы `001`–`011` в новом проекте Supabase.
+1. Выполнить все SQL-файлы `001`–`012` в новом проекте Supabase.
    Затем включить ежедневную уборку документов: Supabase → Edge Functions → Deploy new function →
    имя `purge-verification-docs`, код из `supabase/functions/purge-verification-docs/index.ts`;
    потом Integrations → Cron → New job → каждый день → Supabase Edge Function → `purge-verification-docs`.

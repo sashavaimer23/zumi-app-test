@@ -264,6 +264,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
 
+              // ---------- рассылка ----------
+              const _Section('News and offers'),
+              for (final (channel, on, title) in [
+                ('email', u.marketingEmail, 'By email'),
+                ('whatsapp', u.marketingWhatsapp, 'By WhatsApp'),
+              ])
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeColor: Zc.orange,
+                  value: on,
+                  title: Text(title, style: const TextStyle(fontSize: 15)),
+                  subtitle: Text(
+                    channel == 'email'
+                        ? 'New features, tips and special offers — a few emails a month at most.'
+                        : (u.phoneVerified
+                            ? 'Sent to your confirmed number ${u.phone ?? ''}.'
+                            : 'We send to your phone after you confirm it.'),
+                    style: const TextStyle(fontSize: 12, color: Zc.grey),
+                  ),
+                  onChanged: (v) async {
+                    try {
+                      await app.repo.setMarketing(channel, v);
+                      if (context.mounted) showSnack(context, v ? 'Subscribed ${title.toLowerCase()}' : 'Unsubscribed ${title.toLowerCase()}');
+                    } catch (e) {
+                      if (context.mounted) showSnack(context, '$e');
+                    }
+                  },
+                ),
+
               // ---------- проверка ----------
               const _Section('Phone & verification'),
               _Row(

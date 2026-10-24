@@ -88,6 +88,7 @@ class DemoRepository implements Repository {
     required String role,
     bool termsAccepted = true,
     String? licenceNo,
+    bool marketing = false,
   }) async {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
@@ -98,6 +99,8 @@ class DemoRepository implements Repository {
       phone: phone,
       role: email.toLowerCase().contains('admin') ? 'admin' : role,
       licenceNo: role == 'agent' && (licenceNo ?? '').trim().isNotEmpty ? licenceNo!.trim() : null,
+      marketingEmail: marketing,
+      marketingWhatsapp: marketing,
       createdAt: DateTime.now(),
     );
     _known[u.id] = u;
@@ -107,6 +110,12 @@ class DemoRepository implements Repository {
     }
     _user = u;
     _userCtrl.add(_user);
+  }
+
+  @override
+  Future<void> setMarketing(String channel, bool on) async {
+    final u = _requireUser();
+    _setUser(channel == 'whatsapp' ? u.copyWith(marketingWhatsapp: on) : u.copyWith(marketingEmail: on));
   }
 
   @override
