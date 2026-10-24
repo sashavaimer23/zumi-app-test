@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/contact.dart';
 import '../widgets/results.dart';
 import '../widgets/reviews.dart';
 import '../widgets/share.dart';
@@ -118,7 +118,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                     ]),
                   ),
                 ),
-              if (pr.isAgent && (pr.whatsapp ?? '').isNotEmpty)
+              if (pr.isAgent && pr.hasWhatsapp && pr.contactMode != 'chat')
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(side, 18, side, 0),
                   sliver: SliverToBoxAdapter(
@@ -131,11 +131,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        onPressed: () {
-                          final n = pr.whatsapp!.replaceAll(RegExp(r'[^0-9]'), '');
-                          final text = Uri.encodeComponent('Hello! I found you on Zumi.');
-                          launchUrl(Uri.parse('https://wa.me/$n?text=$text'), mode: LaunchMode.externalApplication);
-                        },
+                        onPressed: () => Contact.agentWhatsapp(context, pr),
                         icon: const Icon(ZI.whatsapp),
                         label: const Text('WhatsApp the agent'),
                       ),

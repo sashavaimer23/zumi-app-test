@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'contact.dart';
 import 'results.dart';
 import 'trust.dart';
 import 'wide_card.dart';
@@ -56,15 +57,25 @@ class _PromotedCardState extends State<PromotedCard> {
     openProperty(context, p);
   }
 
-  Future<void> _contact() async {
+  /// Ссылка на сайт рекламодателя (телефон в кампании больше не хранится)
+  String? get _link {
+    final c = (c.contact ?? '').trim();
+    return c.isEmpty || !c.contactIsLink ? null : c;
+  }
+
+  Future<void> _visit() async {
     if (widget.preview) return;
-    final contact = (c.contact ?? '').trim();
-    if (contact.isEmpty) return;
+    final link = _link;
+    if (link == null) return;
     context.read<AppState>().repo.logCampaignEvent(c.id, 'click');
-    final uri = c.contactIsLink
-        ? Uri.parse(contact.startsWith('http') ? contact : 'https://$contact')
-        : Uri(scheme: 'tel', path: contact.replaceAll(RegExp(r'[^0-9+]'), ''));
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await launchUrl(Uri.parse(link.startsWith('http') ? link : 'https://$link'), mode: LaunchMode.externalApplication);
+  }
+
+  /// Позвонить — через обычную кнопку «Show number» (вход, подтверждённый телефон, лимит)
+  Future<void> _showNumber() async {
+    if (widget.preview) return;
+    context.read<AppState>().repo.logCampaignEvent(c.id, 'click');
+    await Contact.showNumber(context, p);
   }
 
   Widget _image(double radius) {
@@ -82,17 +93,25 @@ class _PromotedCardState extends State<PromotedCard> {
   }
 
   Widget _cta() {
-    final contact = (c.contact ?? '').trim();
-    if (contact.isEmpty) return const SizedBox.shrink();
+    final style = FilledButton.styleFrom(
+      backgroundColor: Zc.orange,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    );
+    if (_link != null) {
+      return FilledButton.icon(
+        style: style,
+        onPressed: _visit,
+        icon: const Icon(ZI.globe, size: 18),
+        label: const Text('Visit website'),
+      );
+    }
+    if (p.chatOnly || !p.hasPhone) return const SizedBox.shrink();
     return FilledButton.icon(
-      style: FilledButton.styleFrom(
-        backgroundColor: Zc.orange,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      onPressed: _contact,
-      icon: Icon(c.contactIsLink ? ZI.globe : ZI.phone, size: 18),
-      label: Text(c.contactIsLink ? 'Visit website' : 'Call'),
+      style: style,
+      onPressed: _showNumber,
+      icon: const Icon(ZI.phone, size: 18),
+      label: const Text('Show number'),
     );
   }
 

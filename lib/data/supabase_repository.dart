@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart' hide SortBy;
 
 import '../models/models.dart';
+import 'device_id.dart';
 import 'images.dart';
 import 'repository.dart';
 
@@ -40,7 +41,7 @@ class SupabaseRepository implements Repository {
       final row = await _db
           .from('profiles')
           .select('id, role, full_name, agency_name, phone_verified_at, id_verified_at, '
-              'agent_licence_no, licence_verified_at, avatar_url, bio, whatsapp, created_at, contact_mode')
+              'agent_licence_no, licence_verified_at, avatar_url, bio, created_at, contact_mode')
           .eq('id', u.id)
           .maybeSingle();
       Map<String, dynamic>? ver;
@@ -61,7 +62,7 @@ class SupabaseRepository implements Repository {
         licenceVerified: row?['licence_verified_at'] != null,
         avatarUrl: row?['avatar_url'] as String?,
         bio: row?['bio'] as String?,
-        whatsapp: row?['whatsapp'] as String?,
+        whatsapp: ver?['whatsapp'] as String?,
         createdAt: DateTime.tryParse((row?['created_at'] as String?) ?? ''),
         idStatus: ver?['id_status'] as String?,
         idNote: ver?['id_note'] as String?,
@@ -98,7 +99,12 @@ class SupabaseRepository implements Repository {
       if (e.message.contains('REVEAL_LIMIT')) {
         throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
       }
-      if (e.message.contains('NO_PHONE')) throw AppException('No phone number in this listing — use chat');
+      if (e.message.contains('NO_PHONE')) throw AppException('No phone number here — use chat');
+      if (e.message.contains('PHONE_TAKEN')) {
+        throw AppException('This number is already confirmed on another Zumi account. '
+            'One number can belong to one account — sign in to that account or contact support.', code: 'PHONE_TAKEN');
+      }
+      if (e.message.contains('BAD_PHONE')) throw AppException('Please enter the full phone number, e.g. +260 97 123 4567');
       if (e.message.contains('TOO_MANY_REQUESTS')) throw AppException('Too many requests. Please try again later.');
       if (e.message.contains('TOO_MANY_CODES')) throw AppException('Too many codes. Please wait an hour and try again.');
       if (e.message.contains('TOO_MANY_ATTEMPTS')) throw AppException('Too many wrong codes. Request a new code.');
@@ -689,6 +695,9 @@ class SupabaseRepository implements Repository {
   Future<void> verifyCode(String channel, String destination, String code) => _guard(() async {
         final res = await _db.rpc('verify_verification_code',
             params: {'p_channel': channel, 'p_destination': destination, 'p_code': code});
+        if (res == 'taken') {
+          throw AppException('This number is already confirmed on another Zumi account.', code: 'PHONE_TAKEN');
+        }
         if (res != 'ok') throw AppException('Wrong code. Please check and try again.');
         await _reloadUser();
       });
@@ -697,6 +706,13 @@ class SupabaseRepository implements Repository {
   Future<String> revealPhone(String propertyId) => _guard(() async {
         _requireUserId();
         final res = await _db.rpc('reveal_phone', params: {'pid': propertyId});
+        return (res as String?) ?? '';
+      });
+
+  @override
+  Future<String> revealAgentWhatsapp(String agentId) => _guard(() async {
+        _requireUserId();
+        final res = await _db.rpc('reveal_agent_whatsapp', params: {'agent': agentId});
         return (res as String?) ?? '';
       });
 
@@ -980,6 +996,7 @@ class SupabaseRepository implements Repository {
           .select()
           .eq('placement', placement)
           .eq('status', 'active')
+          .eq('review_status', 'approved')
           .lte('starts_on', today)
           .gte('ends_on', today)
           .limit(30);
@@ -999,7 +1016,7 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> logCampaignEvent(String campaignId, String kind) async {
     try {
-      await _db.rpc('log_campaign_event', params: {'cid': campaignId, 'kind': kind});
+      await _db.rpc('log_campaign_event', params: {'cid': campaignId, 'kind': kind, 'device': await DeviceId.get()});
     } catch (_) {/* не критично */}
   }
 
@@ -1025,7 +1042,7 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> logAdEvent(String adId, String kind) async {
     try {
-      await _db.rpc('log_ad_event', params: {'aid': adId, 'kind': kind});
+      await _db.rpc('log_ad_event', params: {'aid': adId, 'kind': kind, 'device': await DeviceId.get()});
     } catch (_) {/* не критично */}
   }
 
@@ -1110,6 +1127,33 @@ class SupabaseRepository implements Repository {
       _guard(() async {
         await _db.rpc('admin_grant_promotion',
             params: {'agent': agentId, 'pid': propertyId, 'days': days, 'p_placement': placement});
+      });
+
+  @override
+  Future<List<(Campaign, Property?)>> adminPendingCampaigns() => _guard(() async {
+        final rows = await _db
+            .from('campaigns')
+            .select()
+            .eq('review_status', 'pending')
+            .neq('status', 'stopped')
+            .gte('ends_on', isoDay(DateTime.now()))
+            .order('created_at')
+            .limit(100);
+        final list = rows.map(Campaign.fromMap).toList();
+        final props = {
+          for (final p in await byIds(list.map((c) => c.propertyId).toSet().toList())) p.id: p,
+        };
+        return [for (final c in list) (c, props[c.propertyId])];
+      });
+
+  @override
+  Future<void> adminReviewCampaign(String id, bool approve, {String? note}) => _guard(() async {
+        await _db.rpc('admin_review_campaign', params: {'cid': id, 'approve': approve, 'note': note});
+      });
+
+  @override
+  Future<void> adminSetOtpTestMode(bool on) => _guard(() async {
+        await _db.rpc('admin_set_otp_test_mode', params: {'p_on': on});
       });
 
   // ---------------- чаты ----------------

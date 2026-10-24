@@ -121,6 +121,9 @@ abstract class Repository {
   /// Номер автора объявления: выдаёт сервер (вход + подтверждённый телефон, до 15 в сутки)
   Future<String> revealPhone(String propertyId);
 
+  /// WhatsApp агента (страница агента): те же правила и тот же лимит, что у номера
+  Future<String> revealAgentWhatsapp(String agentId);
+
   /// Номер из своего объявления (для правки)
   Future<String?> myListingPhone(String propertyId);
 
@@ -183,6 +186,11 @@ abstract class Repository {
   Future<List<PhoneWatcher>> adminPhoneWatchers({int days = 7});
   Future<List<Property>> adminAgentListings(String agentId);
   Future<void> adminGrantPromotion(String agentId, String propertyId, int days, {String placement = 'search_top'});
+  /// Продвижение со своей картинкой, названием или ссылкой — ждёт проверки
+  Future<List<(Campaign, Property?)>> adminPendingCampaigns();
+  Future<void> adminReviewCampaign(String id, bool approve, {String? note});
+  /// Тестовый режим кодов (123456 подходит всем) — включить/выключить
+  Future<void> adminSetOtpTestMode(bool on);
 
   // --- чаты
   Future<String> startConversation(String propertyId);

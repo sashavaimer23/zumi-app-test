@@ -436,7 +436,8 @@ class DemoRepository implements Repository {
         agencyName: u.agencyName,
         avatarUrl: u.avatarUrl,
         bio: u.bio,
-        whatsapp: u.isAgent ? u.whatsapp : null,
+        hasWhatsapp: u.isAgent && (u.whatsapp ?? '').isNotEmpty,
+        contactMode: u.contactMode,
         verified: u.identityVerified,
         phoneVerified: u.phoneVerified,
         licenceVerified: u.licenceVerified,
@@ -458,7 +459,7 @@ class DemoRepository implements Repository {
             ? 'Demo agency on Zumi. We help families find homes in Lusaka — viewings 7 days a week, '
                 'honest prices and help with the lease.'
             : null,
-        whatsapp: agent ? '+260 97 000 0000' : null,
+        hasWhatsapp: agent,
         verified: mine.first.ownerIdentityVerified,
         phoneVerified: true,
         licenceVerified: agent,
@@ -554,16 +555,34 @@ class DemoRepository implements Repository {
 
   @override
   Future<bool> sendCode(String channel, String destination) async {
-    _requireUser();
+    final u = _requireUser();
     await _lag();
+    if (channel != 'email' && _phoneTaken(destination, u.id)) {
+      throw AppException('This number is already confirmed on another Zumi account. '
+          'One number can belong to one account — sign in to that account or contact support.', code: 'PHONE_TAKEN');
+    }
     return true; // демо: код всегда 123456, ничего не отправляется
   }
+
+  /// «+260 97 123 4567» и «0971234567» — один номер
+  static String _normPhone(String? p) {
+    final d = (p ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    return RegExp(r'^0\d{9}$').hasMatch(d) ? '260${d.substring(1)}' : d;
+  }
+
+  bool _phoneTaken(String phone, String uid) => _known.values.any(
+      (k) => k.id != uid && k.phoneVerified && _normPhone(k.phone) == _normPhone(phone) && _normPhone(phone).isNotEmpty);
+
+  bool _otpTestMode = true;
 
   @override
   Future<void> verifyCode(String channel, String destination, String code) async {
     final u = _requireUser();
     await _lag();
     if (code.trim() != '123456') throw AppException('Wrong code. In test mode the code is 123456');
+    if (channel != 'email' && _phoneTaken(destination, u.id)) {
+      throw AppException('This number is already confirmed on another Zumi account.', code: 'PHONE_TAKEN');
+    }
     if (channel == 'email') {
       _setUser(u.copyWith(emailVerified: true));
     } else {
@@ -602,6 +621,33 @@ class DemoRepository implements Repository {
       _bumpCampaigns(propertyId, call: true);
     }
     return p.contactPhone!;
+  }
+
+  @override
+  Future<String> revealAgentWhatsapp(String agentId) async {
+    final u = _requireUser();
+    _checkNotBanned(u);
+    await _lag();
+    final pr = await publicProfile(agentId);
+    if (pr == null || !pr.isAgent) throw AppException('Agent not found');
+    final own = agentId == u.id;
+    if (!own && !u.phoneVerified) throw AppException('Confirm your phone to see numbers', code: 'PHONE_NOT_VERIFIED');
+    if (!own && pr.contactMode == 'chat') {
+      throw AppException('This agent prefers chat — send a message instead', code: 'CHAT_ONLY');
+    }
+    if (!pr.hasWhatsapp) throw AppException('No WhatsApp number — use chat');
+    final number = own ? (u.whatsapp ?? '') : '+260 97 000 0000';
+    if (!own) {
+      final dayAgo = DateTime.now().subtract(const Duration(days: 1));
+      final mine = _reveals.where((r) => r.$1 == u.id && r.$3.isAfter(dayAgo));
+      if (!mine.any((r) => r.$2 == 'agent:$agentId')) {
+        if (mine.length >= 15) {
+          throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
+        }
+        _reveals.add((u.id, 'agent:$agentId', DateTime.now()));
+      }
+    }
+    return number;
   }
 
   @override
@@ -785,6 +831,8 @@ class DemoRepository implements Repository {
     return AdminStats(
       accounts: _newAccounts.length + _demoNewAccounts.where((a) => a.reviewedAt == null).length,
       listingsNew: _props.where((p) => p.status == 'pending').length,
+      campaignsNew: _campaigns.where((c) => c.phase == 'review').length,
+      otpTestMode: _otpTestMode,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
       ownership: _vQueue.where((v) => v.kind == 'ownership').length,
       licences: _licences.length,
@@ -1024,8 +1072,12 @@ class DemoRepository implements Repository {
       throw AppException('You can run up to 3 campaigns at the same time. Stop one to start a new one.');
     }
     final id = _uuid.v4();
+    // своя картинка, ссылка или чужое название — сначала проверка командой
+    final names = {u.fullName, u.agencyName}.whereType<String>().map((n) => n.trim().toLowerCase());
+    final plain = d.image == null && d.contact.trim().isEmpty && names.contains(d.advertiser.trim().toLowerCase());
     final c = Campaign(
       id: id,
+      reviewStatus: plain || u.isAdmin ? 'approved' : 'pending',
       ownerId: u.id,
       propertyId: d.property!.id,
       advertiser: d.advertiser.trim(),
@@ -1070,10 +1122,16 @@ class DemoRepository implements Repository {
     return out..shuffle();
   }
 
+  /// Показ/клик считается один раз в день с человека (как на сервере)
+  final Set<String> _seenEvents = {};
+  bool _firstToday(String id, String kind) =>
+      _seenEvents.add('$id|$kind|${isoDay(DateTime.now())}|${_user?.id ?? 'guest'}');
+
   @override
   Future<void> logCampaignEvent(String campaignId, String kind) async {
     final i = _campaigns.indexWhere((c) => c.id == campaignId);
     if (i < 0 || !_campaigns[i].isLive) return;
+    if (!_firstToday(campaignId, kind)) return;
     final day = isoDay(DateTime.now());
     final m = _campStats.putIfAbsent(campaignId, () => {});
     final (v, c, calls, msgs) = m[day] ?? (0, 0, 0, 0);
@@ -1092,6 +1150,7 @@ class DemoRepository implements Repository {
   Future<void> logAdEvent(String adId, String kind) async {
     final i = _ads.indexWhere((a) => a.id == adId);
     if (i < 0 || !_ads[i].isLive) return;
+    if (!_firstToday(adId, kind)) return;
     final m = _adStats.putIfAbsent(adId, () => {});
     final day = isoDay(DateTime.now());
     final (v, c) = m[day] ?? (0, 0);
@@ -1220,13 +1279,37 @@ class DemoRepository implements Repository {
       ownerId: agentId,
       propertyId: propertyId,
       advertiser: agent?.agencyName ?? agent?.fullName ?? 'Agent',
-      contact: agent?.whatsapp ?? agent?.phone,
       placement: placement,
       startsOn: start,
       endsOn: start.add(Duration(days: days - 1)),
       createdAt: t,
     ));
     _log('grant_promotion', 'campaign', '${agent?.fullName ?? agentId} · $days days');
+  }
+
+  @override
+  Future<List<(Campaign, Property?)>> adminPendingCampaigns() async {
+    _requireAdmin();
+    await _lag();
+    return [
+      for (final c in _campaigns.where((c) => c.phase == 'review')) (c, await getProperty(c.propertyId)),
+    ];
+  }
+
+  @override
+  Future<void> adminReviewCampaign(String id, bool approve, {String? note}) async {
+    _requireAdmin();
+    final i = _campaigns.indexWhere((c) => c.id == id);
+    if (i < 0) return;
+    _campaigns[i] = _campaigns[i].copyWith(reviewStatus: approve ? 'approved' : 'rejected', reviewNote: note);
+    _log(approve ? 'approve_campaign' : 'reject_campaign', 'campaign', _campaigns[i].advertiser);
+  }
+
+  @override
+  Future<void> adminSetOtpTestMode(bool on) async {
+    _requireAdmin();
+    _otpTestMode = on;
+    _log('otp_test_mode', 'settings', on ? 'on' : 'off');
   }
 
   // ---------------- чаты ----------------

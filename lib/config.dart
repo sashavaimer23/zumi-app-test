@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 ///               --dart-define=SUPABASE_ANON_KEY=eyJ... \
 ///               --dart-define=MAPTILER_KEY=...        (карта для большого трафика)
 ///               --dart-define=SITE_URL=https://zumi.co.zm   (адрес сайта для ссылок «Поделиться»)
+///               --dart-define=ADS_EMAIL=ads@zumi.co.zm     (почта для рекламодателей, по желанию)
 ///
 /// Если ключей Supabase нет — приложение работает в ДЕМО-режиме:
 /// все данные в памяти, вход/публикация/чаты работают локально.
@@ -42,6 +43,10 @@ class AppConfig {
     }
     return null;
   }
+
+  /// Почта для рекламодателей (кнопка на шаблоне «Your ad here»).
+  /// Пусто — остаётся только «Написать команде» (обращение в поддержку).
+  static const adsEmail = String.fromEnvironment('ADS_EMAIL');
 
   /// Центр Лусаки
   static const defaultLat = -15.4167;

@@ -85,6 +85,159 @@ class _ListingsQueueState extends State<_ListingsQueue> {
 }
 
 // ======================================================================
+// ТЕСТОВЫЙ РЕЖИМ КОДОВ — красная плашка, пока он включён
+// ======================================================================
+class _OtpTestBanner extends StatelessWidget {
+  const _OtpTestBanner({required this.onChanged});
+  final Future<void> Function() onChanged;
+
+  Future<void> _turnOff(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Turn off test codes?'),
+        content: const Text(
+          'Do this only after real SMS / WhatsApp sending is connected. '
+          'Otherwise nobody will receive a code and new people cannot confirm their phone.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Turn off')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await context.read<AppState>().repo.adminSetOtpTestMode(false);
+      await onChanged();
+      if (context.mounted) showSnack(context, 'Test codes are off');
+    } catch (e) {
+      if (context.mounted) showSnack(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFD64545),
+      padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+      child: Row(children: [
+        const Icon(ZI.warning, color: Colors.white),
+        const SizedBox(width: 10),
+        const Expanded(
+          child: Text(
+            'TEST MODE: code 123456 confirms ANY phone. Anyone can "confirm" someone else\'s number — '
+            'turn this off before launch.',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.3),
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFD64545)),
+          onPressed: () => _turnOff(context),
+          child: const Text('Turn off'),
+        ),
+      ]),
+    );
+  }
+}
+
+// ======================================================================
+// PROMOTIONS TO CHECK — своя картинка, название или ссылка агента
+// ======================================================================
+class _PromosQueue extends StatefulWidget {
+  const _PromosQueue({required this.onChanged});
+  final VoidCallback onChanged;
+
+  @override
+  State<_PromosQueue> createState() => _PromosQueueState();
+}
+
+class _PromosQueueState extends State<_PromosQueue> {
+  late Future<List<(Campaign, Property?)>> _future = context.read<AppState>().repo.adminPendingCampaigns();
+
+  Future<void> _decide(Campaign c, bool approve) async {
+    String? note;
+    if (!approve) {
+      note = await _askNote(context, 'Not approved — tell the agent why', [
+        'The picture is not of this property',
+        'Text or contacts inside the picture',
+        'Misleading name',
+        'Link to an unsafe or unrelated website',
+        'Low quality picture',
+      ]);
+      if (note == null) return;
+    }
+    try {
+      await context.read<AppState>().repo.adminReviewCampaign(c.id, approve, note: note);
+      if (!mounted) return;
+      showSnack(context, approve ? 'Approved — the promotion is shown now' : 'Not approved');
+      setState(() => _future = context.read<AppState>().repo.adminPendingCampaigns());
+      widget.onChanged();
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Promotions to check',
+      subtitle: 'Agents\' campaigns with their own picture, name or website link. They go on the home page '
+          'and top of search only after you approve.',
+      child: _Loader<List<(Campaign, Property?)>>(
+        future: _future,
+        builder: (list) {
+          if (list.isEmpty) return _emptyDone('No promotions waiting.');
+          return Column(children: [
+            for (final (c, p) in list)
+              _Card(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    SizedBox(
+                      width: 180,
+                      child: AspectRatio(
+                        aspectRatio: kPromoRatio,
+                        child: PropImage(c.imageUrl ?? p?.coverThumb, radius: 10),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Promoted by ${c.advertiser}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        Text(p?.title ?? 'Listing not found', style: const TextStyle(fontSize: 13)),
+                        Text('${c.placementLabel} · ${formatShortDate(c.startsOn)} – ${formatShortDate(c.endsOn)}',
+                            style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                        if (c.imageUrl != null)
+                          const Text('Own picture', style: TextStyle(fontSize: 12, color: Zc.orange)),
+                        if ((c.contact ?? '').isNotEmpty)
+                          SelectableText('Link: ${c.contact}', style: const TextStyle(fontSize: 12, color: Zc.green)),
+                      ]),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  Wrap(spacing: 10, runSpacing: 8, children: [
+                    _actionBtn('Approve', () => _decide(c, true), primary: true),
+                    if (p != null)
+                      _actionBtn('Open listing', () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => PropertyScreen(property: p)),
+                          )),
+                    _actionBtn('Reject', () => _decide(c, false)),
+                  ]),
+                ]),
+              ),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+// ======================================================================
 // PHONE VIEWS — кто чаще всех смотрит номера (боты видны сразу)
 // ======================================================================
 class _PhoneViews extends StatefulWidget {

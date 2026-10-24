@@ -19,27 +19,30 @@ class Contact {
   /// Уже показанные номера в этом сеансе — повторно сервер не спрашиваем
   static final Map<String, String> _revealed = {};
 
-  /// Получить номер: вход → подтверждение телефона → сервер
-  static Future<String?> _number(BuildContext context, Property p) async {
-    final cached = _revealed[p.id];
-    if (cached != null) return cached;
+  /// Общие проверки перед запросом номера: «только чат», есть ли номер, вход, подтверждённый телефон
+  static Future<bool> _ready(
+    BuildContext context, {
+    required bool chatOnly,
+    required bool hasPhone,
+    required String? ownerId,
+  }) async {
     final app = context.read<AppState>();
-    if (p.chatOnly) {
-      showSnack(context, 'This author prefers chat — send a message instead');
-      return null;
+    if (chatOnly) {
+      showSnack(context, 'This person prefers chat — send a message instead');
+      return false;
     }
-    if (!p.hasPhone) {
-      showSnack(context, 'No phone number in this listing — use chat');
-      return null;
+    if (!hasPhone) {
+      showSnack(context, 'No phone number here — use chat');
+      return false;
     }
     if (!app.signedIn) {
       final ok = await Navigator.push<bool>(
         context,
         MaterialPageRoute(builder: (_) => const AuthScreen(reason: 'Sign in to see the phone number.')),
       );
-      if (ok != true || !context.mounted) return null;
+      if (ok != true || !context.mounted) return false;
     }
-    if (!(app.user?.phoneVerified ?? false) && app.user?.id != p.ownerId) {
+    if (!(app.user?.phoneVerified ?? false) && app.user?.id != ownerId) {
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -55,14 +58,21 @@ class Contact {
           ],
         ),
       );
-      if (go != true || !context.mounted) return null;
+      if (go != true || !context.mounted) return false;
       final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()));
-      if (ok != true || !context.mounted) return null;
+      if (ok != true || !context.mounted) return false;
     }
+    return true;
+  }
+
+  /// Спросить номер у сервера (ошибки — понятным сообщением)
+  static Future<String?> _ask(BuildContext context, String key, Future<String> Function() fetch) async {
+    final cached = _revealed[key];
+    if (cached != null) return cached;
     try {
-      final n = await app.repo.revealPhone(p.id);
+      final n = await fetch();
       if (n.isEmpty) return null;
-      _revealed[p.id] = n;
+      _revealed[key] = n;
       return n;
     } on AppException catch (e) {
       if (context.mounted) showSnack(context, e.message);
@@ -71,6 +81,29 @@ class Contact {
       if (context.mounted) showSnack(context, '$e');
       return null;
     }
+  }
+
+  /// Номер из объявления: вход → подтверждение телефона → сервер
+  static Future<String?> _number(BuildContext context, Property p) async {
+    if (_revealed[p.id] != null) return _revealed[p.id];
+    if (!await _ready(context, chatOnly: p.chatOnly, hasPhone: p.hasPhone, ownerId: p.ownerId)) return null;
+    if (!context.mounted) return null;
+    final repo = context.read<AppState>().repo;
+    return _ask(context, p.id, () => repo.revealPhone(p.id));
+  }
+
+  /// WhatsApp агента со страницы агента — с теми же проверками и тем же лимитом
+  static Future<void> agentWhatsapp(BuildContext context, PublicProfile pr) async {
+    final key = 'agent:${pr.id}';
+    if (_revealed[key] == null) {
+      if (!await _ready(context, chatOnly: pr.contactMode == 'chat', hasPhone: pr.hasWhatsapp, ownerId: pr.id)) {
+        return;
+      }
+      if (!context.mounted) return;
+    }
+    final repo = context.read<AppState>().repo;
+    final n = await _ask(context, key, () => repo.revealAgentWhatsapp(pr.id));
+    if (n != null) await _waText(n, 'Hello! I found you on Zumi.');
   }
 
   /// «Show number»: окно с номером и кнопками Call / WhatsApp / Copy
@@ -148,9 +181,11 @@ class Contact {
 
   static Future<void> _dial(String n) => launchUrl(Uri(scheme: 'tel', path: n.replaceAll(' ', '')));
 
-  static Future<void> _wa(String n, Property p) {
+  static Future<void> _wa(String n, Property p) => _waText(n, 'Hello! I saw your listing on Zumi: ${p.title}');
+
+  static Future<void> _waText(String n, String message) {
     final phone = n.replaceAll(RegExp(r'[^0-9]'), '');
-    final text = Uri.encodeComponent('Hello! I saw your listing on Zumi: ${p.title}');
+    final text = Uri.encodeComponent(message);
     return launchUrl(Uri.parse('https://wa.me/$phone?text=$text'), mode: LaunchMode.externalApplication);
   }
 

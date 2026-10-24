@@ -31,6 +31,8 @@ String _fmtSize(int bytes) =>
 
 (String, Color) _phaseChip(Campaign c) => switch (c.phase) {
       'live' => ('Live', _ok),
+      'review' => ('Under review', Zc.orange),
+      'rejected' => ('Not approved', _bad),
       'scheduled' => ('Starts ${formatShortDate(c.startsOn)}', Zc.orange),
       'paused' => ('Paused', Zc.grey),
       'finished' => ('Finished', Zc.green),
@@ -245,7 +247,6 @@ class _CampaignWizardState extends State<CampaignWizard> {
     super.initState();
     final u = context.read<AppState>().user;
     _advertiser.text = u?.agencyName ?? u?.fullName ?? '';
-    _contact.text = u?.whatsapp ?? u?.phone ?? '';
   }
 
   @override
@@ -260,11 +261,11 @@ class _CampaignWizardState extends State<CampaignWizard> {
     if (_d.property == null) return 'Choose the listing to promote';
     if (_advertiser.text.trim().length < 2) return 'Write the advertiser name';
     final c = _contact.text.trim();
-    if (c.isEmpty) return 'Add a website link or a phone number';
-    final digits = c.replaceAll(RegExp(r'\D'), '');
-    final looksLikePhone = RegExp(r'^[+\d\s()-]+$').hasMatch(c);
-    if (looksLikePhone && digits.length < 9) return 'The phone number looks too short';
-    if (!looksLikePhone && !c.contains('.')) return 'Enter a website link (e.g. https://…) or a phone number';
+    if (c.isEmpty) return null; // ссылка не обязательна
+    if (RegExp(r'^[+\d\s()./-]+$').hasMatch(c)) {
+      return 'Phone numbers are not shown on promoted cards — people call you with "Show number". Leave this empty or add a website.';
+    }
+    if (!c.contains('.') || c.contains(' ')) return 'Enter a website link, e.g. https://lusakahomes.co.zm';
     return null;
   }
 
@@ -384,9 +385,11 @@ class _CampaignWizardState extends State<CampaignWizard> {
       context.read<AppState>().dataChanged();
       nav.pop(true);
       messenger.showSnackBar(SnackBar(
-        content: Text(c.isLive
-            ? 'Campaign is live! It ends by itself after ${formatShortDate(c.endsOn)}.'
-            : 'Campaign scheduled: it starts by itself on ${formatShortDate(c.startsOn)}.'),
+        content: Text(c.phase == 'review'
+            ? 'Sent for a quick check: the Zumi team looks at your picture and texts, usually within a day.'
+            : c.isLive
+                ? 'Campaign is live! It ends by itself after ${formatShortDate(c.endsOn)}.'
+                : 'Campaign scheduled: it starts by itself on ${formatShortDate(c.startsOn)}.'),
       ));
     } catch (e) {
       if (mounted) showSnack(context, '$e');
@@ -529,11 +532,13 @@ class _CampaignWizardState extends State<CampaignWizard> {
           decoration: const InputDecoration(hintText: 'e.g. Lusaka Homes Ltd', counterText: ''),
         ),
         const SizedBox(height: 14),
-        _h('Website link or phone', 'The "Call" or "Visit website" button on the card.'),
+        _h('Website (optional)',
+            'Adds a "Visit website" button. People call you with "Show number" on the listing — '
+            'your number stays protected. A link or your own picture is checked by the Zumi team first.'),
         TextField(
           controller: _contact,
           keyboardType: TextInputType.url,
-          decoration: const InputDecoration(hintText: 'https://… or +260 97 …'),
+          decoration: const InputDecoration(hintText: 'https://…'),
         ),
       ];
 
@@ -817,6 +822,21 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 const SizedBox(height: 6),
                 Text('${_c.placementLabel} · ${formatShortDate(_c.startsOn)} – ${formatShortDate(_c.endsOn)}',
                     style: const TextStyle(color: Zc.grey)),
+                if (_c.phase == 'review' || _c.phase == 'rejected')
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(12)),
+                    child: Text(
+                      _c.phase == 'review'
+                          ? 'The Zumi team checks campaigns with your own picture, name or link before they are shown. '
+                              'This usually takes less than a day.'
+                          : 'The Zumi team did not approve this campaign'
+                              '${(_c.reviewNote ?? '').isEmpty ? '.' : ': ${_c.reviewNote}'} '
+                              'Stop it and create a new one with changes.',
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ),
                 const SizedBox(height: 18),
 
                 // ---- цифры

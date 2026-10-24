@@ -9,6 +9,7 @@ import '../../state/app_state.dart';
 import '../../theme.dart';
 import '../../widgets/ads.dart';
 import '../../widgets/common.dart';
+import '../../widgets/promo_card.dart';
 import '../../widgets/reviews.dart';
 import '../../widgets/share.dart';
 import '../../widgets/zicons.dart';
@@ -23,13 +24,14 @@ part 'admin_extra.dart';
 // Разделы: Inbox · ID checks · Licences · Reports · Support · Reviews · Log
 // ======================================================================
 
-enum _Section { inbox, accounts, listings, ids, licences, reports, phones, support, reviews, ads, log }
+enum _Section { inbox, accounts, listings, promos, ids, licences, reports, phones, support, reviews, ads, log }
 
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
         _Section.accounts => 'New accounts',
         _Section.listings => 'Listings to check',
+        _Section.promos => 'Promotions to check',
         _Section.phones => 'Phone views',
         _Section.ads => 'Ads',
         _Section.ids => 'ID checks',
@@ -43,6 +45,7 @@ extension on _Section {
         _Section.inbox => ZI.bell,
         _Section.accounts => ZI.userCircle,
         _Section.listings => ZI.house,
+        _Section.promos => ZI.photos,
         _Section.phones => ZI.phone,
         _Section.ads => ZI.bolt,
         _Section.ids => ZI.idCard,
@@ -86,6 +89,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.inbox => _stats.total,
         _Section.accounts => _stats.accounts,
         _Section.listings => _stats.listingsNew,
+        _Section.promos => _stats.campaignsNew,
         _Section.phones => 0,
         _Section.ads => 0,
         _Section.ids => _stats.idChecks + _stats.ownership,
@@ -100,6 +104,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),
         _Section.listings => _ListingsQueue(onChanged: _refreshStats),
+        _Section.promos => _PromosQueue(onChanged: _refreshStats),
         _Section.phones => const _PhoneViews(),
         _Section.ads => _Ads(onChanged: _refreshStats),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
@@ -143,7 +148,9 @@ class _AdminScreenState extends State<AdminScreen> {
           IconButton(onPressed: _refreshStats, icon: const Icon(ZI.sort), tooltip: 'Refresh'),
         ],
       ),
-      body: wide
+      body: Column(children: [
+        if (_stats.otpTestMode) _OtpTestBanner(onChanged: _refreshStats),
+        Expanded(child: wide
           ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
                 width: 230,
@@ -163,7 +170,8 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const Divider(height: 1, color: Zc.chip),
               Expanded(child: KeyedSubtree(key: ValueKey(_section), child: _body())),
-            ]),
+            ])),
+      ]),
     );
   }
 }
@@ -345,6 +353,7 @@ class _Inbox extends StatelessWidget {
       (_Section.reports, stats.reports, 'Scam & problem reports', 'Check first — people may lose money'),
       (_Section.accounts, stats.accounts, 'New accounts', 'Everyone who signed up — take a quick look'),
       (_Section.listings, stats.listingsNew, 'Listings to check', 'First listings of new people'),
+      (_Section.promos, stats.campaignsNew, 'Promotions to check', 'Agents\' own pictures, names and links'),
       (_Section.ids, stats.idChecks, 'ID checks', 'NRC / passport + selfie'),
       (_Section.ids, stats.ownership, 'Ownership documents', 'Title deeds and mandates'),
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),

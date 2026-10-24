@@ -645,7 +645,8 @@ class PublicProfile {
   final String? agencyName;
   final String? avatarUrl;
   final String? bio;
-  final String? whatsapp;
+  final bool hasWhatsapp;   // сам номер выдаёт сервер по кнопке (как номер в объявлении)
+  final String contactMode; // phone | chat
   final bool verified;
   final bool phoneVerified;
   final bool licenceVerified;
@@ -659,7 +660,8 @@ class PublicProfile {
     this.agencyName,
     this.avatarUrl,
     this.bio,
-    this.whatsapp,
+    this.hasWhatsapp = false,
+    this.contactMode = 'phone',
     this.verified = false,
     this.phoneVerified = false,
     this.licenceVerified = false,
@@ -677,7 +679,8 @@ class PublicProfile {
         agencyName: m['agency_name'] as String?,
         avatarUrl: m['avatar_url'] as String?,
         bio: m['bio'] as String?,
-        whatsapp: m['whatsapp'] as String?,
+        hasWhatsapp: (m['has_whatsapp'] as bool?) ?? ((m['whatsapp'] as String?)?.isNotEmpty ?? false),
+        contactMode: (m['contact_mode'] as String?) ?? 'phone',
         verified: (m['verified'] as bool?) ?? false,
         phoneVerified: (m['phone_verified'] as bool?) ?? false,
         licenceVerified: (m['licence_verified'] as bool?) ?? false,
@@ -914,10 +917,13 @@ class Rating {
 }
 
 class AdminStats {
-  final int accounts, listingsNew, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
+  final int accounts, listingsNew, campaignsNew, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
+  final bool otpTestMode; // коды подтверждения в тестовом режиме (123456 подходит всем)
   const AdminStats({
     this.accounts = 0,
     this.listingsNew = 0,
+    this.campaignsNew = 0,
+    this.otpTestMode = false,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -929,13 +935,15 @@ class AdminStats {
   });
 
   int get total =>
-      accounts + listingsNew + idChecks + ownership + licences + reports + tickets + reviews;
+      accounts + listingsNew + campaignsNew + idChecks + ownership + licences + reports + tickets + reviews;
 
   factory AdminStats.fromMap(Map<String, dynamic> m) {
     int n(String k) => ((m[k] as num?) ?? 0).toInt();
     return AdminStats(
       accounts: n('accounts'),
       listingsNew: n('listings_new'),
+      campaignsNew: n('campaigns_new'),
+      otpTestMode: (m['otp_test_mode'] as bool?) ?? false,
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),
@@ -1162,6 +1170,8 @@ class Campaign {
   final DateTime startsOn;
   final DateTime endsOn;
   final String status; // active | paused | stopped
+  final String reviewStatus; // approved | pending (ждёт команду) | rejected
+  final String? reviewNote;
   final DateTime createdAt;
 
   const Campaign({
@@ -1175,6 +1185,8 @@ class Campaign {
     required this.startsOn,
     required this.endsOn,
     this.status = 'active',
+    this.reviewStatus = 'approved',
+    this.reviewNote,
     required this.createdAt,
   });
 
@@ -1189,22 +1201,27 @@ class Campaign {
         startsOn: DateTime.parse(m['starts_on'] as String),
         endsOn: DateTime.parse(m['ends_on'] as String),
         status: (m['status'] as String?) ?? 'active',
+        reviewStatus: (m['review_status'] as String?) ?? 'approved',
+        reviewNote: m['review_note'] as String?,
         createdAt: _dt(m['created_at']),
       );
 
-  Campaign copyWith({String? status}) => Campaign(
+  Campaign copyWith({String? status, String? reviewStatus, String? reviewNote}) => Campaign(
         id: id, ownerId: ownerId, propertyId: propertyId, advertiser: advertiser, contact: contact,
         placement: placement, imageUrl: imageUrl, startsOn: startsOn, endsOn: endsOn,
-        status: status ?? this.status, createdAt: createdAt,
+        status: status ?? this.status, reviewStatus: reviewStatus ?? this.reviewStatus,
+        reviewNote: reviewStatus == 'approved' ? null : (reviewNote ?? this.reviewNote), createdAt: createdAt,
       );
 
   static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  /// Что происходит сейчас: scheduled · live · paused · finished · stopped
+  /// Что происходит сейчас: review · rejected · scheduled · live · paused · finished · stopped
   String get phase {
     final today = _day(DateTime.now());
     if (status == 'stopped') return 'stopped';
     if (_day(endsOn).isBefore(today)) return 'finished';
+    if (reviewStatus == 'pending') return 'review';
+    if (reviewStatus == 'rejected') return 'rejected';
     if (status == 'paused') return 'paused';
     if (_day(startsOn).isAfter(today)) return 'scheduled';
     return 'live';

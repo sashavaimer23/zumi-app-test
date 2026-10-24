@@ -5,16 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../models/models.dart';
+import '../screens/auth_screen.dart';
+import '../screens/support/support_screen.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'zicons.dart';
 
 // ======================================================================
 // Реклама в приложении: большой баннер на главной (3:1), тонкая полоска
 // в ленте (6:1, не чаще одной на 8 карточек) и блок на странице объявления (2:1).
 // На каждом баннере — пометка «Sponsored». Пока место не продано —
-// показывается готовый макет-образец. Размещает рекламу только команда Zumi.
+// честный шаблон «Your ad here» с контактом команды. Размещает рекламу только команда Zumi.
 // ======================================================================
 
 /// Объявления о рекламе на 5 минут — чтобы не спрашивать сервер на каждой карточке
@@ -100,9 +104,9 @@ class AdBanner extends StatelessWidget {
   }
 }
 
-/// Пока место не занято — готовый рекламный макет (образец).
-/// Рекламу размещает только команда Zumi по договору, через панель команды → Ads.
-/// Команда видит на образце пометку «Sample», остальные — обычный баннер.
+/// Пока место не занято — честный шаблон «Здесь может быть ваша реклама».
+/// Это не реклама (нет пометки «Sponsored»). По нажатию — как связаться с командой Zumi:
+/// рекламу размещает только команда, по договору с рекламодателем.
 class AdPlaceholder extends StatelessWidget {
   const AdPlaceholder({super.key, required this.placement, this.radius = 14});
   final String placement;
@@ -112,82 +116,111 @@ class AdPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final place = adPlacements[placement]!;
     final strip = placement == 'feed_strip';
-    final block = placement == 'listing_block';
-    final team = context.select<AppState, bool>((a) => a.user?.isAdmin ?? false);
     return GestureDetector(
-      onTap: team ? () => showSnack(context, 'Sample ad. Add a real one in the team panel → Ads.') : null,
+      onTap: () => showAdvertiseInfo(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: AspectRatio(
           aspectRatio: place.ratio,
-          child: Stack(fit: StackFit.expand, children: [
-            Image.asset(strip ? 'assets/images/p5.jpg' : 'assets/images/p3.jpg', fit: BoxFit.cover),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xF2163E35), Color(0xB3163E35), Color(0x10163E35)],
-                  stops: [0, 0.55, 1],
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF245045), Color(0xFF0F5D4E)]),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: strip ? 14 : 22, vertical: strip ? 6 : 16),
+            child: Row(children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Your ad here',
+                        maxLines: 1,
+                        style: TextStyle(color: Colors.white, fontSize: strip ? 14 : 22, fontWeight: FontWeight.w700)),
+                    if (!strip) ...[
+                      const SizedBox(height: 4),
+                      const Text('Reach people looking for homes in Zambia. Contact the Zumi team.',
+                          maxLines: 2, style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
+                    ],
+                  ],
                 ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(strip ? 14 : 22, strip ? 6 : 16, strip ? 14 : 22, strip ? 6 : 16),
-              child: Row(children: [
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: strip
-                        ? const [
-                            Text('Kafue Living · Furniture for your new home',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
-                            Text('20% off sofas & beds this month',
-                                maxLines: 1, style: TextStyle(color: Color(0xE6FFFFFF), fontSize: 12)),
-                          ]
-                        : [
-                            const Text('KAFUE LIVING',
-                                style: TextStyle(
-                                    color: Color(0xFFF4B88E), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 6),
-                            Text(block ? 'Furnish your new home' : 'Moving in? Furnish your new home for less',
-                                maxLines: 2,
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: block ? 20 : 26, fontWeight: FontWeight.w700, height: 1.15)),
-                            const SizedBox(height: 6),
-                            const Text('20% off sofas, beds and dining sets · Free delivery in Lusaka',
-                                maxLines: 2, style: TextStyle(color: Color(0xE6FFFFFF), fontSize: 13)),
-                          ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: strip ? 10 : 16, vertical: strip ? 5 : 10),
-                  decoration: BoxDecoration(color: Zc.orange, borderRadius: BorderRadius.circular(20)),
-                  child: Text('Shop now',
-                      style: TextStyle(color: Colors.white, fontSize: strip ? 12 : 14, fontWeight: FontWeight.w600)),
-                ),
-              ]),
-            ),
-            Positioned(top: strip ? 6 : 10, right: strip ? 6 : 10, child: SponsoredTag(small: strip)),
-            if (team)
-              Positioned(
-                bottom: strip ? 4 : 10,
-                right: strip ? 6 : 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xCCFFFFFF), borderRadius: BorderRadius.circular(6)),
-                  child: const Text('Sample', style: TextStyle(fontSize: 10, color: Zc.green, fontWeight: FontWeight.w700)),
-                ),
+              const SizedBox(width: 10),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: strip ? 10 : 14, vertical: strip ? 5 : 9),
+                decoration: BoxDecoration(color: Zc.orange, borderRadius: BorderRadius.circular(20)),
+                child: Text('Contact Zumi',
+                    style: TextStyle(color: Colors.white, fontSize: strip ? 12 : 14, fontWeight: FontWeight.w600)),
               ),
-          ]),
+            ]),
+          ),
         ),
       ),
     );
   }
+}
+
+/// Как разместить рекламу: только через команду Zumi
+Future<void> showAdvertiseInfo(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Zc.bg,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Advertise on Zumi', style: zHeadline(ctx, size: 26)),
+          const SizedBox(height: 8),
+          const Text(
+            'Banners on Zumi are placed by our team under an agreement with the advertiser. '
+            'Write to us — we will reply with prices and free dates.',
+            style: TextStyle(color: Zc.grey, height: 1.4),
+          ),
+          const SizedBox(height: 18),
+          if (AppConfig.adsEmail.isNotEmpty) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: Zc.orange, padding: const EdgeInsets.symmetric(vertical: 14)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  launchUrl(Uri(scheme: 'mailto', path: AppConfig.adsEmail, query: 'subject=Advertising on Zumi'));
+                },
+                icon: const Icon(ZI.envelope),
+                label: Text('Email ${AppConfig.adsEmail}'),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Zc.green,
+                side: const BorderSide(color: Zc.green),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final app = context.read<AppState>();
+                if (!app.signedIn) {
+                  final ok = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AuthScreen(reason: 'Sign in to write to the Zumi team.')),
+                  );
+                  if (ok != true || !context.mounted) return;
+                }
+                if (!context.mounted) return;
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen()));
+              },
+              icon: const Icon(ZI.chat),
+              label: const Text('Write to the Zumi team'),
+            ),
+          ),
+        ]),
+      ),
+    ),
+  );
 }
 
 /// Главная: большой баннер вверху. Несколько кампаний листаются сами.

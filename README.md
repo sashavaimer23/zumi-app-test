@@ -56,6 +56,9 @@ flutter run
      показами и кликами по дням.
    - `supabase/009_ads_security.sql` — реклама, защита номеров телефонов, модерация первых объявлений,
      коды WhatsApp/SMS/email, блокировка действий для заблокированных, лимиты файлов, бесплатное продвижение.
+   - `supabase/010_security_fixes.sql` — WhatsApp агентов только по кнопке (как номер), один подтверждённый номер —
+     один аккаунт, проверка продвижения со своей картинкой/ссылкой, показы и клики раз в день с человека,
+     красная плашка и кнопка выключения тестовых кодов в кабинете команды.
 4. Скопируйте Project URL и anon key в Settings → API.
 5. Запустите приложение с ключами:
 
@@ -203,13 +206,13 @@ update public.profiles set role = 'admin'
 
 ## Перед запуском (чек-лист)
 
-1. Выполнить все SQL-файлы `001`–`009` в новом проекте Supabase.
+1. Выполнить все SQL-файлы `001`–`010` в новом проекте Supabase.
 2. Удалить демо-объявления: `delete from public.properties where is_demo;`
 3. Подключить отправку кодов (SMS/WhatsApp — например Twilio, email — например Resend) и выключить тестовый режим
-   кодов, иначе код 123456 подойдёт любому:
-   `update public.app_settings set value = 'false' where key = 'otp_test_mode';`
+   кодов, иначе код 123456 подойдёт любому. Пока режим включён, в кабинете команды висит красная плашка
+   с кнопкой «Turn off» (или SQL: `update public.app_settings set value = 'false' where key = 'otp_test_mode';`).
 4. Свой отправитель писем (Supabase → Authentication → SMTP) и шаблон письма со сбросом пароля (код `{{ .Token }}`).
-5. Ключ карты MapTiler (`MAPTILER_KEY`) и адрес сайта (`SITE_URL`).
+5. Ключ карты MapTiler (`MAPTILER_KEY`), адрес сайта (`SITE_URL`) и почта для рекламодателей (`ADS_EMAIL`, по желанию).
 6. Юрист проверяет Terms и Privacy → в `lib/screens/legal_screen.dart` поставить `kLegalDraft = false`.
 7. Supabase Pro (бесплатный проект засыпает) и хостинг Cloudflare Pages со своим доменом.
 8. Сделать себя администратором (SQL выше) и проверить кабинет.
