@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import 'forgot_password_screen.dart';
 import 'legal_screen.dart';
+import 'help/help_screen.dart';
 import 'verify/phone_verify_screen.dart';
 import '../widgets/zicons.dart';
 
@@ -249,6 +250,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     _signUp ? 'Already have an account? Sign in' : 'New to Zumi? Create an account',
                     style: const TextStyle(color: Zc.green, fontSize: 15),
                   ),
+                ),
+              ),
+              // помощь доступна и без входа
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen())),
+                  icon: const Icon(ZI.info, size: 18, color: Zc.grey),
+                  label: const Text('Help & questions', style: TextStyle(color: Zc.grey)),
                 ),
               ),
             ],

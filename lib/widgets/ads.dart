@@ -138,7 +138,7 @@ class AdPlaceholder extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: strip ? 14 : 22, fontWeight: FontWeight.w700)),
                     if (!strip) ...[
                       const SizedBox(height: 4),
-                      const Text('Reach people looking for homes in Zambia. Contact the Zumi team.',
+                      const Text('Reach people looking for homes in Zambia.',
                           maxLines: 2, style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
                     ],
                   ],

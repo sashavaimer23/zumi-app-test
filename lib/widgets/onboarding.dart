@@ -118,6 +118,7 @@ class Onboarding {
           keyTarget: steps[i].key,
           shape: steps[i].round && !isDesktop(context) ? ShapeLightFocus.Circle : ShapeLightFocus.RRect,
           radius: 22,
+          paddingFocus: steps[i].round ? 0 : 8, // иконку меню подсвечиваем аккуратным кругом
           enableOverlayTab: true,
           contents: [
             TargetContent(
@@ -249,7 +250,7 @@ class HintCard extends StatelessWidget {
               margin: margin,
               padding: const EdgeInsets.fromLTRB(14, 12, 6, 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F3EF),
+                color: const Color(0xFFEAF4F0),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFCFE5DD)),
               ),
@@ -257,7 +258,7 @@ class HintCard extends StatelessWidget {
                 Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, color: Zc.green, size: 20)),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Zc.green)),
                     const SizedBox(height: 2),
                     Text(text, style: const TextStyle(fontSize: 13, height: 1.4, color: Zc.text)),
