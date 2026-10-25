@@ -1493,7 +1493,7 @@ class DemoRepository implements Repository {
       final label = hourly
           ? '${i.toString().padLeft(2, '0')}:00'
           : isoDay(DateTime(now.year, now.month, now.day).subtract(Duration(days: n - 1 - i)));
-      series.add(DashPoint(label, visits + (i == n - 1 && hourly ? _visits : 0), (visits * 0.72).round(),
+      series.add(DashPoint(label, visits + ((hourly ? i == now.hour : i == n - 1) ? _visits : 0), (visits * 0.72).round(),
           (visits * 0.06).round(), (visits * 0.015).round(), (visits * 0.008).round()));
     }
     int sum(int Function(DashPoint) f) => series.fold(0, (a, p) => a + f(p));
