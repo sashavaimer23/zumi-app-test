@@ -16,6 +16,7 @@ import '../auth_screen.dart';
 import '../filters_sheet.dart';
 import '../shell.dart';
 import 'location_picker.dart';
+import 'seller_help.dart';
 import '../../widgets/trust.dart';
 import '../verify/get_verified_screen.dart';
 import '../verify/verify_listing_screen.dart';
@@ -48,6 +49,73 @@ class _PostWizardState extends State<PostWizard> {
   final _desc = TextEditingController();
   final _price = TextEditingController();
   final _phone = TextEditingController();
+
+  // ---- помощь продавцу ----
+  /// Мягкая проверка фото: коды предупреждений для каждого нового фото
+  final Map<PickedPhoto, List<String>> _photoWarn = Map.identity();
+  String _priceKey = '';
+  Future<PriceStats>? _priceFuture;
+
+  /// Шкала заполненности — обновляется при наборе текста
+  Widget _completeness() => AnimatedBuilder(
+        animation: Listenable.merge([_title, _desc, _size, _price, _phone]),
+        builder: (context, _) {
+          final (score, missing) = listingScore(
+            d: _d,
+            title: _title.text,
+            description: _desc.text,
+            size: _size.text,
+            price: _price.text,
+            phone: _phone.text,
+          );
+          return CompletenessCard(score: score, missing: missing);
+        },
+      );
+
+  /// Подпись фото: «Photo 3 is dark …»
+  List<String> get _photoWarnings {
+    final out = <String>[];
+    final seen = <int>{};
+    for (var i = 0; i < _d.photos.length; i++) {
+      final ph = _d.photos[i];
+      if (ph.isExisting) continue;
+      final b = ph.bytes;
+      final sig = Object.hash(b.length, Object.hashAll(b.take(2048)), Object.hashAll(b.skip(b.length > 2048 ? b.length - 2048 : 0)));
+      final codes = [...?_photoWarn[ph], if (!seen.add(sig)) 'duplicate'];
+      for (final c in codes) {
+        out.add('Photo ${i + 1} ${photoWarningText(c)}');
+      }
+    }
+    return out;
+  }
+
+  Future<void> _checkPhotos(List<PickedPhoto> fresh) async {
+    for (final ph in fresh) {
+      final w = await photoWarnings(ph.bytes);
+      if (!mounted) return;
+      if (w.isNotEmpty) setState(() => _photoWarn[ph] = w);
+    }
+  }
+
+  /// Цены похожих объявлений — запрос только когда поменялись район, тип, спальни или валюта
+  Future<PriceStats>? _priceStats() {
+    final a = _d.area;
+    if (a == null) return null;
+    final key = '${a.id}|${_d.dealType}|${_d.propertyType}|${_d.bedrooms}|${_d.rentPeriod}|${_d.currency}';
+    if (key != _priceKey) {
+      _priceKey = key;
+      _priceFuture = context.read<AppState>().repo.areaPriceStats(
+            areaId: a.id,
+            deal: _d.dealType,
+            type: _d.propertyType,
+            bedrooms: _d.bedrooms,
+            rentPeriod: _d.rentPeriod,
+            currency: _d.currency,
+            excludeId: widget.editing?.id,
+          );
+    }
+    return _priceFuture;
+  }
 
   @override
   void initState() {
@@ -314,12 +382,16 @@ class _PostWizardState extends State<PostWizard> {
       title: 'Property details',
       subtitle: 'Help people know more about your property.',
       children: [
+        _completeness(),
         _label('Title'),
         TextField(
           controller: _title,
           textCapitalization: TextCapitalization.sentences,
           maxLength: 80,
-          decoration: const InputDecoration(hintText: 'Write your title…', counterText: ''),
+          decoration: const InputDecoration(
+            hintText: 'e.g. 3-bedroom house with borehole in Kabulonga',
+            counterText: '',
+          ),
         ),
         if (!isLand) ...[
           _label('Bedrooms'),
@@ -340,8 +412,11 @@ class _PostWizardState extends State<PostWizard> {
           minLines: 4,
           maxLines: 8,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(hintText: 'Write your description…'),
+          decoration: const InputDecoration(
+            hintText: 'What makes it a good home? Rooms, condition, water, power, security, what is nearby…',
+          ),
         ),
+        DescriptionHints(controller: _desc),
         if (!isLand) ...[
           const SizedBox(height: 36),
           Text('Amenities', style: zHeadline(context, size: 36)),
@@ -390,6 +465,7 @@ class _PostWizardState extends State<PostWizard> {
       final files = await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 1600, maxHeight: 1600);
       final room = 10 - _d.photos.length;
       var skipped = 0;
+      final fresh = <PickedPhoto>[];
       for (final f in files.take(room)) {
         var bytes = await f.readAsBytes();
         // фото до 5 MB: большое пробуем сжать, если не вышло — пропускаем
@@ -401,8 +477,11 @@ class _PostWizardState extends State<PostWizard> {
           }
           bytes = smaller;
         }
-        _d.photos.add(PickedPhoto(f.name, bytes));
+        final ph = PickedPhoto(f.name, bytes);
+        _d.photos.add(ph);
+        fresh.add(ph);
       }
+      _checkPhotos(fresh);
       if (skipped > 0 && mounted) {
         showSnack(context, '$skipped ${skipped == 1 ? 'photo was' : 'photos were'} skipped: photos must be under 5 MB');
       } else if (files.length > room && mounted) {
@@ -419,6 +498,8 @@ class _PostWizardState extends State<PostWizard> {
       title: 'Add Photos',
       subtitle: 'Showcase your property with clear, high-quality photos of every room, the outside and the street.',
       children: [
+        _completeness(),
+        const PhotoTipsCard(),
         GestureDetector(
           onTap: _pickPhotos,
           child: Container(
@@ -437,7 +518,7 @@ class _PostWizardState extends State<PostWizard> {
                 const Text('Tap to upload photos from your gallery', style: TextStyle(fontSize: 15)),
                 const SizedBox(height: 10),
               ],
-              const Text('JPG or PNG, up to 10 MB each', style: TextStyle(fontSize: 13, color: Zc.grey)),
+              const Text('JPG or PNG, up to 5 MB each · up to 10 photos', style: TextStyle(fontSize: 13, color: Zc.grey)),
             ]),
           ),
         ),
@@ -451,6 +532,22 @@ class _PostWizardState extends State<PostWizard> {
             onRemove: (i) => setState(() => _d.photos.removeAt(i)),
             onMakeCover: (i) => setState(() => _d.photos.insert(0, _d.photos.removeAt(i))),
           ),
+          // мягкая проверка: только подсказки, публиковать можно
+          if (_photoWarnings.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(12)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Photo check — you can still publish', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                for (final w in _photoWarnings)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text('• $w', style: const TextStyle(fontSize: 13)),
+                  ),
+              ]),
+            ),
         ],
       ],
       button: PrimaryButton(
@@ -473,6 +570,7 @@ class _PostWizardState extends State<PostWizard> {
       title: 'Price & Location',
       subtitle: 'Set a price and location so the right people can find your property.',
       children: [
+        _completeness(),
         _label('Price'),
         Row(children: [
           Expanded(
@@ -523,6 +621,26 @@ class _PostWizardState extends State<PostWizard> {
             ZChip(label: 'Per day', selected: _d.rentPeriod == 'day', onTap: () => setState(() => _d.rentPeriod = 'day')),
           ]),
         ],
+        // цены похожих объявлений в районе
+        if (_d.area == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('Choose the neighbourhood below to see prices of similar homes.',
+                style: TextStyle(fontSize: 12, color: Zc.grey)),
+          )
+        else
+          FutureBuilder<PriceStats>(
+            future: _priceStats(),
+            builder: (context, snap) => snap.hasData
+                ? PriceHint(
+                    stats: snap.data!,
+                    price: previewPrice,
+                    currency: _d.currency,
+                    areaName: _d.area!.name,
+                    perLabel: _d.dealType == DealType.rent ? (_d.rentPeriod == 'day' ? ' per day' : ' per month') : '',
+                  )
+                : const SizedBox(height: 8),
+          ),
         _label('Neighbourhood'),
         InkWell(
           onTap: () async {

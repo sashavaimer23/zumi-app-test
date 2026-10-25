@@ -228,7 +228,101 @@ class DemoRepository implements Repository {
   }
 
   @override
-  Future<void> incrementViews(String id) async {}
+  Future<void> incrementViews(String id) async {
+    // как на сервере: один человек — один просмотр в день, свои просмотры не считаются
+    final p = await getProperty(id);
+    if (p == null || p.ownerId == _user?.id) return;
+    final key = '$id|${isoDay(DateTime.now())}|${_user?.id ?? 'guest'}';
+    if (!_viewSeen.add(key)) return;
+    final m = _viewsByDay.putIfAbsent(id, () => {});
+    final day = isoDay(DateTime.now());
+    m[day] = (m[day] ?? 0) + 1;
+  }
+
+  final Set<String> _viewSeen = {};
+  final Map<String, Map<String, int>> _viewsByDay = {};
+
+  @override
+  Future<PriceStats> areaPriceStats({
+    required int areaId,
+    required DealType deal,
+    required PropertyType type,
+    int? bedrooms,
+    String? rentPeriod,
+    String currency = 'ZMW',
+    String? excludeId,
+  }) async {
+    final prices = [
+      for (final p in _props)
+        if (p.status == 'active' &&
+            p.areaId == areaId &&
+            p.dealType == deal &&
+            p.propertyType == type &&
+            p.currency == currency &&
+            p.id != excludeId &&
+            (deal != DealType.rent || (p.rentPeriod ?? 'month') == (rentPeriod ?? 'month')) &&
+            (bedrooms == null || type == PropertyType.land || ((p.bedrooms ?? 0) - bedrooms).abs() <= 1) &&
+            p.price > 0)
+          p.price,
+    ]..sort();
+    if (prices.length < 5) return PriceStats(prices.length);
+    double q(double f) {
+      final i = (prices.length - 1) * f;
+      final lo = i.floor(), hi = i.ceil();
+      return prices[lo] + (prices[hi] - prices[lo]) * (i - lo);
+    }
+
+    return PriceStats(prices.length, q(0.25), q(0.5), q(0.75));
+  }
+
+  @override
+  Future<Map<String, ListingStats>> myListingAdvice() async {
+    final u = _user;
+    if (u == null) return const {};
+    final out = <String, ListingStats>{};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    for (final p in _props.where((p) => p.ownerId == u.id && (p.status == 'active' || p.status == 'pending'))) {
+      final m = _viewsByDay[p.id] ?? const {};
+      final days = <(DateTime, int, int)>[];
+      for (var i = 13; i >= 0; i--) {
+        final d = today.subtract(Duration(days: i));
+        final contacts = _reveals.where((r) => r.$2 == p.id && isoDay(r.$3) == isoDay(d)).length +
+            _convs.values.where((c) => c.propertyId == p.id && isoDay(c.lastMessageAt) == isoDay(d)).length;
+        days.add((d, m[isoDay(d)] ?? 0, contacts));
+      }
+      final last7 = days.skip(7);
+      final views7 = last7.fold<int>(0, (a, d) => a + d.$2);
+      final contacts7 = last7.fold<int>(0, (a, d) => a + d.$3);
+      final liveDays = today.difference(DateTime(p.createdAt.year, p.createdAt.month, p.createdAt.day)).inDays;
+      final ps = p.areaId == null
+          ? const PriceStats(0)
+          : await areaPriceStats(
+              areaId: p.areaId!, deal: p.dealType, type: p.propertyType, bedrooms: p.bedrooms,
+              rentPeriod: p.rentPeriod, currency: p.currency, excludeId: p.id);
+      final tips = <ListingTip>[];
+      if (p.status == 'active') {
+        final since = today.difference(p.confirmedAt ?? p.createdAt).inDays;
+        if (since >= 50) tips.add(ListingTip('confirm', {'days_left': (60 - since).clamp(0, 60)}));
+        if (liveDays >= 7 && views7 >= 30 && contacts7 == 0) tips.add(ListingTip('no_contacts', {'views': views7}));
+        if (ps.enough && p.price > ps.p75! * 1.3) {
+          tips.add(ListingTip('price_high', {'p25': ps.p25!.round(), 'p75': ps.p75!.round(), 'n': ps.n}));
+        }
+        if (ps.enough && p.price < ps.p25! * 0.5) {
+          tips.add(ListingTip('price_low', {'p25': ps.p25!.round(), 'p75': ps.p75!.round(), 'n': ps.n}));
+        }
+        if (p.images.length < 5) tips.add(ListingTip('photos', {'photos': p.images.length}));
+        if ((p.description ?? '').length < 150) tips.add(const ListingTip('description'));
+        if (liveDays >= 7 && views7 < 10) tips.add(ListingTip('few_views', {'views': views7}));
+        if (!p.propertyVerified && liveDays >= 3) tips.add(const ListingTip('verify_onsite'));
+        if (tips.isEmpty && contacts7 >= 3) tips.add(ListingTip('doing_well', {'contacts': contacts7}));
+      }
+      out[p.id] = ListingStats(
+        id: p.id, views7: views7, contacts7: contacts7, days: days, tips: tips.take(3).toList(),
+      );
+    }
+    return out;
+  }
 
   // ---------------- избранное ----------------
   @override

@@ -110,5 +110,13 @@
   "body": "Try these steps:\n- Check your internet connection. Photos need more data than text.\n- Pull down on the list to refresh.\n- Close the app (or browser tab) and open it again.\n- Update the app or, on the website, refresh the page.\n- Free some space on your phone if it is almost full.\n\nIf it still does not work, write to us in Help → Contact support. Tell us your phone model and what you were doing — a screenshot helps a lot.",
   "sort": 10,
   "web_only": false
+ },
+ {
+  "id": "427fc45e-d221-50fd-b46e-089950b6edd5",
+  "category": "listings",
+  "title": "Views, contacts and tips for my listing",
+  "sort": 40,
+  "web_only": false,
+  "body": "In Profile → My listings, under each active listing you see the numbers for the last 7 days:\n- Views — each person is counted once a day. Your own views are not counted.\n- Contacts — people who opened your phone number or started a chat.\n- Saved — people who tapped the heart.\n\nTap \"Details\" to see views and contacts by day for the last 14 days, and tips for this listing.\n\n## Where the tips come from\nZumi looks at your listing's numbers and at similar listings in the same area. For example:\n- many views but no contacts — check the price and add details people ask about;\n- the price is far from similar homes in the area;\n- fewer than 5 photos or a very short description;\n- the listing needs a \"still available\" confirmation soon.\n\nTips are suggestions — you decide what to change."
  }
 ]

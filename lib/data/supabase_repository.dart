@@ -361,8 +361,46 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> incrementViews(String id) async {
     try {
-      await _db.rpc('increment_views', params: {'pid': id});
+      await _db.rpc('log_listing_view', params: {'pid': id, 'device': await DeviceId.get()});
     } catch (_) {/* не критично */}
+  }
+
+  @override
+  Future<PriceStats> areaPriceStats({
+    required int areaId,
+    required DealType deal,
+    required PropertyType type,
+    int? bedrooms,
+    String? rentPeriod,
+    String currency = 'ZMW',
+    String? excludeId,
+  }) async {
+    try {
+      final res = await _db.rpc('area_price_stats', params: {
+        'p_area': areaId,
+        'p_deal': deal.name,
+        'p_type': type.name,
+        'p_beds': type == PropertyType.land ? null : bedrooms,
+        'p_period': deal == DealType.rent ? rentPeriod : null,
+        'p_currency': currency,
+        'p_exclude': excludeId,
+      });
+      return PriceStats.fromMap(Map<String, dynamic>.from(res as Map));
+    } catch (_) {
+      return const PriceStats(0); // подсказка не должна мешать
+    }
+  }
+
+  @override
+  Future<Map<String, ListingStats>> myListingAdvice() async {
+    if (_db.auth.currentUser == null) return const {};
+    try {
+      final res = await _db.rpc('my_listing_advice') as List? ?? const [];
+      final list = res.map((r) => ListingStats.fromMap(Map<String, dynamic>.from(r as Map)));
+      return {for (final s in list) s.id: s};
+    } catch (_) {
+      return const {};
+    }
   }
 
   // ---------------- избранное ----------------

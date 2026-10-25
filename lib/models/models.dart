@@ -1843,3 +1843,94 @@ class DevStats {
     );
   }
 }
+
+// ======================================================================
+// Помощь продавцу: цены похожих объявлений и советы после публикации
+// ======================================================================
+/// Цены похожих объявлений в районе (только если их не меньше 5)
+class PriceStats {
+  final int n;
+  final double? p25, median, p75;
+  const PriceStats(this.n, [this.p25, this.median, this.p75]);
+  bool get enough => n >= 5 && p25 != null && p75 != null;
+
+  factory PriceStats.fromMap(Map<String, dynamic> m) {
+    double? d(dynamic v) => (v as num?)?.toDouble();
+    return PriceStats(((m['n'] as num?) ?? 0).toInt(), d(m['p25']), d(m['median']), d(m['p75']));
+  }
+}
+
+/// Совет по объявлению: код и числа (текст — в приложении)
+class ListingTip {
+  final String code;
+  final Map<String, dynamic> params;
+  const ListingTip(this.code, [this.params = const {}]);
+
+  int n(String k) => ((params[k] as num?) ?? 0).toInt();
+
+  /// Текст совета; currency — валюта объявления (для цен)
+  String text(String currency) => switch (code) {
+        'confirm' => 'Confirm it is still available — otherwise it will be hidden from search in ${n('days_left')} days.',
+        'no_contacts' => '${n('views')} people viewed it this week, but nobody contacted you. '
+            'Check the price and add details people ask about: water, power, security.',
+        'saved_no_contact' => '${n('saves')} people saved it, but nobody contacted you yet. '
+            'Add more details or check the price.',
+        'price_high' => 'The price is higher than most similar homes in this area '
+            '(usually ${formatMoney(n('p25').toDouble(), currency)}–${formatMoney(n('p75').toDouble(), currency)}).',
+        'price_low' => 'The price is much lower than similar homes '
+            '(usually ${formatMoney(n('p25').toDouble(), currency)}–${formatMoney(n('p75').toDouble(), currency)}). '
+            'Check for a typo — a very low price can look like a scam.',
+        'photos' => n('photos') == 0
+            ? 'No photos yet. Add at least 5: every room, the outside and the street.'
+            : 'Only ${n('photos')} ${n('photos') == 1 ? 'photo' : 'photos'}. Add at least 5: every room, the outside and the street.',
+        'description' => 'Add details people ask about: water, power, security, schools and roads.',
+        'few_views' => 'Few views this week (${n('views')}). Try a clearer title and a bright cover photo.',
+        'verify_onsite' => 'Confirm the location with your phone on site — the listing shows "photos taken on site".',
+        'doing_well' => 'Doing well: ${n('contacts')} contacts this week.',
+        _ => code,
+      };
+
+  /// Что нажать: edit · confirm · verify · null
+  String? get action => switch (code) {
+        'confirm' => 'confirm',
+        'verify_onsite' => 'verify',
+        'doing_well' => null,
+        _ => 'edit',
+      };
+
+  bool get positive => code == 'doing_well';
+}
+
+class ListingStats {
+  final String id;
+  final int views7, contacts7, saves7;
+  final List<(DateTime, int, int)> days; // (день, просмотры, контакты) — 14 дней
+  final List<ListingTip> tips;
+
+  const ListingStats({
+    required this.id,
+    this.views7 = 0,
+    this.contacts7 = 0,
+    this.saves7 = 0,
+    this.days = const [],
+    this.tips = const [],
+  });
+
+  factory ListingStats.fromMap(Map<String, dynamic> m) {
+    int n(dynamic v) => ((v as num?) ?? 0).toInt();
+    return ListingStats(
+      id: '${m['id']}',
+      views7: n(m['views7']),
+      contacts7: n(m['contacts7']),
+      saves7: n(m['saves7']),
+      days: [
+        for (final d in (m['days'] as List? ?? const []))
+          (DateTime.tryParse('${(d as Map)['day']}') ?? DateTime.now(), n(d['views']), n(d['contacts'])),
+      ],
+      tips: [
+        for (final t in (m['tips'] as List? ?? const []))
+          ListingTip('${(t as Map)['code']}', Map<String, dynamic>.from(t)),
+      ],
+    );
+  }
+}

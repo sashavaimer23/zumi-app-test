@@ -70,3 +70,26 @@ Uint8List? _cropBanner((Uint8List, double, double, double, double, int, int) a) 
       : cropped;
   return Uint8List.fromList(img.encodeJpg(out, quality: 82));
 }
+
+/// Мягкая проверка фото для объявления: только подсказки, публиковать можно в любом случае.
+/// Возвращает коды: small (мало пикселей), dark (темно), portrait (вертикальное).
+Future<List<String>> photoWarnings(Uint8List bytes) async {
+  try {
+    final image = img.decodeImage(bytes);
+    if (image == null) return const [];
+    final out = <String>[];
+    if (image.width < 800 || image.height < 600) out.add('small');
+    if (image.height > image.width * 1.15) out.add('portrait');
+    // средняя яркость по уменьшенной копии
+    final small = img.copyResize(image, width: 48);
+    var sum = 0.0;
+    for (final p in small) {
+      sum += 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+    }
+    final avg = sum / (small.width * small.height);
+    if (avg < 70) out.add('dark');
+    return out;
+  } catch (_) {
+    return const [];
+  }
+}

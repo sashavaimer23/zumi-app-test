@@ -40,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _future = Future.wait<dynamic>([
       app.repo.myQuota(),
       app.repo.myListings(),
+      app.repo.myListingAdvice(),
       if (u.isAgent) app.repo.ratingOf(u.id),
     ]);
   }
@@ -149,7 +150,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                   final quota = snap.data![0] as Quota;
                   final listings = snap.data![1] as List<Property>;
-                  final rating = user.isAgent && snap.data!.length > 2 ? snap.data![2] as Rating : null;
+                  final advice = snap.data![2] as Map<String, ListingStats>;
+                  final rating = user.isAgent && snap.data!.length > 3 ? snap.data![3] as Rating : null;
                   final hidden = listings.where((p) => p.status == 'active' && !p.isFresh).length;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     // агент: своя страница-витрина с каталогом и отзывами
@@ -214,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Text("You haven't listed anything yet.",
                             textAlign: TextAlign.center, style: TextStyle(color: Zc.grey)),
                       ),
-                    for (final p in listings) _MyListingTile(p: p),
+                    for (final p in listings) _MyListingTile(p: p, stats: advice[p.id]),
                   ]);
                 },
               ),
@@ -325,9 +327,171 @@ class _QuotaCard extends StatelessWidget {
   }
 }
 
-class _MyListingTile extends StatelessWidget {
-  const _MyListingTile({required this.p});
+/// Советы по объявлению: кнопка «что сделать»
+Future<void> _tipAction(BuildContext context, Property p, String action) async {
+  final app = context.read<AppState>();
+  try {
+    switch (action) {
+      case 'edit':
+        final changed = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => PostWizard(editing: p)));
+        if (changed != true) return;
+      case 'verify':
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => VerifyListingScreen(property: p)));
+      case 'confirm':
+        await app.repo.confirmListing(p.id);
+        if (context.mounted) showSnack(context, 'Thanks! People will see that the listing is up to date.');
+    }
+    app.dataChanged();
+  } catch (e) {
+    if (context.mounted) showSnack(context, '$e');
+  }
+}
+
+String _tipButton(String action) => switch (action) {
+      'confirm' => 'Confirm',
+      'verify' => 'Check on site',
+      _ => 'Edit listing',
+    };
+
+/// Плашка с главным советом + цифры за 7 дней
+class _TipStrip extends StatelessWidget {
+  const _TipStrip({required this.p, required this.stats});
   final Property p;
+  final ListingStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final tip = stats.tips.isEmpty ? null : stats.tips.first;
+    return InkWell(
+      onTap: () => _showListingStats(context, p, stats),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: tip == null || tip.positive ? Zc.greenTint : Zc.orangeSoft,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(ZI.eye, size: 14, color: Zc.green),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '7 days: ${stats.views7} ${stats.views7 == 1 ? 'view' : 'views'} · '
+                '${stats.contacts7} ${stats.contacts7 == 1 ? 'contact' : 'contacts'} · '
+                '${stats.saves7} saved',
+                style: const TextStyle(fontSize: 12, color: Zc.green, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Text('Details', style: TextStyle(fontSize: 12, color: Zc.orange)),
+            const Icon(ZI.caretRight, size: 14, color: Zc.orange),
+          ]),
+          if (tip != null) ...[
+            const SizedBox(height: 4),
+            Text(tip.text(p.currency), style: const TextStyle(fontSize: 12, height: 1.35)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// Просмотры и контакты по дням + все советы
+void _showListingStats(BuildContext context, Property p, ListingStats s) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Zc.bg,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) {
+      final maxV = s.days.fold<int>(1, (a, d) => d.$2 > a ? d.$2 : a);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 24),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(p.title, maxLines: 2, style: zHeadline(ctx, size: 22)),
+            const SizedBox(height: 4),
+            const Text('Each person is counted once a day. Your own views are not counted.',
+                style: TextStyle(fontSize: 12, color: Zc.grey)),
+            const SizedBox(height: 16),
+            Row(children: [
+              for (final (n, label) in [(s.views7, 'views'), (s.contacts7, 'contacts'), (s.saves7, 'saved')])
+                Expanded(
+                  child: Column(children: [
+                    Text('$n', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Zc.green)),
+                    Text('$label · 7 days', style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  ]),
+                ),
+            ]),
+            const SizedBox(height: 18),
+            const Text('Last 14 days', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 120,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                for (final (day, views, contacts) in s.days)
+                  Expanded(
+                    child: Tooltip(
+                      message: '${formatShortDate(day)}: $views views, $contacts contacts',
+                      child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        if (contacts > 0)
+                          Text('$contacts', style: const TextStyle(fontSize: 10, color: Zc.orange, fontWeight: FontWeight.w700)),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          height: 2 + 80 * views / maxV,
+                          decoration: BoxDecoration(
+                            color: Zc.green.withAlpha(views == 0 ? 40 : 210),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('${day.day}', style: const TextStyle(fontSize: 9, color: Zc.grey)),
+                      ]),
+                    ),
+                  ),
+              ]),
+            ),
+            const Text('Bars — views · orange numbers — contacts (number shown or chat started)',
+                style: TextStyle(fontSize: 11, color: Zc.grey)),
+            const SizedBox(height: 18),
+            Text(s.tips.isEmpty ? 'No tips right now — the listing looks good.' : 'Tips',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            for (final t in s.tips)
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: t.positive ? Zc.greenTint : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t.text(p.currency), style: const TextStyle(fontSize: 14, height: 1.4)),
+                  if (t.action != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _tipAction(context, p, t.action!);
+                        },
+                        child: Text(_tipButton(t.action!), style: const TextStyle(color: Zc.orange)),
+                      ),
+                    ),
+                ]),
+              ),
+          ]),
+        ),
+      );
+    },
+  );
+}
+
+class _MyListingTile extends StatelessWidget {
+  const _MyListingTile({required this.p, this.stats});
+  final Property p;
+  final ListingStats? stats;
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +506,8 @@ class _MyListingTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Zc.lightGrey),
       ),
-      child: InkWell(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      InkWell(
         onTap: () => openProperty(context, p),
         child: Row(children: [
           SizedBox(width: 78, height: 78, child: PropImage(p.coverThumb, radius: 10)),
@@ -460,6 +625,9 @@ class _MyListingTile extends StatelessWidget {
           ),
         ]),
       ),
+      // советы после публикации и цифры за 7 дней
+      if (stats != null && p.status == 'active') _TipStrip(p: p, stats: stats!),
+      ]),
     );
   }
 

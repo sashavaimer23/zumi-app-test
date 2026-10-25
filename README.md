@@ -70,6 +70,8 @@ flutter run
    - `supabase/014_owner_dev.sql` — аккаунт команды не публикует объявления и не продвигает их; решение по
      кампаниям агентов — у владельца во вкладке «Ads»; отчёт по рекламе по дням; раздел разработчика
      (активные за день и месяц, возвраты, воронки, платформы и версии, ошибки — только числа).
+   - `supabase/015_listing_advice.sql` — честный счётчик просмотров (человек — раз в день, свои не считаются),
+     просмотры по дням, цены похожих объявлений в районе, советы по объявлению после публикации.
 4. Скопируйте Project URL и anon key в Settings → API.
 5. Запустите приложение с ключами:
 
@@ -225,7 +227,7 @@ update public.profiles set role = 'admin'
 
 ## Перед запуском (чек-лист)
 
-1. Выполнить все SQL-файлы `001`–`014` в новом проекте Supabase.
+1. Выполнить все SQL-файлы `001`–`015` в новом проекте Supabase.
    Затем включить ежедневную уборку документов: Supabase → Edge Functions → Deploy new function →
    имя `purge-verification-docs`, код из `supabase/functions/purge-verification-docs/index.ts`;
    потом Integrations → Cron → New job → каждый день → Supabase Edge Function → `purge-verification-docs`.

@@ -59,7 +59,22 @@ abstract class Repository {
 
   Future<Property?> getProperty(String id);
   Future<List<Property>> byIds(List<String> ids);
+  /// Просмотр объявления: сервер считает одного человека один раз в день, автора — не считает
   Future<void> incrementViews(String id);
+
+  /// Цены похожих объявлений в районе (для подсказки в мастере)
+  Future<PriceStats> areaPriceStats({
+    required int areaId,
+    required DealType deal,
+    required PropertyType type,
+    int? bedrooms,
+    String? rentPeriod,
+    String currency = 'ZMW',
+    String? excludeId,
+  });
+
+  /// Статистика и советы по своим объявлениям (Мои объявления)
+  Future<Map<String, ListingStats>> myListingAdvice();
 
   // --- избранное (на сервере, если пользователь вошёл)
   Future<Set<String>> favoriteIds();
