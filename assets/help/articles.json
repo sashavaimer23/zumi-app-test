@@ -27,7 +27,7 @@
   "id": "e2232f2d-41f2-569a-a8f0-f3ebc63e88b5",
   "category": "listings",
   "title": "How to post a listing",
-  "body": "Tap \"Post\" on the home screen (or \"Post a listing\" on the website) and follow the steps:\n- Choose rent or sale and the type of property.\n- Add a clear title, the price and the main details (bedrooms, bathrooms, size).\n- Put the pin exactly on the property on the map.\n- Add good photos: daylight, every room, the outside and the street. Listings with 5+ photos get many more messages.\n- Check the preview and publish.\n\n## Tips\n- Write the real price. Listings with \"price on request\" get fewer calls.\n- Do not put phone numbers or links inside photos or the description — use the contact settings instead.\n- Confirm \"still available\" every 60 days, otherwise the listing is hidden from search.",
+  "body": "Tap \"Post\" on the home screen (or \"Post a listing\" on the website) and follow the steps:\n- Choose rent or sale and the type of property.\n- Add a clear title, the price and the main details (bedrooms, bathrooms, size).\n- Put the pin exactly on the property on the map.\n- Add good photos: daylight, every room, the outside and the street. 5 or more photos give people a clear picture.\n- Check the preview and publish.\n\n## Tips\n- Write the real price, so people know right away if the home fits their budget.\n- Do not put phone numbers or links inside photos or the description — use the contact settings instead.\n- Confirm \"still available\" every 60 days, otherwise the listing is hidden from search.",
   "sort": 10,
   "web_only": false
  },
@@ -67,7 +67,7 @@
   "id": "f131b212-3739-54b4-8711-d0657f8640a7",
   "category": "verification",
   "title": "How to get the Verified badge",
-  "body": "The Verified badge shows that Zumi checked who you are. Listings with the badge get more trust and more messages.\n\nSteps (about 3 minutes):\n- Confirm your phone with a WhatsApp or SMS code.\n- Take a photo of your NRC or passport and a selfie.\n- Agents also add their ZIEA registration number.\n\nThe Zumi team checks the documents, usually within the same day. As soon as the team approves or rejects the check, the photos of your documents and selfie are deleted. We keep only the result.\n\nIf there is no decision within 30 days, the photos are deleted and you need to send them again.",
+  "body": "The Verified badge shows that Zumi checked who you are.\n\nSteps (about 3 minutes):\n- Confirm your phone with a WhatsApp or SMS code.\n- Take a photo of your NRC or passport and a selfie.\n- Agents also add their ZIEA registration number.\n\nThe Zumi team checks the documents, usually within the same day. As soon as the team approves or rejects the check, the photos of your documents and selfie are deleted. We keep only the result.\n\nIf there is no decision within 30 days, the photos are deleted and you need to send them again.",
   "sort": 10,
   "web_only": false
  },

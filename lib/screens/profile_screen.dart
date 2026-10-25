@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 
 import '../config.dart';
@@ -122,6 +123,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ]),
               ),
               const SizedBox(height: 26),
+              // аккаунт команды: без своих объявлений, лимитов и значка Verified
+              if (user.isAdmin)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: Zc.chip, borderRadius: BorderRadius.circular(14)),
+                  child: const Text(
+                    'This is a Zumi team account: checks, support and the team panel. '
+                    'To list your own property, use your personal Zumi account.',
+                    style: TextStyle(fontSize: 13, height: 1.4, color: Zc.green),
+                  ),
+                )
+              else
               FutureBuilder<List<dynamic>>(
                 future: _future,
                 builder: (context, snap) {
@@ -214,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   highlight: true,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
                 ),
-              if (user.isAgent || user.isAdmin)
+              if (user.isAgent)
                 _MenuTile(
                   icon: ZI.bolt,
                   title: 'Promotion',
@@ -291,15 +304,21 @@ class _QuotaCard extends StatelessWidget {
         Row(children: [
           Expanded(
             child: Text(
-              quota.reached ? 'Limit reached — buy an extra slot to post more.' : '${quota.left} free left',
+              quota.reached
+                  ? (kIsWeb
+                      ? 'Limit reached — buy an extra slot to post more.'
+                      : 'Limit reached — archive a listing to post a new one.')
+                  : '${quota.left} free left',
               style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
           ),
-          TextButton(
-            style: TextButton.styleFrom(backgroundColor: Zc.orange, foregroundColor: Colors.white),
-            onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
-            child: const Text('Buy more'),
-          ),
+          // покупка — только на сайте: в приложениях Apple и Google это запрещают
+          if (kIsWeb)
+            TextButton(
+              style: TextButton.styleFrom(backgroundColor: Zc.orange, foregroundColor: Colors.white),
+              onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
+              child: const Text('Buy more'),
+            ),
         ]),
       ]),
     );
@@ -591,7 +610,7 @@ class _IdentityCard extends StatelessWidget {
             Text(
               verified
                   ? 'The badge is shown on all your listings.'
-                  : 'Confirm your phone and ID once — about 3 minutes. Verified ${isAgent ? 'agents' : 'owners'} get more calls.',
+                  : 'Confirm your phone and ID once — about 3 minutes. The badge shows people that Zumi checked who you are.',
               style: const TextStyle(fontSize: 13, color: Zc.grey, height: 1.35),
             ),
             if (!verified) ...[

@@ -24,23 +24,28 @@ part 'admin_owner.dart';
 
 // ======================================================================
 // Кабинет команды Zumi. Доступен только role = 'admin' (проверяет сервер).
-// Разделы: Inbox · ID checks · Licences · Reports · Support · Reviews · Log
+// Модератор — клиенты и поддержка: обращения, жалобы, проверки, отзывы, блокировки, статьи помощи.
+// Владелец — ещё реклама, статистика рекламы, общая статистика, раздел разработчика, роли, журнал.
 // ======================================================================
 
-enum _Section { inbox, stats, accounts, listings, promos, ids, licences, reports, phones, support, reviews, help, ads, team, log }
+enum _Section {
+  inbox, accounts, listings, ids, licences, reports, phones, support, reviews, help, // модератор
+  ads, adStats, stats, dev, team, log, // владелец
+}
 
 /// Только для владельца Zumi (сервер тоже проверяет)
-const _ownerOnly = {_Section.stats, _Section.ads, _Section.team, _Section.log};
+const _ownerOnly = {_Section.ads, _Section.adStats, _Section.stats, _Section.dev, _Section.team, _Section.log};
 
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
         _Section.stats => 'Statistics',
+        _Section.adStats => 'Ad statistics',
+        _Section.dev => 'Developer',
         _Section.help => 'Help articles',
         _Section.team => 'Team & roles',
         _Section.accounts => 'New accounts',
         _Section.listings => 'Listings to check',
-        _Section.promos => 'Promotions to check',
         _Section.phones => 'Phone views',
         _Section.ads => 'Ads',
         _Section.ids => 'ID checks',
@@ -53,11 +58,12 @@ extension on _Section {
   IconData get icon => switch (this) {
         _Section.inbox => ZI.bell,
         _Section.stats => ZI.sort,
+        _Section.adStats => ZI.eye,
+        _Section.dev => ZI.settings,
         _Section.help => ZI.info,
         _Section.team => ZI.lock,
         _Section.accounts => ZI.userCircle,
         _Section.listings => ZI.house,
-        _Section.promos => ZI.photos,
         _Section.phones => ZI.phone,
         _Section.ads => ZI.bolt,
         _Section.ids => ZI.idCard,
@@ -99,16 +105,19 @@ class _AdminScreenState extends State<AdminScreen> {
 
   void _go(_Section s) => setState(() => _section = s);
 
+  bool get _isOwner => context.read<AppState>().user?.isOwner ?? false;
+
   int _badge(_Section s) => switch (s) {
-        _Section.inbox => _stats.total,
+        _Section.inbox => _stats.totalFor(owner: _isOwner),
         _Section.stats => 0,
+        _Section.adStats => 0,
+        _Section.dev => 0,
         _Section.help => _stats.helpUnhelpful,
         _Section.team => 0,
         _Section.accounts => _stats.accounts,
         _Section.listings => _stats.listingsNew,
-        _Section.promos => _stats.campaignsNew,
         _Section.phones => 0,
-        _Section.ads => 0,
+        _Section.ads => _stats.campaignsNew, // кампании агентов со своей картинкой ждут решения
         _Section.ids => _stats.idChecks + _stats.ownership,
         _Section.licences => _stats.licences,
         _Section.reports => _stats.reports,
@@ -118,15 +127,16 @@ class _AdminScreenState extends State<AdminScreen> {
       };
 
   Widget _body() => switch (_section) {
-        _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats),
+        _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats, owner: _isOwner),
         _Section.stats => const _Stats(),
+        _Section.adStats => const _AdStats(),
+        _Section.dev => const _DevStats(),
         _Section.help => const _HelpAdmin(),
         _Section.team => const _Team(),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),
         _Section.listings => _ListingsQueue(onChanged: _refreshStats),
-        _Section.promos => _PromosQueue(onChanged: _refreshStats),
         _Section.phones => const _PhoneViews(),
-        _Section.ads => _Ads(onChanged: _refreshStats),
+        _Section.ads => _AdsHub(onChanged: _refreshStats, pending: _stats.campaignsNew),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
         _Section.licences => _Licences(
             onChanged: _refreshStats,
@@ -367,8 +377,9 @@ class _Loader<T> extends StatelessWidget {
 // INBOX
 // ======================================================================
 class _Inbox extends StatelessWidget {
-  const _Inbox({required this.stats, required this.onOpen, required this.onRefresh});
+  const _Inbox({required this.stats, required this.onOpen, required this.onRefresh, required this.owner});
   final AdminStats stats;
+  final bool owner;
   final ValueChanged<_Section> onOpen;
   final Future<void> Function() onRefresh;
 
@@ -378,7 +389,7 @@ class _Inbox extends StatelessWidget {
       (_Section.reports, stats.reports, 'Scam & problem reports', 'Check first — people may lose money'),
       (_Section.accounts, stats.accounts, 'New accounts', 'Everyone who signed up — take a quick look'),
       (_Section.listings, stats.listingsNew, 'Listings to check', 'First listings of new people'),
-      (_Section.promos, stats.campaignsNew, 'Promotions to check', 'Agents\' own pictures, names and links'),
+      if (owner) (_Section.ads, stats.campaignsNew, 'Agent campaigns to check', 'Own pictures, names and links — in Ads'),
       (_Section.ids, stats.idChecks, 'ID checks', 'NRC / passport + selfie'),
       (_Section.ids, stats.ownership, 'Ownership documents', 'Title deeds and mandates'),
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),
@@ -389,7 +400,7 @@ class _Inbox extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: _Page(
-        title: stats.total == 0 ? 'Nothing waiting' : '${stats.total} things need you',
+        title: stats.totalFor(owner: owner) == 0 ? 'Nothing waiting' : '${stats.totalFor(owner: owner)} things need you',
         subtitle: '${stats.listings} active listings · ${stats.users} users',
         child: LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth > 800 ? 3 : (c.maxWidth > 500 ? 2 : 1);

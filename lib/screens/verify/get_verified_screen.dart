@@ -195,7 +195,7 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                   Text(
                     allDone
                         ? 'The Verified badge is shown on all your listings.'
-                        : 'Buyers and tenants trust verified ${u.isAgent ? 'agents' : 'owners'} more and call them first. '
+                        : 'The badge shows buyers and tenants that Zumi checked who you are. '
                             'It takes about 3 minutes and you do it only once — the badge appears on all your listings.',
                     style: const TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),
                   ),

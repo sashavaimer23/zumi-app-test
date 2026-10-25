@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:supabase_flutter/supabase_flutter.dart' hide SortBy;
 
+import '../config.dart';
 import '../models/models.dart';
 import 'device_id.dart';
 import 'images.dart';
@@ -105,6 +106,9 @@ class SupabaseRepository implements Repository {
         throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
       }
       if (e.message.contains('NO_PHONE')) throw AppException('No phone number here — use chat');
+      if (e.message.contains('TEAM_ACCOUNT')) {
+        throw AppException('Team accounts do not post listings — use your personal Zumi account.', code: 'TEAM');
+      }
       if (e.message.contains('OWNER_ONLY')) throw AppException('Only the Zumi owner can do this', code: 'OWNER_ONLY');
       if (e.message.contains('USER_NOT_FOUND')) throw AppException('No Zumi account with this email');
       if (e.message.contains('NOT_YOURSELF')) throw AppException('You cannot change your own role');
@@ -972,9 +976,36 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> logVisit() async {
     try {
-      await _db.rpc('log_visit', params: {'device': await DeviceId.get()});
+      await _db.rpc('log_visit', params: {
+        'device': await DeviceId.get(),
+        'p_platform': AppConfig.platform,
+        'p_version': AppConfig.appVersion,
+      });
     } catch (_) {/* статистика не должна мешать */}
   }
+
+  @override
+  Future<void> logError(String message) async {
+    try {
+      await _db.rpc('log_error', params: {
+        'p_platform': AppConfig.platform,
+        'p_version': AppConfig.appVersion,
+        'p_message': message,
+      });
+    } catch (_) {/* не критично */}
+  }
+
+  @override
+  Future<List<AdReportItem>> ownerAdReport(int days) => _guard(() async {
+        final res = await _db.rpc('owner_ad_report', params: {'p_days': days}) as List? ?? const [];
+        return res.map((r) => AdReportItem.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<DevStats> devStats(int days) => _guard(() async {
+        final res = await _db.rpc('dev_stats', params: {'p_days': days});
+        return DevStats.fromMap(Map<String, dynamic>.from(res as Map));
+      });
 
   /// Счётчики поиска: только какие фильтры выбирали (без людей)
   Future<void> _logSearch(SearchFilters f) async {

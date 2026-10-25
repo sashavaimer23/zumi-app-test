@@ -48,6 +48,18 @@ class AppConfig {
   /// Пусто — остаётся только «Написать команде» (обращение в поддержку).
   static const adsEmail = String.fromEnvironment('ADS_EMAIL');
 
+  /// Версия приложения (как в pubspec.yaml) — для раздела разработчика: какие версии у людей
+  static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.0');
+
+  /// Платформа: web / android / ios (только для обезличенной статистики)
+  static String get platform => kIsWeb
+      ? 'web'
+      : switch (defaultTargetPlatform) {
+          TargetPlatform.android => 'android',
+          TargetPlatform.iOS => 'ios',
+          _ => 'other',
+        };
+
   /// Центр Лусаки
   static const defaultLat = -15.4167;
   static const defaultLng = 28.2833;

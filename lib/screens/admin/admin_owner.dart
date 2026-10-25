@@ -694,3 +694,385 @@ class _TeamState extends State<_Team> {
     );
   }
 }
+
+// ======================================================================
+// ADS — баннеры и решение по кампаниям агентов со своей картинкой
+// ======================================================================
+class _AdsHub extends StatefulWidget {
+  const _AdsHub({required this.onChanged, required this.pending});
+  final VoidCallback onChanged;
+  final int pending;
+
+  @override
+  State<_AdsHub> createState() => _AdsHubState();
+}
+
+class _AdsHubState extends State<_AdsHub> {
+  late int _tab = widget.pending > 0 ? 1 : 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<int>(
+            segments: [
+              const ButtonSegment(value: 0, label: Text('Banners')),
+              ButtonSegment(
+                value: 1,
+                label: Text(widget.pending > 0 ? 'Agent campaigns to check (${widget.pending})' : 'Agent campaigns to check'),
+              ),
+            ],
+            selected: {_tab},
+            onSelectionChanged: (s) => setState(() => _tab = s.first),
+          ),
+        ),
+      ),
+      Expanded(
+        child: KeyedSubtree(
+          key: ValueKey(_tab),
+          child: _tab == 0 ? _Ads(onChanged: widget.onChanged) : _PromosQueue(onChanged: widget.onChanged),
+        ),
+      ),
+    ]);
+  }
+}
+
+// ======================================================================
+// AD STATISTICS — показы, клики, % кликов по каждому баннеру и кампании
+// ======================================================================
+class _AdStats extends StatefulWidget {
+  const _AdStats();
+
+  @override
+  State<_AdStats> createState() => _AdStatsState();
+}
+
+class _AdStatsState extends State<_AdStats> {
+  int _days = 30;
+  late Future<List<AdReportItem>> _future = _load();
+  final Set<String> _open = {};
+
+  Future<List<AdReportItem>> _load() => context.read<AppState>().repo.ownerAdReport(_days);
+
+  Future<void> _export(List<AdReportItem> items, String name) async {
+    final file = 'zumi-ads-$name-${isoDay(DateTime.now())}.csv';
+    final downloaded = await saveTextFile(file, AdReportItem.csv(items));
+    if (!mounted) return;
+    showSnack(context, downloaded ? 'Downloaded $file' : 'Report copied — paste it into Google Sheets or an email');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Ad statistics',
+      subtitle: 'Views, clicks and click rate for every banner and listing promotion, by day.',
+      trailing: SegmentedButton<int>(
+        segments: const [
+          ButtonSegment(value: 7, label: Text('7 days')),
+          ButtonSegment(value: 30, label: Text('30 days')),
+          ButtonSegment(value: 90, label: Text('90 days')),
+        ],
+        selected: {_days},
+        onSelectionChanged: (s) => setState(() {
+          _days = s.first;
+          _future = _load();
+        }),
+      ),
+      child: _Loader<List<AdReportItem>>(
+        future: _future,
+        builder: (items) {
+          if (items.isEmpty) return _emptyDone('No banners or promotions in this period.');
+          final views = items.fold<int>(0, (a, i) => a + i.views);
+          final clicks = items.fold<int>(0, (a, i) => a + i.clicks);
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Wrap(spacing: 12, runSpacing: 12, children: [
+              SizedBox(width: 200, child: _Kpi('Views', _fmt(views), 'All banners and promotions', false)),
+              SizedBox(width: 200, child: _Kpi('Clicks', _fmt(clicks), null, false)),
+              SizedBox(width: 200, child: _Kpi('Click rate', formatCtr(views == 0 ? 0 : clicks * 100 / views), null, false)),
+            ]),
+            const SizedBox(height: 14),
+            _actionBtn('Download full report (CSV)', () => _export(items, 'all'), primary: true),
+            const SizedBox(height: 18),
+            for (final kind in const ['banner', 'campaign']) ...[
+              if (items.any((i) => i.kind == kind))
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 8),
+                  child: Text(kind == 'banner' ? 'Banners' : 'Listing promotions',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green)),
+                ),
+              for (final i in items.where((i) => i.kind == kind)) _item(i),
+            ],
+          ]);
+        },
+      ),
+    );
+  }
+
+  Widget _item(AdReportItem i) {
+    final open = _open.contains(i.id);
+    return _Card(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        InkWell(
+          onTap: () => setState(() => open ? _open.remove(i.id) : _open.add(i.id)),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(i.advertiser, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  '${i.title} · ${i.placementLabel}'
+                  '${i.startsOn != null && i.endsOn != null ? ' · ${formatShortDate(i.startsOn!)} – ${formatShortDate(i.endsOn!)}' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Zc.grey),
+                ),
+              ]),
+            ),
+            _num('views', i.views),
+            _num('clicks', i.clicks),
+            SizedBox(
+              width: 70,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(formatCtr(i.ctr), style: const TextStyle(fontWeight: FontWeight.w700, color: Zc.green)),
+                const Text('click rate', style: TextStyle(fontSize: 11, color: Zc.grey)),
+              ]),
+            ),
+            Icon(open ? ZI.caretDown : ZI.caretRight, size: 18, color: Zc.grey),
+          ]),
+        ),
+        if (open) ...[
+          const SizedBox(height: 10),
+          if (!i.isBanner)
+            Text('Calls (number shown): ${i.calls} · Messages: ${i.messages}',
+                style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 6),
+          if (i.days.isEmpty)
+            const Text('No views yet.', style: TextStyle(color: Zc.grey))
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowHeight: 34,
+                dataRowMinHeight: 30,
+                dataRowMaxHeight: 34,
+                columns: [
+                  const DataColumn(label: Text('Day')),
+                  const DataColumn(label: Text('Views'), numeric: true),
+                  const DataColumn(label: Text('Clicks'), numeric: true),
+                  const DataColumn(label: Text('Click rate'), numeric: true),
+                  if (!i.isBanner) const DataColumn(label: Text('Calls'), numeric: true),
+                  if (!i.isBanner) const DataColumn(label: Text('Messages'), numeric: true),
+                ],
+                rows: [
+                  for (final d in i.days.reversed)
+                    DataRow(cells: [
+                      DataCell(Text(formatShortDate(d.day))),
+                      DataCell(Text(_fmt(d.views))),
+                      DataCell(Text(_fmt(d.clicks))),
+                      DataCell(Text(formatCtr(d.views == 0 ? 0 : d.clicks * 100 / d.views))),
+                      if (!i.isBanner) DataCell(Text('${d.calls}')),
+                      if (!i.isBanner) DataCell(Text('${d.messages}')),
+                    ]),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          _actionBtn('Report for this advertiser (CSV)',
+              () => _export([i], i.advertiser.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-'))),
+        ],
+      ]),
+    );
+  }
+
+  Widget _num(String label, int n) => SizedBox(
+        width: 70,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(_fmt(n), style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(label, style: const TextStyle(fontSize: 11, color: Zc.grey)),
+        ]),
+      );
+}
+
+// ======================================================================
+// DEVELOPER — подробная статистика, только числа (без данных людей)
+// ======================================================================
+class _DevStats extends StatefulWidget {
+  const _DevStats();
+
+  @override
+  State<_DevStats> createState() => _DevStatsState();
+}
+
+class _DevStatsState extends State<_DevStats> {
+  int _days = 30;
+  late Future<DevStats> _future = context.read<AppState>().repo.devStats(_days);
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Developer',
+      subtitle: 'Active people, returns, funnels, platforms and errors. Numbers only — no data about people.',
+      trailing: SegmentedButton<int>(
+        segments: const [
+          ButtonSegment(value: 7, label: Text('7 days')),
+          ButtonSegment(value: 30, label: Text('30 days')),
+          ButtonSegment(value: 90, label: Text('90 days')),
+        ],
+        selected: {_days},
+        onSelectionChanged: (s) => setState(() {
+          _days = s.first;
+          _future = context.read<AppState>().repo.devStats(_days);
+        }),
+      ),
+      child: _Loader<DevStats>(
+        future: _future,
+        builder: (d) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          LayoutBuilder(builder: (context, c) {
+            final cols = c.maxWidth > 900 ? 4 : 2;
+            final w = (c.maxWidth - (cols - 1) * 12) / cols;
+            return Wrap(spacing: 12, runSpacing: 12, children: [
+              SizedBox(width: w, child: _Kpi('Active today', _fmt(d.dauToday), 'Different people', false)),
+              SizedBox(width: w, child: _Kpi('Active a day', _fmt(d.dauAvg), 'Average for the period', false)),
+              SizedBox(width: w, child: _Kpi('Active this month', _fmt(d.mau), 'Different people', false)),
+              SizedBox(width: w, child: _Kpi('Come back', '${d.returningShare}%', 'Visited in the 30 days before', true)),
+            ]);
+          }),
+          const SizedBox(height: 18),
+          _Card(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Active people by day', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              _Bars(
+                points: [for (final (day, v, r) in d.daily) DashPoint(isoDay(day), v, v, r, 0, 0)],
+                value: (p) => p.visitors,
+                color: Zc.green,
+              ),
+              const SizedBox(height: 14),
+              const Text('Of them, came back', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              _Bars(
+                points: [for (final (day, v, r) in d.daily) DashPoint(isoDay(day), v, v, r, 0, 0)],
+                value: (p) => p.contacts,
+                color: Zc.orange,
+              ),
+            ]),
+          ),
+          LayoutBuilder(builder: (context, c) {
+            final seller = _Funnel(
+              title: 'People who list',
+              steps: [
+                ('Signed up', d.funnelSeller['signups'] ?? 0),
+                ('Phone confirmed', d.funnelSeller['phone'] ?? 0),
+                ('Posted a listing', d.funnelSeller['listing'] ?? 0),
+                ('Got a contact', d.funnelSeller['contact'] ?? 0),
+              ],
+            );
+            final buyer = _Funnel(
+              title: 'People who search',
+              steps: [
+                ('Signed up', d.funnelBuyer['signups'] ?? 0),
+                ('Phone confirmed', d.funnelBuyer['phone'] ?? 0),
+                ('Contacted an author', d.funnelBuyer['contact'] ?? 0),
+              ],
+            );
+            if (c.maxWidth < 700) return Column(children: [seller, buyer]);
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: seller),
+              const SizedBox(width: 12),
+              Expanded(child: buyer),
+            ]);
+          }),
+          _Card(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Website, Android or iPhone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              if (d.platforms.isEmpty) const Text('No visits yet', style: TextStyle(color: Zc.grey)),
+              for (final (platform, version, visits, people) in d.platforms)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(switch (platform) { 'web' => 'Website', 'android' => 'Android', 'ios' => 'iPhone', _ => platform },
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    SizedBox(width: 90, child: Text('v$version', style: const TextStyle(color: Zc.grey))),
+                    Expanded(child: Text('${_fmt(visits)} visits · ${_fmt(people)} people a day (sum)')),
+                  ]),
+                ),
+            ]),
+          ),
+          _Card(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Errors in the app', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text('Error text only — numbers and emails are removed.', style: TextStyle(fontSize: 12, color: Zc.grey)),
+              const SizedBox(height: 8),
+              if (d.errors.isEmpty) const Text('No errors', style: TextStyle(color: Zc.grey)),
+              for (final (platform, version, message, n, last) in d.errors)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    SizedBox(width: 56, child: Text('×${_fmt(n)}', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFD64545)))),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        SelectableText(message, style: const TextStyle(fontSize: 13)),
+                        Text('$platform v$version${last == null ? '' : ' · last ${timeAgo(last)}'}',
+                            style: const TextStyle(fontSize: 11, color: Zc.grey)),
+                      ]),
+                    ),
+                  ]),
+                ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Funnel extends StatelessWidget {
+  const _Funnel({required this.title, required this.steps});
+  final String title;
+  final List<(String, int)> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = steps.isEmpty ? 0 : steps.first.$2;
+    return _Card(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const Text('People who signed up in this period', style: TextStyle(fontSize: 12, color: Zc.grey)),
+        const SizedBox(height: 10),
+        for (var i = 0; i < steps.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              Expanded(flex: 3, child: Text(steps[i].$1)),
+              Expanded(
+                flex: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: first == 0 ? 0 : steps[i].$2 / first,
+                    minHeight: 10,
+                    color: i == steps.length - 1 ? Zc.orange : Zc.green,
+                    backgroundColor: Zc.chip,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 92,
+                child: Text(
+                  '${_fmt(steps[i].$2)}${i == 0 || first == 0 ? '' : ' · ${(steps[i].$2 * 100 / first).round()}%'}',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ]),
+          ),
+      ]),
+    );
+  }
+}

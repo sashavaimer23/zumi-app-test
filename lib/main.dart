@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +26,23 @@ Future<void> main() async {
   }
 
   final prefs = await SharedPreferences.getInstance();
+
+  // ошибки приложения → обезличенная статистика для разработчика (без данных людей)
+  final reported = <String>{};
+  void report(Object error) {
+    final text = '$error'.split('\n').first.trim();
+    if (text.isEmpty || reported.length >= 20 || !reported.add(text)) return;
+    repo.logError(text);
+  }
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    report(details.exceptionAsString());
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    report(error);
+    return true;
+  };
 
   runApp(
     ChangeNotifierProvider(

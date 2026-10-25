@@ -963,6 +963,9 @@ class AdminStats {
   int get total =>
       accounts + listingsNew + campaignsNew + idChecks + ownership + licences + reports + tickets + reviews;
 
+  /// Сколько ждёт решения: модератору — без кампаний агентов (их решает владелец во вкладке «Реклама»)
+  int totalFor({required bool owner}) => owner ? total : total - campaignsNew;
+
   factory AdminStats.fromMap(Map<String, dynamic> m) {
     int n(String k) => ((m[k] as num?) ?? 0).toInt();
     return AdminStats(
@@ -1672,5 +1675,171 @@ class Dashboard {
       b.writeln('${q(dim)},${q(value)},$n');
     }
     return b.toString();
+  }
+}
+
+// ======================================================================
+// Отчёт по рекламе (владелец): баннеры и кампании продвижения по дням
+// ======================================================================
+class AdReportDay {
+  final DateTime day;
+  final int views, clicks, calls, messages;
+  const AdReportDay(this.day, this.views, this.clicks, this.calls, this.messages);
+}
+
+class AdReportItem {
+  final String kind; // banner | campaign
+  final String id;
+  final String title;
+  final String advertiser;
+  final String placement;
+  final String status;
+  final DateTime? startsOn;
+  final DateTime? endsOn;
+  final int views, clicks, calls, messages;
+  final List<AdReportDay> days;
+
+  const AdReportItem({
+    required this.kind,
+    required this.id,
+    required this.title,
+    required this.advertiser,
+    required this.placement,
+    required this.status,
+    this.startsOn,
+    this.endsOn,
+    required this.views,
+    required this.clicks,
+    this.calls = 0,
+    this.messages = 0,
+    this.days = const [],
+  });
+
+  bool get isBanner => kind == 'banner';
+  double get ctr => views == 0 ? 0 : clicks * 100 / views;
+  String get placementLabel => isBanner
+      ? (adPlacements[placement]?.label ?? placement)
+      : (campaignPlacements[placement]?.$1 ?? placement);
+
+  factory AdReportItem.fromMap(Map<String, dynamic> m) {
+    int n(dynamic v) => ((v as num?) ?? 0).toInt();
+    return AdReportItem(
+      kind: (m['kind'] as String?) ?? 'banner',
+      id: '${m['id']}',
+      title: (m['title'] as String?) ?? '',
+      advertiser: (m['advertiser'] as String?) ?? '',
+      placement: (m['placement'] as String?) ?? '',
+      status: (m['status'] as String?) ?? '',
+      startsOn: DateTime.tryParse('${m['starts_on']}'),
+      endsOn: DateTime.tryParse('${m['ends_on']}'),
+      views: n(m['views']),
+      clicks: n(m['clicks']),
+      calls: n(m['calls']),
+      messages: n(m['messages']),
+      days: [
+        for (final d in (m['days'] as List? ?? const []))
+          AdReportDay(DateTime.tryParse('${(d as Map)['day']}') ?? DateTime.now(), n(d['views']), n(d['clicks']),
+              n(d['calls']), n(d['messages'])),
+      ],
+    );
+  }
+
+  /// Отчёт для рекламодателя (CSV — открывается в Excel / Google Sheets)
+  static String csv(List<AdReportItem> items) {
+    String q(Object v) {
+      final s = '$v';
+      return s.contains(',') || s.contains('"') ? '"${s.replaceAll('"', '""')}"' : s;
+    }
+
+    final b = StringBuffer()
+      ..writeln('Zumi advertising report')
+      ..writeln()
+      ..writeln('Type,Advertiser,Title,Placement,Dates,Views,Clicks,Click rate %,Calls,Messages');
+    for (final i in items) {
+      b.writeln([
+        i.isBanner ? 'Banner' : 'Listing promotion',
+        q(i.advertiser),
+        q(i.title),
+        q(i.placementLabel),
+        '${i.startsOn == null ? '' : isoDay(i.startsOn!)} – ${i.endsOn == null ? '' : isoDay(i.endsOn!)}',
+        i.views,
+        i.clicks,
+        i.ctr.toStringAsFixed(1),
+        i.calls,
+        i.messages,
+      ].join(','));
+    }
+    for (final i in items) {
+      b
+        ..writeln()
+        ..writeln('${q(i.advertiser)} — ${q(i.title)}')
+        ..writeln('Day,Views,Clicks,Click rate %,Calls,Messages');
+      for (final d in i.days) {
+        final ctr = d.views == 0 ? 0 : d.clicks * 100 / d.views;
+        b.writeln('${isoDay(d.day)},${d.views},${d.clicks},${ctr.toStringAsFixed(1)},${d.calls},${d.messages}');
+      }
+    }
+    return b.toString();
+  }
+}
+
+// ======================================================================
+// Раздел разработчика: только числа
+// ======================================================================
+class DevStats {
+  final DateTime from, to;
+  final int dauToday, dauAvg, mau, returningShare;
+  final List<(DateTime, int, int)> daily; // (день, посетители, вернулись)
+  final List<(DateTime, int)> months;
+  final Map<String, int> funnelSeller; // signups, phone, listing, contact
+  final Map<String, int> funnelBuyer; // signups, phone, contact
+  final List<(String, String, int, int)> platforms; // (платформа, версия, посещения, люди)
+  final List<(String, String, String, int, DateTime?)> errors; // (платформа, версия, текст, раз, последний)
+
+  const DevStats({
+    required this.from,
+    required this.to,
+    required this.dauToday,
+    required this.dauAvg,
+    required this.mau,
+    required this.returningShare,
+    required this.daily,
+    required this.months,
+    required this.funnelSeller,
+    required this.funnelBuyer,
+    required this.platforms,
+    required this.errors,
+  });
+
+  factory DevStats.fromMap(Map<String, dynamic> m) {
+    int n(dynamic v) => ((v as num?) ?? 0).toInt();
+    Map<String, int> f(dynamic v) => {for (final e in (v as Map? ?? const {}).entries) '${e.key}': n(e.value)};
+    return DevStats(
+      from: DateTime.tryParse('${m['from']}') ?? DateTime.now(),
+      to: DateTime.tryParse('${m['to']}') ?? DateTime.now(),
+      dauToday: n(m['dau_today']),
+      dauAvg: n(m['dau_avg']),
+      mau: n(m['mau']),
+      returningShare: n(m['returning_share']),
+      daily: [
+        for (final d in (m['daily'] as List? ?? const []))
+          (DateTime.tryParse('${(d as Map)['day']}') ?? DateTime.now(), n(d['visitors']), n(d['returning'])),
+      ],
+      months: [
+        for (final d in (m['months'] as List? ?? const []))
+          (DateTime.tryParse('${(d as Map)['month']}') ?? DateTime.now(), n(d['visitors'])),
+      ],
+      funnelSeller: f(m['funnel_seller']),
+      funnelBuyer: f(m['funnel_buyer']),
+      platforms: [
+        for (final p in (m['platforms'] as List? ?? const []))
+          ('${(p as Map)['platform']}', '${p['version']}', n(p['visits']), n(p['visitors'])),
+      ],
+      errors: [
+        for (final e in (m['errors'] as List? ?? const []))
+          ('${(e as Map)['platform']}', '${e['version']}', '${e['message']}', n(e['n']),
+              DateTime.tryParse('${e['last_at']}')),
+      ],
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
@@ -127,6 +128,19 @@ class _PostWizardState extends State<PostWizard> {
     final app = context.watch<AppState>();
     if (!app.signedIn) {
       return const AuthScreen(embedded: true, reason: 'Sign in to list your property on Zumi.');
+    }
+    // аккаунт команды Zumi не публикует объявления (это проверяет и сервер)
+    if (app.user!.isAdmin) {
+      return const Scaffold(
+        body: SafeArea(
+          child: EmptyState(
+            icon: ZI.shield,
+            title: 'Team accounts do not post listings',
+            subtitle: 'To list your own property, sign in with your personal Zumi account. '
+                'Team accounts are only for checks, support and the team panel.',
+          ),
+        ),
+      );
     }
     if (_quotaUser != app.user!.id) {
       _quotaUser = app.user!.id;
@@ -403,7 +417,7 @@ class _PostWizardState extends State<PostWizard> {
   Widget _step3() {
     return _page(
       title: 'Add Photos',
-      subtitle: 'Showcase your property with clear, high-quality photos. Listings with your photos get more views.',
+      subtitle: 'Showcase your property with clear, high-quality photos of every room, the outside and the street.',
       children: [
         GestureDetector(
           onTap: _pickPhotos,
@@ -673,7 +687,7 @@ class _PostWizardState extends State<PostWizard> {
                   verified
                       ? 'Want even more trust? Confirm the location on site or add ownership documents — both optional.'
                       : 'Confirm your phone and ID once (about 3 minutes) and all your listings get the Verified '
-                          'badge. Verified listings get more calls.',
+                          'badge — it shows people that Zumi checked who you are.',
                   style: const TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),
                 ),
                 const SizedBox(height: 14),
@@ -976,20 +990,24 @@ class _LimitReached extends StatelessWidget {
         Text('Free listings used', textAlign: TextAlign.center, style: zHeadline(context, size: 34)),
         const SizedBox(height: 14),
         Text(
-          isAgent
-              ? 'Agents can publish ${quota.allowed} listings for free. To add more, buy an extra listing slot.'
-              : 'Owners can publish ${quota.allowed} listings for free. To add more, buy an extra listing slot.',
+          // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
+          kIsWeb
+              ? '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
+                  'To add more, buy an extra listing slot.'
+              : '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
+                  'Archive or mark a listing as rented or sold to post a new one.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),
         const SizedBox(height: 36),
-        Center(
-          child: PrimaryButton(
-            label: 'Buy extra listing',
-            width: double.infinity,
-            onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
+        if (kIsWeb)
+          Center(
+            child: PrimaryButton(
+              label: 'Buy extra listing',
+              width: double.infinity,
+              onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
         Center(
           child: TextButton(

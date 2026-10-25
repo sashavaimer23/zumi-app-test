@@ -240,6 +240,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _dirty ? () => _save(u) : null,
               ),
 
+              // аккаунт команды: без настроек связи по объявлениям
+              if (!u.isAdmin) ...[
               // ---------- как с вами связываются ----------
               const _Section('How people contact you'),
               for (final (mode, title, sub) in const [
@@ -264,6 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+              ],
 
               // ---------- рассылка ----------
               const _Section('News and offers'),
@@ -305,6 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: u.phoneVerified ? 'Change' : 'Verify',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen())),
               ),
+              if (!u.isAdmin)
               _Row(
                 icon: ZI.shield,
                 title: u.identityVerified ? 'You are Verified' : 'Get the Verified badge',

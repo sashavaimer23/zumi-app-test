@@ -261,6 +261,9 @@ class DemoRepository implements Repository {
   @override
   Future<Property> createListing(ListingDraft d) async {
     final u = _requireUser();
+    if (u.isAdmin) {
+      throw AppException('Team accounts do not post listings — use your personal Zumi account.', code: 'TEAM');
+    }
     if (_requireLicence && u.isAgent && !u.licenceVerified) {
       throw AppException('Agents can publish listings after the Zumi team checks their ZIEA licence. '
           'Add your licence number in Profile → Get verified.', code: 'LICENCE');
@@ -1527,6 +1530,85 @@ class DemoRepository implements Repository {
         ('beds', '3+', 190),
         ('price', 'up to 15000 ZMW', 120),
         ('verified', 'yes', 75),
+      ],
+    );
+  }
+
+  final Map<String, int> _errors = {};
+
+  @override
+  Future<void> logError(String message) async {
+    final m = message.replaceAll(RegExp(r'[0-9]{3,}'), '#');
+    _errors[m.length > 200 ? m.substring(0, 200) : m] = (_errors[m] ?? 0) + 1;
+  }
+
+  @override
+  Future<List<AdReportItem>> ownerAdReport(int days) async {
+    _requireOwner();
+    await _lag();
+    final from = DateTime.now().subtract(Duration(days: days));
+    final out = <AdReportItem>[];
+    for (final a in _ads.where((a) => a.status != 'draft')) {
+      final m = _adStats[a.id] ?? const {};
+      final ds = [
+        for (final k in (m.keys.toList()..sort()))
+          if (DateTime.parse(k).isAfter(from)) AdReportDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2, 0, 0),
+      ];
+      out.add(AdReportItem(
+        kind: 'banner', id: a.id, title: a.title, advertiser: a.advertiser, placement: a.placement, status: a.status,
+        startsOn: a.startsOn, endsOn: a.endsOn,
+        views: ds.fold(0, (x, d) => x + d.views), clicks: ds.fold(0, (x, d) => x + d.clicks), days: ds,
+      ));
+    }
+    for (final c in _campaigns.where((c) => c.reviewStatus == 'approved')) {
+      final m = _campStats[c.id] ?? const {};
+      final ds = [
+        for (final k in (m.keys.toList()..sort()))
+          if (DateTime.parse(k).isAfter(from)) AdReportDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2, m[k]!.$3, m[k]!.$4),
+      ];
+      final p = await getProperty(c.propertyId);
+      out.add(AdReportItem(
+        kind: 'campaign', id: c.id, title: p?.title ?? 'Listing', advertiser: c.advertiser, placement: c.placement,
+        status: c.status, startsOn: c.startsOn, endsOn: c.endsOn,
+        views: ds.fold(0, (x, d) => x + d.views), clicks: ds.fold(0, (x, d) => x + d.clicks),
+        calls: ds.fold(0, (x, d) => x + d.calls), messages: ds.fold(0, (x, d) => x + d.messages), days: ds,
+      ));
+    }
+    return out;
+  }
+
+  @override
+  Future<DevStats> devStats(int days) async {
+    _requireOwner();
+    await _lag();
+    // демо: правдоподобные числа (на сервере — настоящие счётчики)
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final rnd = Random(days ^ now.day);
+    final daily = [
+      for (var i = days - 1; i >= 0; i--)
+        () {
+          final v = 380 + rnd.nextInt(160) + (days - i) * 3;
+          return (today.subtract(Duration(days: i)), v, (v * (0.38 + rnd.nextDouble() * 0.08)).round());
+        }(),
+    ];
+    final avg = (daily.fold<int>(0, (a, d) => a + d.$2) / daily.length).round();
+    final ret = daily.fold<int>(0, (a, d) => a + d.$3) * 100 ~/ daily.fold<int>(1, (a, d) => a + d.$2);
+    return DevStats(
+      from: daily.first.$1,
+      to: today,
+      dauToday: daily.last.$2,
+      dauAvg: avg,
+      mau: avg * 6,
+      returningShare: ret,
+      daily: daily,
+      months: [for (var i = 5; i >= 0; i--) (DateTime(now.year, now.month - i), 1800 + (5 - i) * 420)],
+      funnelSeller: const {'signups': 240, 'phone': 168, 'listing': 74, 'contact': 51},
+      funnelBuyer: const {'signups': 240, 'phone': 168, 'contact': 97},
+      platforms: const [('web', '0.1.0', 6400, 4100), ('android', '0.1.0', 3900, 2600), ('ios', '0.1.0', 1200, 800)],
+      errors: [
+        for (final e in _errors.entries) ('web', '0.1.0', e.key, e.value, now),
+        if (_errors.isEmpty) ('android', '0.1.0', 'Example: SocketException: Failed host lookup', 3, now),
       ],
     );
   }

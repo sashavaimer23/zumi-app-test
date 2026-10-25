@@ -219,8 +219,14 @@ abstract class Repository {
   Future<void> adminSetTeam(String email, String? level);
   /// period: 'day' | 'week' | 'month'
   Future<Dashboard> ownerDashboard(String period);
-  /// Обезличенный счётчик посещений (без имён)
+  /// Обезличенный счётчик посещений (без имён) + платформа и версия приложения
   Future<void> logVisit();
+  /// Ошибка приложения — только текст ошибки (цифры и почта вырезаются на сервере)
+  Future<void> logError(String message);
+  /// Отчёт по рекламе за days дней: баннеры и кампании продвижения (владелец)
+  Future<List<AdReportItem>> ownerAdReport(int days);
+  /// Раздел разработчика: активные, возвраты, воронки, платформы, ошибки (владелец)
+  Future<DevStats> devStats(int days);
 
   /// Удалить из хранилища фото документов по решённым и старым (30 дней) заявкам. Возвращает число файлов.
   Future<int> adminPurgeDocs();

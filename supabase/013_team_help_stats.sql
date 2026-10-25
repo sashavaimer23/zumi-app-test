@@ -473,11 +473,11 @@ This deletes your profile, listings, photos and chats. Records of payments may b
 - Choose rent or sale and the type of property.
 - Add a clear title, the price and the main details (bedrooms, bathrooms, size).
 - Put the pin exactly on the property on the map.
-- Add good photos: daylight, every room, the outside and the street. Listings with 5+ photos get many more messages.
+- Add good photos: daylight, every room, the outside and the street. 5 or more photos give people a clear picture.
 - Check the preview and publish.
 
 ## Tips
-- Write the real price. Listings with "price on request" get fewer calls.
+- Write the real price, so people know right away if the home fits their budget.
 - Do not put phone numbers or links inside photos or the description — use the contact settings instead.
 - Confirm "still available" every 60 days, otherwise the listing is hidden from search.',
    10, false),
@@ -519,7 +519,7 @@ If there is no "Show number" button, the author chose "Chat only" — send a mes
 Your number will not be shown on any of your listings or on your agent page. People write to you in Zumi chat, and you get a notification for every new message. You can switch back at any time.',
    20, false),
   ('f131b212-3739-54b4-8711-d0657f8640a7', 'verification', 'How to get the Verified badge',
-   'The Verified badge shows that Zumi checked who you are. Listings with the badge get more trust and more messages.
+   'The Verified badge shows that Zumi checked who you are.
 
 Steps (about 3 minutes):
 - Confirm your phone with a WhatsApp or SMS code.
