@@ -5,7 +5,6 @@ import '../../models/models.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
-import '../../widgets/wide_card.dart';
 import '../../widgets/zicons.dart';
 import '../auth_screen.dart';
 import '../shell.dart';
@@ -27,7 +26,11 @@ IconData helpIcon(String category) => switch (category) {
       _ => ZI.settings,
     };
 
-double _side(BuildContext context) => isDesktop(context) ? desktopSide(context) : 18;
+/// Поля по бокам: на широком экране текст не шире 760 px — его удобно читать
+double _side(BuildContext context) {
+  final w = MediaQuery.sizeOf(context).width;
+  return w > 800 ? (w - 760) / 2 : 18;
+}
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -72,7 +75,12 @@ class _HelpScreenState extends State<HelpScreen> {
             return const Center(child: CircularProgressIndicator(color: Zc.orange));
           }
           final all = snap.data ?? const <HelpArticle>[];
-          final found = _query.trim().length < 2 ? null : all.where((a) => a.matches(_query)).toList();
+          // сначала статьи, где слова есть в заголовке
+          final found = _query.trim().length < 2
+              ? null
+              : (all.where((a) => a.matches(_query)).toList()
+                ..sort((a, b) => (b.title.toLowerCase().contains(_query.trim().toLowerCase()) ? 1 : 0)
+                    .compareTo(a.title.toLowerCase().contains(_query.trim().toLowerCase()) ? 1 : 0)));
           return RefreshIndicator(
             color: Zc.orange,
             onRefresh: () async {

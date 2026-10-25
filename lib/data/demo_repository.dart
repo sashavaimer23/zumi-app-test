@@ -875,6 +875,8 @@ class DemoRepository implements Repository {
       accounts: _newAccounts.length + _demoNewAccounts.where((a) => a.reviewedAt == null).length,
       listingsNew: _props.where((p) => p.status == 'pending').length,
       campaignsNew: _campaigns.where((c) => c.phase == 'review').length,
+      helpUnhelpful: _myVotes.values.where((v) => !v.$1).length +
+          _otherVotes.values.fold<int>(0, (a, l) => a + l.where((v) => !v.$1).length),
       otpTestMode: _otpTestMode,
       requireLicence: _requireLicence,
       idChecks: _vQueue.where((v) => v.kind == 'identity').length,
