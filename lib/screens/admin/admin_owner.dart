@@ -936,7 +936,7 @@ class _DevStatsState extends State<_DevStats> {
               SizedBox(width: w, child: _Kpi('Active today', _fmt(d.dauToday), 'Different people', false)),
               SizedBox(width: w, child: _Kpi('Active a day', _fmt(d.dauAvg), 'Average for the period', false)),
               SizedBox(width: w, child: _Kpi('Active this month', _fmt(d.mau), 'Different people', false)),
-              SizedBox(width: w, child: _Kpi('Come back', '${d.returningShare}%', 'Visited in the 30 days before', true)),
+              SizedBox(width: w, child: _Kpi('Come back', '${d.returningShare}%', 'Visited in the 30 days before', false)),
             ]);
           }),
           const SizedBox(height: 18),
@@ -999,7 +999,7 @@ class _DevStatsState extends State<_DevStats> {
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                     ),
                     SizedBox(width: 90, child: Text('v$version', style: const TextStyle(color: Zc.grey))),
-                    Expanded(child: Text('${_fmt(visits)} visits · ${_fmt(people)} people a day (sum)')),
+                    Expanded(child: Text('${_fmt(visits)} visits · ${_fmt(people)} daily visitors (added up)')),
                   ]),
                 ),
             ]),
