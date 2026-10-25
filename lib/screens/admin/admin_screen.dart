@@ -13,22 +13,31 @@ import '../../widgets/promo_card.dart';
 import '../../widgets/reviews.dart';
 import '../../widgets/share.dart';
 import '../../widgets/zicons.dart';
+import '../../utils/download.dart';
+import '../help/help_screen.dart';
 import '../promotion/crop_dialog.dart';
 import '../property_screen.dart';
 import '../support/ticket_chat_screen.dart';
 
 part 'admin_extra.dart';
+part 'admin_owner.dart';
 
 // ======================================================================
 // Кабинет команды Zumi. Доступен только role = 'admin' (проверяет сервер).
 // Разделы: Inbox · ID checks · Licences · Reports · Support · Reviews · Log
 // ======================================================================
 
-enum _Section { inbox, accounts, listings, promos, ids, licences, reports, phones, support, reviews, ads, log }
+enum _Section { inbox, stats, accounts, listings, promos, ids, licences, reports, phones, support, reviews, help, ads, team, log }
+
+/// Только для владельца Zumi (сервер тоже проверяет)
+const _ownerOnly = {_Section.stats, _Section.ads, _Section.team, _Section.log};
 
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
+        _Section.stats => 'Statistics',
+        _Section.help => 'Help articles',
+        _Section.team => 'Team & roles',
         _Section.accounts => 'New accounts',
         _Section.listings => 'Listings to check',
         _Section.promos => 'Promotions to check',
@@ -43,6 +52,9 @@ extension on _Section {
       };
   IconData get icon => switch (this) {
         _Section.inbox => ZI.bell,
+        _Section.stats => ZI.sort,
+        _Section.help => ZI.info,
+        _Section.team => ZI.lock,
         _Section.accounts => ZI.userCircle,
         _Section.listings => ZI.house,
         _Section.promos => ZI.photos,
@@ -89,6 +101,9 @@ class _AdminScreenState extends State<AdminScreen> {
 
   int _badge(_Section s) => switch (s) {
         _Section.inbox => _stats.total,
+        _Section.stats => 0,
+        _Section.help => _stats.helpUnhelpful,
+        _Section.team => 0,
         _Section.accounts => _stats.accounts,
         _Section.listings => _stats.listingsNew,
         _Section.promos => _stats.campaignsNew,
@@ -104,13 +119,20 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _body() => switch (_section) {
         _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats),
+        _Section.stats => const _Stats(),
+        _Section.help => const _HelpAdmin(),
+        _Section.team => const _Team(),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),
         _Section.listings => _ListingsQueue(onChanged: _refreshStats),
         _Section.promos => _PromosQueue(onChanged: _refreshStats),
         _Section.phones => const _PhoneViews(),
         _Section.ads => _Ads(onChanged: _refreshStats),
         _Section.ids => _IdChecks(onChanged: _refreshStats),
-        _Section.licences => _Licences(onChanged: _refreshStats, requireLicence: _stats.requireLicence),
+        _Section.licences => _Licences(
+            onChanged: _refreshStats,
+            requireLicence: _stats.requireLicence,
+            canChangeRule: context.read<AppState>().user?.isOwner ?? false,
+          ),
         _Section.reports => _Reports(onChanged: _refreshStats),
         _Section.support => _Support(onChanged: _refreshStats),
         _Section.reviews => _Reviews(onChanged: _refreshStats),
@@ -130,6 +152,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
     final nav = [
       for (final s in _Section.values)
+        if (user.isOwner || !_ownerOnly.contains(s))
         _NavItem(
           section: s,
           selected: s == _section,
@@ -151,7 +174,7 @@ class _AdminScreenState extends State<AdminScreen> {
         ],
       ),
       body: Column(children: [
-        if (_stats.otpTestMode) _OtpTestBanner(onChanged: _refreshStats),
+        if (_stats.otpTestMode) _OtpTestBanner(onChanged: _refreshStats, canTurnOff: user.isOwner),
         Expanded(child: wide
           ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
@@ -361,6 +384,7 @@ class _Inbox extends StatelessWidget {
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),
       (_Section.support, stats.tickets, 'Support requests', 'Waiting for your reply'),
       (_Section.reviews, stats.reviews, 'Flagged reviews', 'Reported by users'),
+      (_Section.help, stats.helpUnhelpful, 'Help articles that did not help', 'Last 7 days — read the comments'),
     ];
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -541,7 +565,7 @@ class _AccountsState extends State<_Accounts> {
             _actionBtn('Block', () => _act(a, 'ban'), danger: true),
           ]),
         ],
-        if (a.isAgent && !a.banned) ...[
+        if (a.isAgent && !a.banned && (context.read<AppState>().user?.isOwner ?? false)) ...[
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: () => _grantPromotion(context, a),
@@ -727,9 +751,10 @@ class _DocImagesState extends State<_DocImages> {
 // LICENCES (ZIEA)
 // ======================================================================
 class _Licences extends StatefulWidget {
-  const _Licences({required this.onChanged, required this.requireLicence});
+  const _Licences({required this.onChanged, required this.requireLicence, required this.canChangeRule});
   final VoidCallback onChanged;
   final bool requireLicence;
+  final bool canChangeRule; // правило меняет только владелец
 
   @override
   State<_Licences> createState() => _LicencesState();
@@ -793,7 +818,7 @@ class _LicencesState extends State<_Licences> {
               contentPadding: EdgeInsets.zero,
               activeColor: Zc.orange,
               value: _require,
-              onChanged: _setRequire,
+              onChanged: widget.canChangeRule ? _setRequire : null,
               title: const Text('Publish only after the licence check',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               subtitle: const Text(

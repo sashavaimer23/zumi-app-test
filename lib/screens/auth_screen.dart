@@ -111,7 +111,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(12)),
                   child: const Text(
                     'Demo mode: any email and a 6+ character password will work. Nothing is sent to a server. '
-                    'Tip: an email with "agent" signs in as an agent.',
+                    'Tip: an email with "agent" signs in as an agent, "admin" — as the Zumi owner, '
+                    '"moderator" — as a moderator.',
                     style: TextStyle(fontSize: 13),
                   ),
                 ),

@@ -10,6 +10,7 @@ import '../widgets/trust.dart';
 import '../widgets/zicons.dart';
 import 'legal_screen.dart';
 import 'support/support_screen.dart';
+import 'help/help_screen.dart';
 import 'verify/get_verified_screen.dart';
 import 'verify/phone_verify_screen.dart';
 
@@ -338,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _Row(
                 icon: ZI.chat,
                 title: 'Help & support',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen())),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen())),
               ),
               _Row(
                 icon: ZI.fileText,

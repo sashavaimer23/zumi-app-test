@@ -1,0 +1,114 @@
+[
+ {
+  "id": "e2bf5b54-9919-58d0-9461-2de87c71309d",
+  "category": "account",
+  "title": "Signing in and confirmation codes",
+  "body": "You sign in to Zumi with your email and password.\n\n## Confirming your phone\nTo see phone numbers in listings, and to get the \"Phone confirmed\" mark, confirm your own phone once:\n- Open Profile → Settings → Phone & verification.\n- Choose WhatsApp or SMS and enter your number with the country code, e.g. +260 97 123 4567.\n- Type the 6-digit code you receive. It works for 10 minutes.\n\nYou can also confirm your email with a code, but only a WhatsApp or SMS code gives the \"Phone confirmed\" mark.\n\n## Good to know\n- One phone number can be confirmed on only one Zumi account.\n- If you change your number in the profile, you need to confirm the new one.\n- Forgot your password? On the sign-in screen tap \"Forgot password?\" — we send a code to your email.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "ad9879b4-2ae6-5057-8ebb-2bbb2ce2ff58",
+  "category": "account",
+  "title": "I did not get a confirmation code",
+  "body": "Most codes arrive within a minute. If yours did not:\n- Check that the number starts with the country code (+260 for Zambia) and has no mistakes.\n- For WhatsApp: make sure WhatsApp is installed and active on this number.\n- For SMS: check that your phone has signal and the inbox is not full.\n- Wait one minute, then tap \"Change number, method or resend code\" and send a new code.\n\nFor safety you can request up to 5 codes per hour and try a code up to 5 times. If you reach the limit, wait an hour.\n\nStill nothing? Write to us in Help → Contact support and tell us the number and the channel (WhatsApp or SMS).",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "b33e4063-ac2c-58a5-9255-2ec89a350c92",
+  "category": "account",
+  "title": "How to delete my account",
+  "body": "You can delete your account at any time:\n- Open Profile → Settings → Delete my account.\n- Type DELETE to confirm.\n\nThis deletes your profile, listings, photos and chats. Records of payments may be kept without your name where the law requires it. Deleting cannot be undone — if you only want a break, you can archive your listings instead.",
+  "sort": 30,
+  "web_only": false
+ },
+ {
+  "id": "e2232f2d-41f2-569a-a8f0-f3ebc63e88b5",
+  "category": "listings",
+  "title": "How to post a listing",
+  "body": "Tap \"Post\" on the home screen (or \"Post a listing\" on the website) and follow the steps:\n- Choose rent or sale and the type of property.\n- Add a clear title, the price and the main details (bedrooms, bathrooms, size).\n- Put the pin exactly on the property on the map.\n- Add good photos: daylight, every room, the outside and the street. Listings with 5+ photos get many more messages.\n- Check the preview and publish.\n\n## Tips\n- Write the real price. Listings with \"price on request\" get fewer calls.\n- Do not put phone numbers or links inside photos or the description — use the contact settings instead.\n- Confirm \"still available\" every 60 days, otherwise the listing is hidden from search.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "8e7d414f-d7f6-5b5a-aa35-b1190d136b1b",
+  "category": "listings",
+  "title": "Why is my listing under review?",
+  "body": "The first 2 listings of every new person are checked by the Zumi team before they appear in search. This keeps fake listings away from buyers and tenants.\n\nThe check usually takes less than a day. You will see the status in Profile → My listings:\n- \"Under review\" — waiting for the team.\n- \"Not approved\" — the reason is shown. Fix it and tap \"Send for review again\".\n\nAfter 2 approved listings, your new listings go live right away.",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "ce7fd462-5a6c-59d9-be2a-337af0146f09",
+  "category": "listings",
+  "title": "Why is my listing hidden from search?",
+  "body": "A listing is hidden from search when:\n- It was not confirmed as \"still available\" for 60 days. Open Profile → My listings, tap ⋯ → \"Confirm still available\".\n- It is waiting for review or was not approved (see \"Why is my listing under review?\").\n- People reported it and the team is checking it.\n- You archived it or marked it as rented or sold.\n\nYou can always see your own listings in Profile → My listings, whatever their status.",
+  "sort": 30,
+  "web_only": false
+ },
+ {
+  "id": "08de150a-c4e6-5fbc-8d43-3c77fae76f95",
+  "category": "contact",
+  "title": "Why can't I see the phone number?",
+  "body": "To protect agents and owners from spam and scammers, phone numbers are not shown to everyone.\n\nTo see a number:\n- Sign in to Zumi.\n- Confirm your own phone with a WhatsApp or SMS code (it takes a minute).\n- Tap \"Show number\" or \"WhatsApp\" on the listing.\n\nYou can see up to 15 numbers a day. Every view is recorded, so bots and spammers can be blocked.\n\nIf there is no \"Show number\" button, the author chose \"Chat only\" — send a message in Zumi chat instead.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "1327cf06-e22d-54f0-9536-b8668049f1be",
+  "category": "contact",
+  "title": "Chat only: hiding my phone number",
+  "body": "If you do not want to receive calls, choose \"Chat only\":\n- Open Profile → Settings → How people contact you.\n- Select \"Chat only\".\n\nYour number will not be shown on any of your listings or on your agent page. People write to you in Zumi chat, and you get a notification for every new message. You can switch back at any time.",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "f131b212-3739-54b4-8711-d0657f8640a7",
+  "category": "verification",
+  "title": "How to get the Verified badge",
+  "body": "The Verified badge shows that Zumi checked who you are. Listings with the badge get more trust and more messages.\n\nSteps (about 3 minutes):\n- Confirm your phone with a WhatsApp or SMS code.\n- Take a photo of your NRC or passport and a selfie.\n- Agents also add their ZIEA registration number.\n\nThe Zumi team checks the documents, usually within the same day. As soon as the team approves or rejects the check, the photos of your documents and selfie are deleted. We keep only the result.\n\nIf there is no decision within 30 days, the photos are deleted and you need to send them again.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "a44d1cea-2bb5-5fdc-81f2-6aea36e74198",
+  "category": "verification",
+  "title": "ZIEA licence for agents",
+  "body": "Estate agents in Zambia are registered with the Zambia Institute of Estate Agents (ZIEA). Zumi checks your registration number with the register.\n\n- Add the number when you sign up as an agent, or later in Profile → Get verified.\n- Until it is checked, your listings and agent page show \"ZIEA licence not verified\".\n- Promotion of listings is available only to agents with a checked licence.\n\nIf your number was not approved, the reason is shown in Get verified. Check the number and send it again.",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "4f3404db-0d48-5bab-bdf2-af48ecc8e760",
+  "category": "promotion",
+  "title": "How promotion works",
+  "body": "Agents with a checked ZIEA licence can promote their listings:\n- \"Top of search results\" — your listing is shown first in the list.\n- \"Featured on the home page\" — your listing appears in the Featured row.\n\nOpen Profile → Promotion → New campaign, choose a listing, the place and the dates. The campaign starts and ends by itself. You can pause or stop it at any time and see views, clicks, calls and messages.\n\nIf you add your own picture, name or website link, the Zumi team checks the campaign first (usually within a day). A campaign with a photo from the listing and your own name starts right away.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "92e9e1e2-0b00-5793-ac95-3fc27a6d1090",
+  "category": "safety",
+  "title": "How to spot a scam",
+  "body": "Most people on Zumi are honest, but be careful. Warning signs:\n- The price is much lower than similar homes in the area.\n- The person asks for a deposit or \"booking fee\" before you see the property.\n- They say they are abroad and will send the keys after payment.\n- They push you to decide today or to pay by mobile money to a private number.\n- They refuse a video call or a viewing.\n\n## Stay safe\n- Never pay before you have seen the property and the documents.\n- Meet in daylight and bring someone with you.\n- Prefer listings with the Verified badge and photos taken on site.\n- Keep the conversation in Zumi chat — it helps us if something goes wrong.\n\nIf something feels wrong, report the listing. It takes 10 seconds.",
+  "sort": 10,
+  "web_only": false
+ },
+ {
+  "id": "5f6f67c6-529b-5862-9ff4-bca216e0806c",
+  "category": "safety",
+  "title": "How to report a listing or a person",
+  "body": "- Open the listing and tap \"Report this listing\" at the bottom.\n- Choose the reason (scam, wrong price, already rented, fake photos…) and add details if you can.\n\nThe Zumi team checks every report, scam reports first. A listing reported by several people with confirmed phones is hidden automatically until the team checks it.\n\nYou can also report a review, and contact support from Help → Contact support. We do not tell the author who reported them.",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "e9048006-4de9-53bc-9049-4d6fa4b6a2e8",
+  "category": "technical",
+  "title": "The app is slow or photos do not load",
+  "body": "Try these steps:\n- Check your internet connection. Photos need more data than text.\n- Pull down on the list to refresh.\n- Close the app (or browser tab) and open it again.\n- Update the app or, on the website, refresh the page.\n- Free some space on your phone if it is almost full.\n\nIf it still does not work, write to us in Help → Contact support. Tell us your phone model and what you were doing — a screenshot helps a lot.",
+  "sort": 10,
+  "web_only": false
+ }
+]

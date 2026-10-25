@@ -88,8 +88,9 @@ class _ListingsQueueState extends State<_ListingsQueue> {
 // ТЕСТОВЫЙ РЕЖИМ КОДОВ — красная плашка, пока он включён
 // ======================================================================
 class _OtpTestBanner extends StatelessWidget {
-  const _OtpTestBanner({required this.onChanged});
+  const _OtpTestBanner({required this.onChanged, required this.canTurnOff});
   final Future<void> Function() onChanged;
+  final bool canTurnOff; // выключает только владелец
 
   Future<void> _turnOff(BuildContext context) async {
     final ok = await showDialog<bool>(
@@ -133,12 +134,14 @@ class _OtpTestBanner extends StatelessWidget {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.3),
           ),
         ),
-        const SizedBox(width: 8),
-        TextButton(
-          style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFD64545)),
-          onPressed: () => _turnOff(context),
-          child: const Text('Turn off'),
-        ),
+        if (canTurnOff) ...[
+          const SizedBox(width: 8),
+          TextButton(
+            style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFD64545)),
+            onPressed: () => _turnOff(context),
+            child: const Text('Turn off'),
+          ),
+        ],
       ]),
     );
   }

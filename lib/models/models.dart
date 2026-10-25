@@ -482,6 +482,7 @@ class AppUser {
   final String? fullName;
   final String? phone;
   final String role; // 'agent' | 'owner' | 'admin'
+  final String? teamLevel; // команда Zumi: 'moderator' | 'owner'
   final String? agencyName;
   final bool phoneVerified;   // телефон подтверждён SMS-кодом
   final bool idVerified;      // NRC/паспорт + селфи проверены командой Zumi
@@ -506,6 +507,7 @@ class AppUser {
     this.fullName,
     this.phone,
     this.role = 'owner',
+    this.teamLevel,
     this.agencyName,
     this.phoneVerified = false,
     this.idVerified = false,
@@ -527,8 +529,11 @@ class AppUser {
 
   bool get profileComplete => (fullName ?? '').trim().length > 1;
 
-  /// Команда Zumi (кабинет поддержки)
+  /// Команда Zumi (кабинет поддержки): модератор или владелец
   bool get isAdmin => role == 'admin';
+
+  /// Владелец Zumi: + статистика, реклама, деньги, настройки, роли, журнал действий
+  bool get isOwner => isAdmin && (teamLevel ?? 'owner') == 'owner';
 
   /// Плашка Verified: профиль + телефон + документ (+ лицензия ZIEA у агентов)
   bool get identityVerified =>
@@ -567,6 +572,7 @@ class AppUser {
         fullName: fullName ?? this.fullName,
         phone: phone ?? this.phone,
         role: role,
+        teamLevel: teamLevel,
         agencyName: agencyName ?? this.agencyName,
         phoneVerified: phoneVerified ?? this.phoneVerified,
         idVerified: idVerified ?? this.idVerified,
@@ -936,12 +942,14 @@ class AdminStats {
   final int accounts, listingsNew, campaignsNew, idChecks, ownership, licences, reports, tickets, reviews, listings, users;
   final bool otpTestMode; // коды подтверждения в тестовом режиме (123456 подходит всем)
   final bool requireLicence; // агенты публикуют только после проверки лицензии ZIEA
+  final int helpUnhelpful; // «не помогло» в статьях помощи за 7 дней
   const AdminStats({
     this.accounts = 0,
     this.listingsNew = 0,
     this.campaignsNew = 0,
     this.otpTestMode = false,
     this.requireLicence = false,
+    this.helpUnhelpful = 0,
     this.idChecks = 0,
     this.ownership = 0,
     this.licences = 0,
@@ -963,6 +971,7 @@ class AdminStats {
       campaignsNew: n('campaigns_new'),
       otpTestMode: (m['otp_test_mode'] as bool?) ?? false,
       requireLicence: (m['require_licence'] as bool?) ?? false,
+      helpUnhelpful: n('help_unhelpful'),
       idChecks: n('id_checks'),
       ownership: n('ownership'),
       licences: n('licences'),
@@ -1447,3 +1456,221 @@ class PhoneWatcher {
 /// Лимиты размера файлов (такие же стоят на сервере)
 const kMaxImageBytes = 5 * 1024 * 1024; // фото — до 5 MB
 const kMaxDocBytes = 10 * 1024 * 1024; // документы для проверки — до 10 MB
+
+// ======================================================================
+// Помощь: статьи (хранятся в базе, правятся из кабинета)
+// ======================================================================
+/// Разделы помощи: ключ → (название, иконка задаётся в экране)
+const helpCategories = <String, String>{
+  'account': 'Account and sign-in',
+  'listings': 'Listings',
+  'contact': 'Contacts and chats',
+  'verification': 'Verification (Verified)',
+  'promotion': 'Promotion and payment',
+  'safety': 'Safety and scams',
+  'technical': 'Technical problems',
+};
+
+class HelpArticle {
+  final String id;
+  final String category;
+  final String title;
+  final String body; // абзацы через пустую строку, «- » — пункт списка, «## » — подзаголовок
+  final int sort;
+  final bool published;
+  final bool webOnly; // только на сайте (про оплату — правила Apple и Google)
+  final DateTime? updatedAt;
+
+  const HelpArticle({
+    required this.id,
+    required this.category,
+    required this.title,
+    required this.body,
+    this.sort = 100,
+    this.published = true,
+    this.webOnly = false,
+    this.updatedAt,
+  });
+
+  String get categoryLabel => helpCategories[category] ?? category;
+
+  factory HelpArticle.fromMap(Map<String, dynamic> m) => HelpArticle(
+        id: m['id'] as String,
+        category: (m['category'] as String?) ?? 'account',
+        title: m['title'] as String,
+        body: (m['body'] as String?) ?? '',
+        sort: ((m['sort'] as num?) ?? 100).toInt(),
+        published: (m['published'] as bool?) ?? true,
+        webOnly: (m['web_only'] as bool?) ?? false,
+        updatedAt: DateTime.tryParse((m['updated_at'] as String?) ?? ''),
+      );
+
+  Map<String, dynamic> toMap() => {
+        'category': category,
+        'title': title.trim(),
+        'body': body.trim(),
+        'sort': sort,
+        'published': published,
+        'web_only': webOnly,
+      };
+
+  HelpArticle copyWith({String? id, String? category, String? title, String? body, int? sort, bool? published, bool? webOnly}) =>
+      HelpArticle(
+        id: id ?? this.id,
+        category: category ?? this.category,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        sort: sort ?? this.sort,
+        published: published ?? this.published,
+        webOnly: webOnly ?? this.webOnly,
+        updatedAt: DateTime.now(),
+      );
+
+  /// Поиск: все слова запроса есть в заголовке или тексте
+  bool matches(String query) {
+    final words = query.toLowerCase().split(RegExp(r'\s+')).where((w) => w.length > 1);
+    final text = '${title.toLowerCase()} ${body.toLowerCase()} ${categoryLabel.toLowerCase()}';
+    return words.every(text.contains);
+  }
+}
+
+/// Оценки статьи для команды
+class HelpRating {
+  final String articleId;
+  final String title;
+  final String category;
+  final int yes;
+  final int no;
+  final List<(String, DateTime)> comments;
+
+  const HelpRating({
+    required this.articleId,
+    required this.title,
+    required this.category,
+    required this.yes,
+    required this.no,
+    this.comments = const [],
+  });
+
+  int get total => yes + no;
+  double get helpfulShare => total == 0 ? 1 : yes / total;
+
+  factory HelpRating.fromMap(Map<String, dynamic> m) => HelpRating(
+        articleId: m['article_id'] as String,
+        title: m['title'] as String,
+        category: (m['category'] as String?) ?? '',
+        yes: ((m['yes'] as num?) ?? 0).toInt(),
+        no: ((m['no'] as num?) ?? 0).toInt(),
+        comments: [
+          for (final c in (m['comments'] as List? ?? const []))
+            ((c as Map)['text'] as String, DateTime.tryParse(c['at'] as String? ?? '') ?? DateTime.now()),
+        ],
+      );
+}
+
+// ======================================================================
+// Команда Zumi и панель владельца
+// ======================================================================
+class TeamMember {
+  final String userId;
+  final String? fullName;
+  final String? email;
+  final String level; // moderator | owner
+
+  const TeamMember({required this.userId, this.fullName, this.email, required this.level});
+
+  factory TeamMember.fromMap(Map<String, dynamic> m) => TeamMember(
+        userId: m['user_id'] as String,
+        fullName: m['full_name'] as String?,
+        email: m['email'] as String?,
+        level: (m['level'] as String?) ?? 'owner',
+      );
+}
+
+/// Одна точка графика (час или день)
+class DashPoint {
+  final String t; // «14:00» или «2026-10-25»
+  final int visits, visitors, contacts, newUsers, newListings;
+  const DashPoint(this.t, this.visits, this.visitors, this.contacts, this.newUsers, this.newListings);
+}
+
+/// Главные цифры за день / неделю / месяц
+class Dashboard {
+  final String period; // day | week | month
+  final DateTime from;
+  final DateTime to;
+  final Map<String, int> totals;
+  final List<DashPoint> series;
+  final List<(String, int)> topAreas;
+  final List<(String, String, int)> topFilters; // (фильтр, значение, сколько раз)
+
+  const Dashboard({
+    required this.period,
+    required this.from,
+    required this.to,
+    required this.totals,
+    required this.series,
+    required this.topAreas,
+    required this.topFilters,
+  });
+
+  int t(String key) => totals[key] ?? 0;
+  int get contacts => t('phone_views') + t('new_chats');
+
+  factory Dashboard.fromMap(Map<String, dynamic> m) {
+    int n(dynamic v) => ((v as num?) ?? 0).toInt();
+    final totals = <String, int>{
+      for (final e in (Map<String, dynamic>.from(m['totals'] as Map? ?? const {})).entries) e.key: n(e.value),
+    };
+    return Dashboard(
+      period: (m['period'] as String?) ?? 'day',
+      from: DateTime.tryParse('${m['from']}') ?? DateTime.now(),
+      to: DateTime.tryParse('${m['to']}') ?? DateTime.now(),
+      totals: totals,
+      series: [
+        for (final p in (m['series'] as List? ?? const []))
+          DashPoint('${(p as Map)['t']}', n(p['visits']), n(p['visitors']), n(p['contacts']), n(p['new_users']),
+              n(p['new_listings'])),
+      ],
+      topAreas: [for (final a in (m['top_areas'] as List? ?? const [])) ('${(a as Map)['name']}', n(a['n']))],
+      topFilters: [
+        for (final f in (m['top_filters'] as List? ?? const [])) ('${(f as Map)['dim']}', '${f['value']}', n(f['n'])),
+      ],
+    );
+  }
+
+  /// Таблица для выгрузки (CSV, открывается в Excel / Google Sheets)
+  String toCsv() {
+    String q(Object v) {
+      final s = '$v';
+      return s.contains(',') || s.contains('"') ? '"${s.replaceAll('"', '""')}"' : s;
+    }
+
+    final b = StringBuffer()
+      ..writeln('Zumi statistics,${q(period)},${isoDay(from)},${isoDay(to)}')
+      ..writeln()
+      ..writeln('Metric,Value');
+    for (final e in totals.entries) {
+      b.writeln('${q(e.key)},${e.value}');
+    }
+    b
+      ..writeln()
+      ..writeln('${period == 'day' ? 'Hour' : 'Day'},Visits,Visitors,Contacts,New users,New listings');
+    for (final p in series) {
+      b.writeln('${q(p.t)},${p.visits},${p.visitors},${p.contacts},${p.newUsers},${p.newListings}');
+    }
+    b
+      ..writeln()
+      ..writeln('Popular area,Searches');
+    for (final (name, n) in topAreas) {
+      b.writeln('${q(name)},$n');
+    }
+    b
+      ..writeln()
+      ..writeln('Filter,Value,Searches');
+    for (final (dim, value, n) in topFilters) {
+      b.writeln('${q(dim)},${q(value)},$n');
+    }
+    return b.toString();
+  }
+}

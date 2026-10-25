@@ -137,7 +137,12 @@ abstract class Repository {
 
   // --- поддержка (пользователь)
   Future<List<SupportTicket>> myTickets();
-  Future<String> openTicket({required String category, required String subject, required String message});
+  Future<String> openTicket({
+    required String category,
+    required String subject,
+    required String message,
+    String? helpArticleId, // обращение из статьи помощи, которая не помогла
+  });
   Stream<List<SupportMessage>> ticketMessages(String ticketId);
   Future<void> sendTicketMessage(String ticketId, String body, {bool asStaff = false});
 
@@ -198,6 +203,25 @@ abstract class Repository {
   Future<void> adminSetOtpTestMode(bool on);
   /// Агент публикует объявления только после проверки лицензии ZIEA — включить/выключить
   Future<void> adminSetRequireLicence(bool on);
+  // --- помощь
+  /// Опубликованные статьи (в приложениях — без статей «только для сайта»)
+  Future<List<HelpArticle>> helpArticles();
+  /// «Статья была полезной?» — один голос с человека (можно изменить)
+  Future<void> voteHelp(String articleId, bool helpful, {String? comment});
+  Future<List<HelpArticle>> adminHelpArticles();
+  Future<HelpArticle> adminSaveHelpArticle(HelpArticle a, {bool isNew = false});
+  Future<void> adminDeleteHelpArticle(String id);
+  Future<List<HelpRating>> adminHelpRatings();
+
+  // --- команда и статистика (владелец)
+  Future<List<TeamMember>> adminTeam();
+  /// level: 'moderator' | 'owner' | null — убрать из команды
+  Future<void> adminSetTeam(String email, String? level);
+  /// period: 'day' | 'week' | 'month'
+  Future<Dashboard> ownerDashboard(String period);
+  /// Обезличенный счётчик посещений (без имён)
+  Future<void> logVisit();
+
   /// Удалить из хранилища фото документов по решённым и старым (30 дней) заявкам. Возвращает число файлов.
   Future<int> adminPurgeDocs();
 

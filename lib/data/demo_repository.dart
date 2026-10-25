@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' show Random;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:uuid/uuid.dart';
 
@@ -66,7 +71,9 @@ class DemoRepository implements Repository {
         id: id,
         email: email,
         fullName: email.split('@').first,
-        role: e.contains('admin') ? 'admin' : (e.contains('agent') ? 'agent' : 'owner'),
+        // демо: «moderator» в почте — модератор команды, «admin» — владелец
+        role: e.contains('admin') || e.contains('moderator') ? 'admin' : (e.contains('agent') ? 'agent' : 'owner'),
+        teamLevel: e.contains('moderator') ? 'moderator' : (e.contains('admin') ? 'owner' : null),
         // демо: agent@test.com — агент с уже проверенной лицензией; другие «agent…» — без проверки
         licenceNo: e == 'agent@test.com' ? 'ZIEA/2019/0417' : null,
         licenceVerified: e == 'agent@test.com',
@@ -773,6 +780,13 @@ class DemoRepository implements Repository {
     return u;
   }
 
+  /// Владелец: статистика, реклама, деньги, настройки, роли, журнал
+  AppUser _requireOwner() {
+    final u = _requireAdmin();
+    if (!u.isOwner) throw AppException('Only the Zumi owner can do this', code: 'OWNER_ONLY');
+    return u;
+  }
+
   @override
   Future<List<SupportTicket>> myTickets() async {
     final u = _requireUser();
@@ -780,7 +794,12 @@ class DemoRepository implements Repository {
   }
 
   @override
-  Future<String> openTicket({required String category, required String subject, required String message}) async {
+  Future<String> openTicket({
+    required String category,
+    required String subject,
+    required String message,
+    String? helpArticleId,
+  }) async {
     final u = _requireUser();
     await _lag();
     final id = _uuid.v4();
@@ -1067,7 +1086,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<List<AuditEntry>> adminAudit() async {
-    _requireAdmin();
+    _requireOwner();
     return List.of(_audit);
   }
 
@@ -1192,14 +1211,14 @@ class DemoRepository implements Repository {
 
   @override
   Future<List<Ad>> adminAds() async {
-    _requireAdmin();
+    _requireOwner();
     await _lag();
     return List.of(_ads)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   @override
   Future<Ad> adminSaveAd(AdDraft d, {required bool launch}) async {
-    _requireAdmin();
+    _requireOwner();
     await _lag();
     final id = d.id ?? _uuid.v4();
     final today = DateTime.now();
@@ -1224,7 +1243,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<void> adminSetAdStatus(String id, String status) async {
-    _requireAdmin();
+    _requireOwner();
     final i = _ads.indexWhere((a) => a.id == id);
     if (i >= 0) _ads[i] = _ads[i].copyWith(status: status);
     _log(status, 'ad', i >= 0 ? _ads[i].title : id);
@@ -1232,6 +1251,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<CampaignStats> adStats(String id) async {
+    _requireOwner();
     final m = _adStats[id] ?? const {};
     final keys = m.keys.toList()..sort();
     return CampaignStats([for (final k in keys) CampaignDay(DateTime.parse(k), m[k]!.$1, m[k]!.$2)]);
@@ -1303,7 +1323,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<void> adminGrantPromotion(String agentId, String propertyId, int days, {String placement = 'search_top'}) async {
-    _requireAdmin();
+    _requireOwner();
     final agent = _known[agentId];
     final t = DateTime.now();
     final start = DateTime(t.year, t.month, t.day);
@@ -1340,9 +1360,173 @@ class DemoRepository implements Repository {
 
   @override
   Future<void> adminSetRequireLicence(bool on) async {
-    _requireAdmin();
+    _requireOwner();
     _requireLicence = on;
     _log('setting', 'settings', 'require_licence_to_publish = $on');
+  }
+
+  // ---------------- помощь (демо: статьи из assets/help/articles.json) ----------------
+  List<HelpArticle>? _help;
+  final Map<String, (bool, String?)> _myVotes = {};
+  final Map<String, List<(bool, String?, DateTime)>> _otherVotes = {};
+
+  Future<List<HelpArticle>> _loadHelp() async {
+    if (_help != null) return _help!;
+    try {
+      final raw = jsonDecode(await rootBundle.loadString('assets/help/articles.json')) as List;
+      _help = [for (final m in raw) HelpArticle.fromMap(Map<String, dynamic>.from(m as Map))];
+    } catch (_) {
+      _help = [];
+    }
+    // пара голосов для примера в кабинете
+    if (_help!.isNotEmpty && _otherVotes.isEmpty) {
+      _otherVotes[_help![1].id] = [
+        (false, 'I chose SMS but the code never came. What now?', _ago(300)),
+        (false, null, _ago(800)),
+        (true, null, _ago(1400)),
+      ];
+      _otherVotes[_help![6].id] = [(true, null, _ago(200)), (true, null, _ago(900))];
+    }
+    return _help!;
+  }
+
+  @override
+  Future<List<HelpArticle>> helpArticles() async {
+    await _lag();
+    final all = await _loadHelp();
+    return all.where((a) => a.published && (kIsWeb || !a.webOnly)).toList()
+      ..sort((a, b) => a.category != b.category ? a.category.compareTo(b.category) : a.sort.compareTo(b.sort));
+  }
+
+  @override
+  Future<void> voteHelp(String articleId, bool helpful, {String? comment}) async {
+    await _lag();
+    _myVotes[articleId] = (helpful, (comment ?? '').trim().isEmpty ? null : comment!.trim());
+  }
+
+  @override
+  Future<List<HelpArticle>> adminHelpArticles() async {
+    _requireAdmin();
+    return List.of(await _loadHelp());
+  }
+
+  @override
+  Future<HelpArticle> adminSaveHelpArticle(HelpArticle a, {bool isNew = false}) async {
+    _requireAdmin();
+    final list = await _loadHelp();
+    final saved = isNew ? a.copyWith(id: _uuid.v4()) : a.copyWith();
+    final i = list.indexWhere((x) => x.id == saved.id);
+    i < 0 ? list.add(saved) : list[i] = saved;
+    _log(isNew ? 'help_create' : 'help_edit', 'help', saved.title);
+    return saved;
+  }
+
+  @override
+  Future<void> adminDeleteHelpArticle(String id) async {
+    _requireAdmin();
+    (await _loadHelp()).removeWhere((a) => a.id == id);
+  }
+
+  @override
+  Future<List<HelpRating>> adminHelpRatings() async {
+    _requireAdmin();
+    final list = await _loadHelp();
+    final out = <HelpRating>[];
+    for (final a in list) {
+      final votes = [...?_otherVotes[a.id], if (_myVotes[a.id] != null) (_myVotes[a.id]!.$1, _myVotes[a.id]!.$2, DateTime.now())];
+      out.add(HelpRating(
+        articleId: a.id,
+        title: a.title,
+        category: a.category,
+        yes: votes.where((v) => v.$1).length,
+        no: votes.where((v) => !v.$1).length,
+        comments: [for (final v in votes) if (v.$2 != null) (v.$2!, v.$3)],
+      ));
+    }
+    out.sort((a, b) => (b.no - b.yes).compareTo(a.no - a.yes));
+    return out;
+  }
+
+  // ---------------- команда и статистика (демо) ----------------
+  final Map<String, String> _demoTeam = {'moderator@test.com': 'moderator'};
+
+  @override
+  Future<List<TeamMember>> adminTeam() async {
+    final me = _requireOwner();
+    return [
+      TeamMember(userId: me.id, fullName: me.fullName, email: me.email, level: 'owner'),
+      for (final e in _demoTeam.entries)
+        if (e.key != me.email) TeamMember(userId: 'demo-${e.key.hashCode}', fullName: e.key.split('@').first, email: e.key, level: e.value),
+    ];
+  }
+
+  @override
+  Future<void> adminSetTeam(String email, String? level) async {
+    final me = _requireOwner();
+    final e = email.trim().toLowerCase();
+    if (e == me.email?.toLowerCase()) throw AppException('You cannot change your own role');
+    level == null ? _demoTeam.remove(e) : _demoTeam[e] = level;
+    _log('team_role', 'profile', e, level ?? 'removed');
+  }
+
+  int _visits = 0;
+
+  @override
+  Future<void> logVisit() async => _visits++;
+
+  @override
+  Future<Dashboard> ownerDashboard(String period) async {
+    _requireOwner();
+    await _lag();
+    // демо: правдоподобные числа (на сервере — настоящие счётчики)
+    final now = DateTime.now();
+    final hourly = period == 'day';
+    final n = hourly ? 24 : (period == 'week' ? 7 : 30);
+    final rnd = Random(period.hashCode ^ now.day);
+    final series = <DashPoint>[];
+    for (var i = 0; i < n; i++) {
+      final wave = hourly ? (i < 6 ? 0.15 : (i < 9 ? 0.6 : (i < 18 ? 1.0 : (i < 22 ? 1.3 : 0.5)))) : 1.0;
+      final future = hourly && i > now.hour;
+      final visits = future ? 0 : (wave * (hourly ? 40 : 700) * (0.8 + rnd.nextDouble() * 0.4)).round();
+      final label = hourly
+          ? '${i.toString().padLeft(2, '0')}:00'
+          : isoDay(DateTime(now.year, now.month, now.day).subtract(Duration(days: n - 1 - i)));
+      series.add(DashPoint(label, visits + (i == n - 1 && hourly ? _visits : 0), (visits * 0.72).round(),
+          (visits * 0.06).round(), (visits * 0.015).round(), (visits * 0.008).round()));
+    }
+    int sum(int Function(DashPoint) f) => series.fold(0, (a, p) => a + f(p));
+    final days = hourly ? 1 : n;
+    return Dashboard(
+      period: period,
+      from: DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1)),
+      to: now,
+      totals: {
+        'visits': sum((p) => p.visits),
+        'visitors_avg': (sum((p) => p.visitors) / days).round(),
+        'visitors_today': hourly ? sum((p) => p.visitors) : series.last.visitors,
+        'new_users': sum((p) => p.newUsers),
+        'new_listings': sum((p) => p.newListings),
+        'phone_views': (sum((p) => p.contacts) * 0.6).round() + _reveals.length,
+        'new_chats': (sum((p) => p.contacts) * 0.4).round(),
+        'ad_views': _adStats.values.fold<int>(0, (a, m) => a + m.values.fold<int>(0, (x, v) => x + v.$1)),
+        'ad_clicks': _adStats.values.fold<int>(0, (a, m) => a + m.values.fold<int>(0, (x, v) => x + v.$2)),
+        'promo_views': _campStats.values.fold<int>(0, (a, m) => a + m.values.fold<int>(0, (x, v) => x + v.$1)),
+        'promo_clicks': _campStats.values.fold<int>(0, (a, m) => a + m.values.fold<int>(0, (x, v) => x + v.$2)),
+        'reports': _reports.length,
+        'bans': _bannedAccounts.length,
+        'active_listings': _props.where((p) => p.status == 'active').length,
+        'users_total': 128 + _known.length,
+      },
+      series: series,
+      topAreas: const [('Kabulonga', 182), ('Woodlands', 141), ('Rhodes Park', 97), ('Ibex Hill', 88), ('Roma', 64)],
+      topFilters: const [
+        ('deal', 'rent', 402),
+        ('type', 'house', 260),
+        ('beds', '3+', 190),
+        ('price', 'up to 15000 ZMW', 120),
+        ('verified', 'yes', 75),
+      ],
+    );
   }
 
   @override
@@ -1350,7 +1534,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<void> adminSetOtpTestMode(bool on) async {
-    _requireAdmin();
+    _requireOwner();
     _otpTestMode = on;
     _log('otp_test_mode', 'settings', on ? 'on' : 'off');
   }

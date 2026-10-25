@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import '../widgets/wide_card.dart';
 import '../widgets/zicons.dart';
@@ -23,6 +24,9 @@ class Shell extends StatefulWidget {
   /// Переключить вкладку из любого места: Shell.of(context)?.go(0)
   static ShellState? of(BuildContext context) => context.findAncestorStateOfType<ShellState>();
 
+  /// Главный экран, даже из открытого поверх экрана (например, из «Помощи»)
+  static ShellState? current;
+
   /// Высота «острова» меню + отступ — чтобы контент не прятался под ним
   static const double navSpace = 104;
 
@@ -30,17 +34,76 @@ class Shell extends StatefulWidget {
   State<Shell> createState() => ShellState();
 }
 
-class ShellState extends State<Shell> {
+class ShellState extends State<Shell> with WidgetsBindingObserver {
   int _index = 0;
   // ключ мастера, чтобы после закрытия начинать заново
   Key _postKey = UniqueKey();
 
-  void go(int i) => setState(() => _index = i);
+  void go(int i) {
+    setState(() => _index = i);
+    if (i == 0) _scheduleTour(const Duration(milliseconds: 700));
+  }
+
+  AppState? _app;
+  String _appKey = '';
+  int _tourTries = 0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openSharedLink());
+    Shell.current = this;
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openSharedLink();
+      _app = context.read<AppState>()..addListener(_onAppChanged);
+      _appKey = _keyOf(_app!);
+      _app!.repo.logVisit(); // обезличенный счётчик посещений
+      // первый тур — когда заставка закончилась и главная уже видна
+      _scheduleTour(const Duration(milliseconds: 4200));
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _app?.removeListener(_onAppChanged);
+    if (Shell.current == this) Shell.current = null;
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _app?.repo.logVisit();
+  }
+
+  // ---------- обучение ----------
+  String _keyOf(AppState a) => '${a.user?.id}|${a.user?.role}|${a.tourRequest}';
+  bool _forceNext = false;
+
+  void _onAppChanged() {
+    final app = _app;
+    if (app == null) return;
+    final key = _keyOf(app);
+    if (key == _appKey) return;
+    _forceNext = key.split('|').last != _appKey.split('|').last; // «показать ещё раз» / после первого объявления
+    _appKey = key;
+    _tourTries = 0;
+    _scheduleTour(const Duration(milliseconds: 900));
+  }
+
+  void _scheduleTour(Duration delay) {
+    Future.delayed(delay, () {
+      if (!mounted) return;
+      final onTop = ModalRoute.of(context)?.isCurrent ?? true;
+      if (_index != 0 || !onTop) {
+        // главная сейчас не видна — попробуем позже (не дольше пары минут)
+        if (_tourTries++ < 60 && _index == 0) _scheduleTour(const Duration(seconds: 2));
+        return;
+      }
+      final force = _forceNext;
+      _forceNext = false;
+      Onboarding.maybeShow(context, force: force);
+    });
   }
 
   /// Ссылка «Поделиться»: сайт открывается сразу на объявлении (?listing=id)
@@ -96,6 +159,14 @@ class ShellState extends State<Shell> {
     );
   }
 }
+
+/// Ключ тура для пункта меню (Saved, Chats, Profile)
+GlobalKey? _tourKey(int tab) => switch (tab) {
+      1 => TourKeys.saved,
+      3 => TourKeys.chats,
+      4 => TourKeys.profile,
+      _ => null,
+    };
 
 /// Коралловое меню-«остров»: выбранный пункт — светлая плашка-овал с иконкой и подписью,
 /// которая плавно переезжает между пунктами. Плашка рисуется отдельным слоем,
@@ -160,12 +231,15 @@ class _PillNavBar extends StatelessWidget {
               // иконки и подпись
               Row(children: [
                 for (var i = 0; i < n; i++)
-                  _NavItem(
-                    width: widthOf(i),
-                    icon: _items[i].$2,
-                    label: _items[i].$3,
-                    selected: i == sel,
-                    onTap: () => onTap(_items[i].$1),
+                  KeyedSubtree(
+                    key: _tourKey(_items[i].$1),
+                    child: _NavItem(
+                      width: widthOf(i),
+                      icon: _items[i].$2,
+                      label: _items[i].$3,
+                      selected: i == sel,
+                      onTap: () => onTap(_items[i].$1),
+                    ),
                   ),
               ]),
             ]);
@@ -264,6 +338,7 @@ class _TopBar extends StatelessWidget {
               const Spacer(),
               for (final (i, label) in _items)
                 Padding(
+                  key: _tourKey(i),
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: TextButton(
                     onPressed: () => onTap(i),
@@ -294,6 +369,7 @@ class _TopBar extends StatelessWidget {
                 ),
               const SizedBox(width: 14),
               FilledButton.icon(
+                key: TourKeys.post,
                 style: FilledButton.styleFrom(
                   backgroundColor: Zc.orange,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

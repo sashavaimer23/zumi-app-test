@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:supabase_flutter/supabase_flutter.dart' hide SortBy;
 
 import '../models/models.dart';
@@ -41,7 +43,7 @@ class SupabaseRepository implements Repository {
       final row = await _db
           .from('profiles')
           .select('id, role, full_name, agency_name, phone_verified_at, id_verified_at, '
-              'agent_licence_no, licence_verified_at, avatar_url, bio, created_at, contact_mode')
+              'agent_licence_no, licence_verified_at, avatar_url, bio, created_at, contact_mode, team_level')
           .eq('id', u.id)
           .maybeSingle();
       Map<String, dynamic>? ver;
@@ -55,6 +57,7 @@ class SupabaseRepository implements Repository {
         phone: (ver?['phone'] as String?) ??
             ((u.phone?.isNotEmpty ?? false) ? '+${u.phone!.replaceAll('+', '')}' : u.userMetadata?['phone'] as String?),
         role: (row?['role'] as String?) ?? 'owner',
+        teamLevel: row?['team_level'] as String?,
         agencyName: row?['agency_name'] as String?,
         phoneVerified: row?['phone_verified_at'] != null,
         idVerified: row?['id_verified_at'] != null,
@@ -102,6 +105,9 @@ class SupabaseRepository implements Repository {
         throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
       }
       if (e.message.contains('NO_PHONE')) throw AppException('No phone number here — use chat');
+      if (e.message.contains('OWNER_ONLY')) throw AppException('Only the Zumi owner can do this', code: 'OWNER_ONLY');
+      if (e.message.contains('USER_NOT_FOUND')) throw AppException('No Zumi account with this email');
+      if (e.message.contains('NOT_YOURSELF')) throw AppException('You cannot change your own role');
       if (e.message.contains('PHONE_TAKEN')) {
         throw AppException('This number is already confirmed on another Zumi account. '
             'One number can belong to one account — sign in to that account or contact support.', code: 'PHONE_TAKEN');
@@ -299,6 +305,7 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<List<Property>> search(SearchFilters f, {int limit = 30, int offset = 0}) => _guard(() async {
+        if (offset == 0) _logSearch(f);
         final ordered = _filtered(f).order('is_promoted', ascending: false);
         final PostgrestTransformBuilder<PostgrestList> sorted = switch (f.sort) {
           SortBy.newest => ordered.order('created_at', ascending: false),
@@ -768,12 +775,22 @@ class SupabaseRepository implements Repository {
       });
 
   @override
-  Future<String> openTicket({required String category, required String subject, required String message}) =>
+  Future<String> openTicket({
+    required String category,
+    required String subject,
+    required String message,
+    String? helpArticleId,
+  }) =>
       _guard(() async {
         final uid = _requireUserId();
         final t = await _db
             .from('support_tickets')
-            .insert({'user_id': uid, 'category': category, 'subject': subject.trim()})
+            .insert({
+              'user_id': uid,
+              'category': category,
+              'subject': subject.trim(),
+              if (helpArticleId != null) 'help_article_id': helpArticleId,
+            })
             .select('id')
             .single();
         final id = t['id'] as String;
@@ -889,6 +906,92 @@ class SupabaseRepository implements Repository {
         // решение есть — фото документа и селфи удаляем из хранилища
         await adminPurgeDocs();
       });
+
+  // ---------------- помощь ----------------
+  @override
+  Future<List<HelpArticle>> helpArticles() => _guard(() async {
+        var q = _db.from('help_articles').select().eq('published', true);
+        if (!kIsWeb) q = q.eq('web_only', false); // правила Apple и Google: про оплату — только на сайте
+        final rows = await q.order('category').order('sort').order('title');
+        return rows.map(HelpArticle.fromMap).toList();
+      });
+
+  @override
+  Future<void> voteHelp(String articleId, bool helpful, {String? comment}) => _guard(() async {
+        await _db.rpc('vote_help', params: {
+          'aid': articleId,
+          'p_helpful': helpful,
+          'p_comment': comment,
+          'device': await DeviceId.get(),
+        });
+      });
+
+  @override
+  Future<List<HelpArticle>> adminHelpArticles() => _guard(() async {
+        final rows = await _db.from('help_articles').select().order('category').order('sort').order('title');
+        return rows.map(HelpArticle.fromMap).toList();
+      });
+
+  @override
+  Future<HelpArticle> adminSaveHelpArticle(HelpArticle a, {bool isNew = false}) => _guard(() async {
+        final row = isNew
+            ? await _db.from('help_articles').insert(a.toMap()).select().single()
+            : await _db.from('help_articles').update(a.toMap()).eq('id', a.id).select().single();
+        return HelpArticle.fromMap(row);
+      });
+
+  @override
+  Future<void> adminDeleteHelpArticle(String id) => _guard(() async {
+        await _db.from('help_articles').delete().eq('id', id);
+      });
+
+  @override
+  Future<List<HelpRating>> adminHelpRatings() => _guard(() async {
+        final rows = await _db.rpc('admin_help_ratings') as List;
+        return rows.map((r) => HelpRating.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  // ---------------- команда и статистика ----------------
+  @override
+  Future<List<TeamMember>> adminTeam() => _guard(() async {
+        final rows = await _db.rpc('admin_team') as List;
+        return rows.map((r) => TeamMember.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<void> adminSetTeam(String email, String? level) => _guard(() async {
+        await _db.rpc('admin_set_team', params: {'p_email': email.trim(), 'p_level': level});
+      });
+
+  @override
+  Future<Dashboard> ownerDashboard(String period) => _guard(() async {
+        final res = await _db.rpc('owner_dashboard', params: {'p_period': period});
+        return Dashboard.fromMap(Map<String, dynamic>.from(res as Map));
+      });
+
+  @override
+  Future<void> logVisit() async {
+    try {
+      await _db.rpc('log_visit', params: {'device': await DeviceId.get()});
+    } catch (_) {/* статистика не должна мешать */}
+  }
+
+  /// Счётчики поиска: только какие фильтры выбирали (без людей)
+  Future<void> _logSearch(SearchFilters f) async {
+    final p = <String, String>{
+      if (f.areaId != null) 'area': '${f.areaId}',
+      if (f.query.trim().isNotEmpty) 'query': f.query.trim(),
+      if (f.dealType != null) 'deal': f.dealType!.name,
+      if (f.propertyType != null) 'type': f.propertyType!.name,
+      if (f.minBedrooms != null) 'beds': '${f.minBedrooms}+',
+      if (f.maxPrice != null) 'price': 'up to ${f.maxPrice!.round()} ${f.currency}',
+      if (f.onlyVerified) 'verified': 'yes',
+    };
+    if (p.isEmpty) return;
+    try {
+      await _db.rpc('log_search', params: {'p': p});
+    } catch (_) {/* не критично */}
+  }
 
   @override
   Future<int> adminPurgeDocs() async {

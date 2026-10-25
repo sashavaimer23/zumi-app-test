@@ -6,15 +6,16 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import '../widgets/share.dart';
 import '../widgets/trust.dart';
 import 'admin/admin_screen.dart';
+import 'help/help_screen.dart';
 import 'post/post_wizard.dart';
 import 'promotion/promotion_screen.dart';
 import 'public_profile_screen.dart';
 import 'settings_screen.dart';
-import 'support/support_screen.dart';
 import 'verify/get_verified_screen.dart';
 import 'verify/verify_listing_screen.dart';
 import 'auth_screen.dart';
@@ -140,6 +141,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     // агент: своя страница-витрина с каталогом и отзывами
                     if (user.isAgent) ...[
+                      // первый вход агента: где что лежит
+                      HintCard(
+                        id: 'hint_agent',
+                        icon: ZI.badge,
+                        title: 'Your agent cabinet',
+                        text: 'Here are your catalogue, your public agent page, Promotion and the Verified check. '
+                            '${user.licenceVerified ? 'Your ZIEA licence is checked — promotion is open.' : 'Add your ZIEA registration number: until it is checked, your listings show "licence not verified" and promotion is locked.'}',
+                        actionLabel: user.licenceVerified || (user.licenceNo ?? '').isNotEmpty ? null : 'Add ZIEA number',
+                        onAction: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const GetVerifiedScreen()),
+                        ),
+                        margin: const EdgeInsets.only(bottom: 14),
+                      ),
                       _AgentPageCard(user: user, listings: listings, rating: rating),
                       const SizedBox(height: 14),
                     ],
@@ -217,8 +232,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _MenuTile(
                 icon: ZI.chat,
                 title: 'Help & support',
-                subtitle: 'Questions, problems or a suspicious listing',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen())),
+                subtitle: 'Answers to common questions, or write to the Zumi team',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen())),
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(

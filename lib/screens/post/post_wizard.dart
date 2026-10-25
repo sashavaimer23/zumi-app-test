@@ -10,6 +10,7 @@ import '../../state/app_state.dart';
 import '../../theme.dart';
 import '../../widgets/success_hero.dart';
 import '../../widgets/common.dart';
+import '../../widgets/onboarding.dart';
 import '../auth_screen.dart';
 import '../filters_sheet.dart';
 import '../shell.dart';
@@ -216,6 +217,15 @@ class _PostWizardState extends State<PostWizard> {
       title: _editing ? 'Edit your listing' : 'List your property',
       subtitle: _editing ? 'Change anything you need — the listing stays online.' : 'Tell us what you are listing to get started',
       children: [
+        if (!_editing)
+          const HintCard(
+            id: 'hint_post',
+            icon: ZI.camera,
+            title: 'Your first listing — 3 minutes',
+            text: 'Have 5+ daylight photos ready: every room, the outside and the street. '
+                'Your first 2 listings are checked by the Zumi team, usually within a day.',
+            margin: EdgeInsets.only(bottom: 16),
+          ),
         if (q != null && !_editing)
           Container(
             margin: const EdgeInsets.only(bottom: 20),
@@ -595,6 +605,11 @@ class _PostWizardState extends State<PostWizard> {
     try {
       _created = await app.repo.createListing(_d);
       app.dataChanged();
+      // первое объявление — потом покажем короткий тур «где ваши объявления и сообщения»
+      if (!app.hintSeen('posted_first')) {
+        app.markHint('posted_first');
+        app.requestTour();
+      }
       if (mounted) setState(() => _step = 5);
     } on AppException catch (e) {
       if (!mounted) return;

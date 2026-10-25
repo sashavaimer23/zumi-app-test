@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import 'filters_sheet.dart';
 import '../widgets/zicons.dart';
@@ -178,6 +179,26 @@ class _MapScreenState extends State<MapScreen> {
                 },
               ),
             ]),
+          ),
+        ),
+
+        // подсказка при первом заходе на карту
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 70, 12, 0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: const HintCard(
+                  id: 'hint_map',
+                  icon: ZI.map,
+                  title: 'How the map works',
+                  text: 'Circles show neighbourhoods with homes. Zoom in or tap a circle to see prices; '
+                      'tap a price to open the home. Use the filter button to narrow down.',
+                ),
+              ),
+            ),
           ),
         ),
 

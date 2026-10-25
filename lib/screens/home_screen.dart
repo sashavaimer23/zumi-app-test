@@ -6,6 +6,7 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/ads.dart';
 import '../widgets/common.dart';
+import '../widgets/onboarding.dart';
 import '../widgets/promo_card.dart';
 import '../widgets/results.dart';
 import '../widgets/wide_card.dart';
@@ -53,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: Shell.navSpace - 16),
-        child: MapFab(filters: _filters),
+        child: KeyedSubtree(key: TourKeys.map, child: MapFab(filters: _filters)),
       ),
       body: RefreshIndicator(
         color: Zc.orange,
@@ -62,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
           await _countFuture;
         },
         child: CustomScrollView(
+          controller: TourKeys.homeScroll,
           slivers: [
             SliverToBoxAdapter(child: _Hero(city: _filters.city, onSearch: _openSearch)),
             SliverToBoxAdapter(
@@ -266,6 +268,7 @@ class _HeroState extends State<_Hero> {
               const Spacer(),
               // подать объявление
               GestureDetector(
+                key: TourKeys.post,
                 onTap: () => Shell.of(context)?.go(2),
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
@@ -295,6 +298,7 @@ class _HeroState extends State<_Hero> {
           right: desk ? (screenW - side - 760).clamp(side, double.infinity) : 16,
           bottom: desk ? 70 : 48,
           child: Container(
+            key: TourKeys.search,
             height: 62,
             padding: const EdgeInsets.only(left: 18, right: 6),
             decoration: BoxDecoration(

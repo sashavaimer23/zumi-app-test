@@ -11,6 +11,7 @@ class AppState extends ChangeNotifier {
   AppState(this.repo, this._prefs) {
     _favorites = (_prefs.getStringList(_kFav) ?? []).toSet();
     _recent = _prefs.getStringList(_kRecent) ?? [];
+    _hints = (_prefs.getStringList(_kHints) ?? []).toSet();
     _user = repo.currentUser;
     _sub = repo.userChanges.listen((u) {
       _user = u;
@@ -26,6 +27,7 @@ class AppState extends ChangeNotifier {
 
   static const _kFav = 'favorites';
   static const _kRecent = 'recently_viewed';
+  static const _kHints = 'seen_hints';
 
   AppUser? _user;
   AppUser? get user => _user;
@@ -72,6 +74,31 @@ class AppState extends ChangeNotifier {
     _recent = [id, ..._recent.where((x) => x != id)].take(12).toList();
     await _prefs.setStringList(_kRecent, _recent);
     repo.incrementViews(id);
+    notifyListeners();
+  }
+
+  // ---------- обучение: какие туры и подсказки уже показаны (хранится на устройстве) ----------
+  late Set<String> _hints;
+  bool hintSeen(String id) => _hints.contains(id);
+
+  Future<void> markHint(String id) async {
+    if (!_hints.add(id)) return;
+    await _prefs.setStringList(_kHints, _hints.toList());
+    notifyListeners();
+  }
+
+  /// «Показать обучение ещё раз» (Помощь)
+  Future<void> resetHints() async {
+    _hints.clear();
+    await _prefs.setStringList(_kHints, const []);
+    tourRequest++;
+    notifyListeners();
+  }
+
+  /// Попросить показать тур (например, после первого объявления). Тур решает, какой показать.
+  int tourRequest = 0;
+  void requestTour() {
+    tourRequest++;
     notifyListeners();
   }
 
