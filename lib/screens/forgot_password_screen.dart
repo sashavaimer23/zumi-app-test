@@ -6,7 +6,7 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-/// Забыли пароль: 1) email → письмо с 6-значным кодом; 2) код + новый пароль.
+/// Забыли пароль: 1) email → письмо с кодом (6–10 цифр, длину задаёт Supabase); 2) код + новый пароль.
 /// Код вместо ссылки — так сброс работает и в приложении, и на сайте без лишних настроек.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key, this.email = ''});
@@ -50,7 +50,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _reset() async {
     if (_code.text.trim().length < 6) {
-      showSnack(context, 'Enter the 6-digit code from the email');
+      showSnack(context, 'Enter the full code from the email');
       return;
     }
     if (_pass.text.length < 6) {
@@ -97,8 +97,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 8),
                 Text(
                   _sent
-                      ? 'We sent a 6-digit code to ${_email.text.trim()}. Enter it below and choose a new password.'
-                      : 'Enter the email of your account. We will send you a 6-digit code.',
+                      ? 'We sent a code to ${_email.text.trim()}. Enter it below and choose a new password.'
+                      : 'Enter the email of your account. We will send you a code.',
                   style: const TextStyle(color: Zc.grey, fontSize: 15, height: 1.4),
                 ),
                 if (demo) ...[
@@ -122,8 +122,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   TextField(
                     controller: _code,
                     keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(hintText: '6-digit code', counterText: ''),
+                    maxLength: 10,
+                    decoration: const InputDecoration(hintText: 'Code from the email', counterText: ''),
                   ),
                   const SizedBox(height: 14),
                   TextField(
