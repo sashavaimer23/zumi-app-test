@@ -22,7 +22,7 @@ alter table public.properties
 
 -- кто подаёт объявление (агент/собственник) — берём из профиля автоматически
 create or replace function public.set_listed_by()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   if new.owner_id is not null then
     select case when role = 'agent' then 'agent' else 'owner' end
@@ -62,14 +62,14 @@ with (security_invoker = true) as
 
 -- счётчик просмотров (может вызывать кто угодно, но только +1)
 create or replace function public.increment_views(pid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update properties set views_count = views_count + 1 where id = pid and status = 'active';
 $$;
 
 -- квота текущего пользователя
 create or replace function public.my_listing_quota()
 returns table (used int, allowed int) language sql stable security definer
-set search_path = public as $$
+set search_path = public, extensions as $$
   select * from public.listing_quota(auth.uid());
 $$;
 
@@ -113,7 +113,7 @@ create policy "participants send messages" on public.messages for insert
 
 -- начать (или открыть существующий) чат по объявлению
 create or replace function public.start_conversation(pid uuid)
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_seller uuid; v_id uuid;
 begin
   if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
@@ -131,7 +131,7 @@ end $$;
 
 -- последнее сообщение в списке чатов
 create or replace function public.touch_conversation()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update conversations set last_message = left(new.body, 200), last_message_at = new.created_at
    where id = new.conversation_id;
@@ -162,7 +162,7 @@ alter publication supabase_realtime add table public.messages;
 -- 4. Лимит действует и при повторной публикации (sold/archived → active)
 -- ---------------------------------------------------------------------
 create or replace function public.enforce_listing_limit()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare q record;
 begin
   if new.is_demo or new.owner_id is null then return new; end if;

@@ -27,7 +27,7 @@ alter table public.profiles
 
 -- проверенный человек: телефон + документ (+ лицензия ZIEA у агентов)
 create or replace function public.person_verified(uid uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public, extensions as $$
   select pr.full_name is not null and length(trim(pr.full_name)) > 1
      and pr.phone_verified_at is not null
      and pr.id_verified_at is not null
@@ -55,7 +55,7 @@ alter table public.properties
 --    auth.users.phone_confirmed_at — копируем это в профиль
 -- ---------------------------------------------------------------------
 create or replace function public.sync_phone_verified()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update profiles
      set phone = coalesce(new.phone, phone),
@@ -108,7 +108,7 @@ create policy "own requests create" on public.verification_requests for insert
 create or replace function public.submit_property_check(
   pid uuid, dev_lat double precision, dev_lng double precision, photo_paths text[]
 )
-returns jsonb language plpgsql security definer set search_path = public as $$
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
 declare v_loc geography; v_dist double precision; v_ok boolean;
 begin
   if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
@@ -133,7 +133,7 @@ end $$;
 
 -- лицензия агента сверена с реестром ZIEA (вызывает команда Zumi)
 create or replace function public.approve_licence(uid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update profiles set licence_verified_at = now() where id = uid and agent_licence_no is not null;
 $$;
 revoke execute on function public.approve_licence(uuid) from public, anon, authenticated;
@@ -144,7 +144,7 @@ revoke execute on function public.approve_licence(uuid) from public, anon, authe
 --    select approve_verification('<id заявки>', 'visit');   -- property после визита
 -- ---------------------------------------------------------------------
 create or replace function public.approve_verification(rid uuid, method text default 'visit')
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare r record;
 begin
   select * into r from verification_requests where id = rid;
@@ -185,7 +185,7 @@ create policy "own reports read" on public.listing_reports for select
 
 -- 3 жалобы на мошенничество → объявление скрывается до проверки
 create or replace function public.on_listing_report()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update properties set reports_count = reports_count + 1 where id = new.property_id;
   if (select count(*) from listing_reports
@@ -202,7 +202,7 @@ create trigger on_listing_report
 
 -- автор подтверждает «объект ещё доступен»
 create or replace function public.confirm_listing(pid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update properties set confirmed_at = now()
    where id = pid and owner_id = auth.uid() and status = 'active';
 $$;

@@ -11,7 +11,7 @@ alter table public.profiles
 
 -- при регистрации: согласие только если галочка отмечена
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare v_agent boolean := new.raw_user_meta_data->>'role' = 'agent';
 begin
   insert into public.profiles (id, full_name, phone, role, terms_accepted_at, agent_licence_no,
@@ -32,7 +32,7 @@ end $$;
 -- включить / выключить в настройках
 -- p_channel: 'email' | 'whatsapp'
 create or replace function public.set_marketing(p_channel text, p_on boolean)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if auth.uid() is null then raise exception 'AUTH'; end if;
   if p_channel = 'email' then
@@ -48,7 +48,7 @@ grant execute on function public.set_marketing(text, boolean) to authenticated;
 
 -- своё согласие человек видит в настройках
 create or replace function public.my_verification()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   select jsonb_build_object(
     'id_status', (select status from verification_requests
                    where user_id = auth.uid() and kind = 'identity' order by created_at desc limit 1),
@@ -69,7 +69,7 @@ $$;
 create or replace function public.admin_marketing_list()
 returns table (user_id uuid, full_name text, role text, email text, whatsapp text,
                email_since timestamptz, whatsapp_since timestamptz)
-language plpgsql stable security definer set search_path = public, auth as $$
+language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return query

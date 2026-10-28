@@ -29,7 +29,7 @@ $$;
 
 -- решение модератора: + кто проверил. Пути к файлам остаются, пока файлы не удалены (см. ниже)
 create or replace function public.admin_review_verification(rid uuid, approve boolean, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare r record;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
@@ -58,7 +58,7 @@ end $$;
 --   • любые файлы старше 30 дней;
 --   • «потерянные» файлы старше часа, которые не относятся ни к одной ожидающей заявке
 create or replace function public.docs_purge_list()
-returns text[] language plpgsql stable security definer set search_path = public, storage as $$
+returns text[] language plpgsql stable security definer set search_path = public, extensions, storage as $$
 begin
   if not public._is_admin_or_service() then raise exception 'NOT_ADMIN'; end if;
   return array(
@@ -76,7 +76,7 @@ end $$;
 
 -- файлы удалены → убираем ссылки на них; заявки без решения 30 дней — «истекли»
 create or replace function public.docs_purge_done(names text[])
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public._is_admin_or_service() then raise exception 'NOT_ADMIN'; end if;
   update verification_requests
@@ -91,7 +91,7 @@ end $$;
 
 -- ежедневная уборка без файлов: метки показов рекламы (2 дня), истёкшие заявки
 create or replace function public.cleanup_daily()
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public._is_admin_or_service() and current_user not in ('postgres', 'supabase_admin') then
     raise exception 'NOT_ADMIN';
@@ -128,7 +128,7 @@ insert into public.app_settings values ('require_licence_to_publish', 'false') o
 
 -- при регистрации агент может сразу указать номер ZIEA
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare v_agent boolean := new.raw_user_meta_data->>'role' = 'agent';
 begin
   insert into public.profiles (id, full_name, phone, role, terms_accepted_at, agent_licence_no)
@@ -186,7 +186,7 @@ grant select on public.property_feed to anon, authenticated;
 
 -- правило «агент публикует только после проверки лицензии» (выключено, включается кнопкой)
 create or replace function public.require_agent_licence()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare v_on boolean := coalesce((select value from app_settings where key = 'require_licence_to_publish'), 'false') = 'true';
 begin
   if not v_on or new.is_demo or new.owner_id is null then return new; end if;
@@ -202,7 +202,7 @@ create trigger require_agent_licence before insert or update of status on public
   for each row execute function public.require_agent_licence();
 
 create or replace function public.admin_set_setting(p_key text, p_value text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if p_key not in ('otp_test_mode', 'require_licence_to_publish') then raise exception 'BAD_SETTING'; end if;
@@ -214,7 +214,7 @@ end $$;
 
 -- продвижение — только агентам с проверенной лицензией
 create or replace function public.check_campaign()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_role text;
   v_licence timestamptz;
@@ -253,7 +253,7 @@ create policy "live campaigns readable" on public.campaigns for select
 
 -- счётчики кабинета: + правило лицензий
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(

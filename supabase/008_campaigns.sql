@@ -55,7 +55,7 @@ create policy "own campaign stats" on public.campaign_stats for select
 -- правила: только агенты (и команда), только своё активное объявление,
 -- не больше 3 идущих кампаний одновременно, остановленную нельзя запустить снова
 create or replace function public.check_campaign()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_role text;
   v_live int;
@@ -88,7 +88,7 @@ create trigger check_campaign
 
 -- показ или клик (вызывает приложение; считается только у идущей кампании)
 create or replace function public.log_campaign_event(cid uuid, kind text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if kind not in ('view', 'click') then return; end if;
   if not exists (select 1 from campaigns where id = cid and status = 'active'

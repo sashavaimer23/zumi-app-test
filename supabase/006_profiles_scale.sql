@@ -9,7 +9,7 @@
 -- ---------------------------------------------------------------------
 -- при регистрации можно выбрать только owner или agent (не admin)
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   insert into public.profiles (id, full_name, phone, role)
   values (
@@ -70,7 +70,7 @@ returns table (
   id uuid, role text, full_name text, agency_name text, avatar_url text, bio text,
   whatsapp text, verified boolean, phone_verified boolean, licence_verified boolean,
   member_since timestamptz, active_listings int
-) language sql stable security definer set search_path = public as $$
+) language sql stable security definer set search_path = public, extensions as $$
   select pr.id, pr.role, pr.full_name, pr.agency_name, pr.avatar_url, pr.bio,
          case when pr.role = 'agent' then pr.whatsapp end,
          coalesce(public.person_verified(pr.id), false),
@@ -137,14 +137,14 @@ create or replace view public.area_stats as
 
 -- правка объявления автором = объявление актуально
 create or replace function public.touch_listing(pid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update properties set confirmed_at = now(), updated_at = now()
    where id = pid and owner_id = auth.uid();
 $$;
 
 -- подтверждать можно и «скрытое за давностью» объявление
 create or replace function public.confirm_listing(pid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update properties set confirmed_at = now()
    where id = pid and owner_id = auth.uid() and status = 'active';
 $$;
@@ -170,7 +170,7 @@ alter table public.admin_audit add  constraint admin_audit_admin_id_fkey
   foreign key (admin_id) references public.profiles(id) on delete set null;
 
 create or replace function public.delete_my_account()
-returns void language plpgsql security definer set search_path = public, auth as $$
+returns void language plpgsql security definer set search_path = public, extensions, auth as $$
 declare
   uid uuid := auth.uid();
 begin
@@ -185,12 +185,12 @@ grant execute on function public.delete_my_account() to authenticated;
 -- ---------------------------------------------------------------------
 -- 5. Индексы — чтобы поиск не тормозил, когда объявлений станет много
 -- ---------------------------------------------------------------------
-create extension if not exists pg_trgm;
+create extension if not exists pg_trgm with schema extensions;
 
 create index if not exists properties_owner_idx    on public.properties (owner_id);
 create index if not exists properties_feed_idx     on public.properties (status, created_at desc);
 create index if not exists properties_price_idx    on public.properties (status, currency, price);
-create index if not exists properties_title_trgm   on public.properties using gin (title gin_trgm_ops);
+create index if not exists properties_title_trgm   on public.properties using gin (title extensions.gin_trgm_ops);
 create index if not exists property_images_prop_idx on public.property_images (property_id, sort_order);
 create index if not exists favorites_property_idx  on public.favorites (property_id);
 create index if not exists conversations_buyer_idx on public.conversations (buyer_id);

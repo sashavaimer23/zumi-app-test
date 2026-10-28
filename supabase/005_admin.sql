@@ -12,7 +12,7 @@
 -- 1. Кто администратор
 -- ---------------------------------------------------------------------
 create or replace function public.is_admin()
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public, extensions as $$
   select exists (select 1 from profiles where id = auth.uid() and role = 'admin');
 $$;
 
@@ -24,7 +24,7 @@ grant select (banned_at) on public.profiles to authenticated;
 
 -- заблокированный пользователь не может публиковать объявления
 create or replace function public.block_banned_posting()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   if new.owner_id is not null and exists (select 1 from profiles where id = new.owner_id and banned_at is not null) then
     raise exception 'ACCOUNT_BLOCKED';
@@ -53,7 +53,7 @@ alter table public.admin_audit enable row level security;
 create policy "admins read audit" on public.admin_audit for select using (public.is_admin());
 
 create or replace function public._audit(p_action text, p_type text, p_target text, p_note text)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   insert into admin_audit (admin_id, action, target_type, target_id, note)
   values (auth.uid(), p_action, p_type, p_target, p_note);
 $$;
@@ -116,7 +116,7 @@ create policy "ticket messages write" on public.support_messages for insert
 
 -- новое сообщение обновляет обращение: ответ команды → 'answered', ответ пользователя → 'open'
 create or replace function public.on_support_message()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update support_tickets
      set last_message = left(new.body, 200),
@@ -161,7 +161,7 @@ create policy "signed-in users write reviews" on public.reviews for insert
 
 -- пожаловаться на отзыв (после 3 жалоб отзыв скрывается до проверки)
 create or replace function public.flag_review(rid uuid)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
   update reviews set flags_count = flags_count + 1,
@@ -178,7 +178,7 @@ with (security_invoker = true) as
 -- рейтинг автора объявлений
 create or replace function public.rating_of(uid uuid)
 returns table (avg_rating numeric, reviews_count int) language sql stable security definer
-set search_path = public as $$
+set search_path = public, extensions as $$
   select round(avg(rating)::numeric, 1), count(*)::int
     from reviews where target_id = uid and status = 'published';
 $$;
@@ -187,7 +187,7 @@ $$;
 -- 6. Решения команды (все — только для admin, всё пишется в журнал)
 -- ---------------------------------------------------------------------
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(
@@ -204,7 +204,7 @@ end $$;
 
 -- одобрить / отклонить заявку (identity / ownership / property)
 create or replace function public.admin_review_verification(rid uuid, approve boolean, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare r record;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
@@ -231,7 +231,7 @@ end $$;
 
 -- лицензия ZIEA
 create or replace function public.admin_review_licence(uid uuid, approve boolean, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if approve then
@@ -244,7 +244,7 @@ end $$;
 
 -- жалоба: 'dismiss' — всё в порядке, 'hide' — скрыть объявление, 'ban' — заблокировать автора
 create or replace function public.admin_resolve_report(rep_id uuid, p_action text, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare v_prop uuid; v_owner uuid;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
@@ -273,7 +273,7 @@ end $$;
 
 -- вернуть объявление (если скрыли по ошибке) и снять блокировку
 create or replace function public.admin_restore_listing(pid uuid)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   update properties set status = 'active' where id = pid;
@@ -281,7 +281,7 @@ begin
 end $$;
 
 create or replace function public.admin_unban(uid uuid)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   update profiles set banned_at = null, ban_reason = null where id = uid;
@@ -290,7 +290,7 @@ end $$;
 
 -- обращения
 create or replace function public.admin_set_ticket_status(tid uuid, new_status text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   update support_tickets set status = new_status where id = tid;
@@ -299,7 +299,7 @@ end $$;
 
 -- отзывы: скрыть / вернуть / ответить от имени Zumi
 create or replace function public.admin_moderate_review(rid uuid, p_action text, p_reply text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if p_action = 'hide' then

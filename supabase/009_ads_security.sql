@@ -49,7 +49,7 @@ drop policy if exists "admins read ad stats" on public.ad_stats;
 create policy "admins read ad stats" on public.ad_stats for select using (public.is_admin());
 
 create or replace function public.log_ad_event(aid uuid, kind text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if kind not in ('view', 'click') then return; end if;
   if not exists (select 1 from ads where id = aid and status = 'active'
@@ -117,7 +117,7 @@ grant select (approved_at, moderation_note) on public.properties to anon, authen
 update public.properties set approved_at = coalesce(approved_at, created_at) where status <> 'pending';
 
 create or replace function public.moderate_new_listing()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare v_role text;
 begin
   if new.is_demo or new.owner_id is null then
@@ -159,7 +159,7 @@ create trigger protect_moderation before update on public.properties
 -- объявления на проверке занимают место в лимите
 create or replace function public.listing_quota(uid uuid)
 returns table (used int, allowed int) language sql stable security definer
-set search_path = public as $$
+set search_path = public, extensions as $$
   select
     (select count(*)::int from properties
       where owner_id = uid and status in ('active', 'draft', 'pending') and not is_demo),
@@ -169,7 +169,7 @@ set search_path = public as $$
 $$;
 
 create or replace function public.enforce_listing_limit()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare q record;
 begin
   if new.is_demo or new.owner_id is null then return new; end if;
@@ -185,7 +185,7 @@ begin
 end $$;
 
 create or replace function public.admin_review_listing(pid uuid, approve boolean, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if approve then
@@ -245,7 +245,7 @@ grant select on public.property_feed to anon, authenticated;
 
 -- номер для своего объявления (форма правки)
 create or replace function public.my_listing_phone(pid uuid)
-returns text language sql stable security definer set search_path = public as $$
+returns text language sql stable security definer set search_path = public, extensions as $$
   select contact_phone from properties where id = pid and owner_id = auth.uid();
 $$;
 
@@ -260,7 +260,7 @@ alter table public.campaigns
 
 -- +1 звонок или сообщение у идущих сегодня кампаний этого объявления
 create or replace function public._campaign_bump(pid uuid, kind text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   insert into campaign_stats (campaign_id, day, calls, messages)
   select c.id, current_date, (kind = 'call')::int, (kind = 'message')::int
@@ -274,7 +274,7 @@ revoke execute on function public._campaign_bump(uuid, text) from public, anon, 
 
 -- показать номер
 create or replace function public.reveal_phone(pid uuid)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   p record;
@@ -310,7 +310,7 @@ grant execute on function public.reveal_phone(uuid) to authenticated;
 create or replace function public.admin_phone_watchers(days int default 7)
 returns table (user_id uuid, full_name text, email text, phone text, reveals int, listings int,
                last_at timestamptz, banned boolean)
-language plpgsql stable security definer set search_path = public, auth as $$
+language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return query
@@ -327,7 +327,7 @@ end $$;
 
 -- чат: + «сообщение» в статистике продвижения
 create or replace function public.start_conversation(pid uuid)
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_seller uuid; v_id uuid;
 begin
   if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
@@ -349,7 +349,7 @@ end $$;
 
 -- команда дарит агенту продвижение на N дней (пока нет оплаты)
 create or replace function public.admin_grant_promotion(agent uuid, pid uuid, days int, p_placement text default 'search_top')
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_id uuid; a record;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
@@ -368,7 +368,7 @@ end $$;
 -- =====================================================================
 -- заблокированный не пишет в чаты, не оставляет отзывы и жалобы
 create or replace function public.block_banned_actions()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   if exists (select 1 from profiles where id = auth.uid() and banned_at is not null) then
     raise exception 'ACCOUNT_BLOCKED';
@@ -387,7 +387,7 @@ create trigger block_banned_reports before insert on public.listing_reports
 
 -- объявление скрывается само только по жалобам людей с подтверждённым телефоном
 create or replace function public.on_listing_report()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update properties set reports_count = reports_count + 1 where id = new.property_id;
   if (select count(*) from listing_reports r join profiles pr on pr.id = r.reporter_id
@@ -402,7 +402,7 @@ end $$;
 alter table public.profiles add column if not exists terms_accepted_at timestamptz;
 
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   insert into public.profiles (id, full_name, phone, role, terms_accepted_at)
   values (
@@ -453,7 +453,7 @@ create index if not exists verification_codes_user_idx on public.verification_co
 alter table public.verification_codes enable row level security;   -- только через функции
 
 create or replace function public.request_verification_code(p_channel text, p_destination text)
-returns jsonb language plpgsql security definer set search_path = public as $$
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   v_test boolean := coalesce((select value from app_settings where key = 'otp_test_mode'), 'true') = 'true';
@@ -474,7 +474,7 @@ end $$;
 -- ответ: 'ok' | 'wrong' (неверный код — попытка засчитана) ; ошибки — исключением
 drop function if exists public.verify_verification_code(text, text, text);
 create or replace function public.verify_verification_code(p_channel text, p_destination text, p_code text)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   c record;
@@ -501,7 +501,7 @@ end $$;
 
 -- статус своих проверок (+ телефон и способ подтверждения)
 create or replace function public.my_verification()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   select jsonb_build_object(
     'id_status', (select status from verification_requests
                    where user_id = auth.uid() and kind = 'identity' order by created_at desc limit 1),
@@ -518,7 +518,7 @@ $$;
 -- 8. Счётчики кабинета
 -- =====================================================================
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(

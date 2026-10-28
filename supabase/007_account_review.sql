@@ -31,7 +31,7 @@ end $$;
 
 -- лицензия ZIEA: при отказе сохраняем причину, чтобы человек её увидел
 create or replace function public.admin_review_licence(uid uuid, approve boolean, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if approve then
@@ -46,7 +46,7 @@ end $$;
 
 -- статус своих проверок (для экрана «Get verified»)
 create or replace function public.my_verification()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   select jsonb_build_object(
     'id_status', (select status from verification_requests
                    where user_id = auth.uid() and kind = 'identity'
@@ -66,7 +66,7 @@ returns table (
   id uuid, full_name text, email text, role text, phone text, avatar_url text,
   phone_verified boolean, id_status text, licence_no text, licence_verified boolean,
   listings int, created_at timestamptz, reviewed_at timestamptz, banned boolean
-) language plpgsql stable security definer set search_path = public, auth as $$
+) language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return query
@@ -90,7 +90,7 @@ end $$;
 
 -- 'ok' — аккаунт в порядке; 'ban' — заблокировать (объявления скрываются)
 create or replace function public.admin_review_account(uid uuid, p_action text, p_note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   if p_action = 'ok' then
@@ -106,7 +106,7 @@ end $$;
 
 -- счётчики кабинета: + новые аккаунты
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(

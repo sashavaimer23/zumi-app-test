@@ -22,7 +22,7 @@ returns table (
   id uuid, role text, full_name text, agency_name text, avatar_url text, bio text,
   has_whatsapp boolean, contact_mode text, verified boolean, phone_verified boolean, licence_verified boolean,
   member_since timestamptz, active_listings int
-) language sql stable security definer set search_path = public as $$
+) language sql stable security definer set search_path = public, extensions as $$
   select pr.id, pr.role, pr.full_name, pr.agency_name, pr.avatar_url, pr.bio,
          pr.role = 'agent' and coalesce(pr.whatsapp, '') <> '',
          coalesce(pr.contact_mode, 'phone'),
@@ -38,7 +38,7 @@ grant execute on function public.public_profile(uuid) to anon, authenticated;
 
 -- свой WhatsApp человек видит в настройках
 create or replace function public.my_verification()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   select jsonb_build_object(
     'id_status', (select status from verification_requests
                    where user_id = auth.uid() and kind = 'identity' order by created_at desc limit 1),
@@ -56,7 +56,7 @@ $$;
 alter table public.phone_reveals add column if not exists agent_id uuid references public.profiles(id) on delete cascade;
 
 create or replace function public.reveal_agent_whatsapp(agent uuid)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   a record;
@@ -89,7 +89,7 @@ grant execute on function public.reveal_agent_whatsapp(uuid) to authenticated;
 create or replace function public.admin_phone_watchers(days int default 7)
 returns table (user_id uuid, full_name text, email text, phone text, reveals int, listings int,
                last_at timestamptz, banned boolean)
-language plpgsql stable security definer set search_path = public, auth as $$
+language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return query
@@ -124,7 +124,7 @@ alter table public.campaigns
 
 -- без security definer: внутри нужно видеть, кто на самом деле меняет запись
 create or replace function public.review_campaign()
-returns trigger language plpgsql set search_path = public as $$
+returns trigger language plpgsql set search_path = public, extensions as $$
 declare
   me record;
   v_plain boolean;
@@ -155,7 +155,7 @@ create policy "live campaigns readable" on public.campaigns for select
   using (status = 'active' and review_status = 'approved' and current_date between starts_on and ends_on);
 
 create or replace function public.admin_review_campaign(cid uuid, approve boolean, note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   update campaigns
@@ -168,7 +168,7 @@ end $$;
 
 -- бесплатное продвижение от команды: без телефона, одобрено сразу
 create or replace function public.admin_grant_promotion(agent uuid, pid uuid, days int, p_placement text default 'search_top')
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_id uuid; a record;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
@@ -201,7 +201,7 @@ create index if not exists event_seen_day_idx on public.event_seen (day);
 alter table public.event_seen enable row level security;   -- только через функции
 
 create or replace function public._first_event(p_target uuid, p_kind text, p_device text)
-returns boolean language plpgsql security definer set search_path = public as $$
+returns boolean language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_ip text := trim(split_part(coalesce(
                  nullif(current_setting('request.headers', true), '')::json ->> 'x-forwarded-for', ''), ',', 1));
@@ -228,7 +228,7 @@ revoke execute on function public._first_event(uuid, text, text) from public, an
 
 drop function if exists public.log_ad_event(uuid, text);
 create or replace function public.log_ad_event(aid uuid, kind text, device text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if kind not in ('view', 'click') then return; end if;
   if not exists (select 1 from ads where id = aid and status = 'active'
@@ -245,7 +245,7 @@ grant execute on function public.log_ad_event(uuid, text, text) to anon, authent
 
 drop function if exists public.log_campaign_event(uuid, text);
 create or replace function public.log_campaign_event(cid uuid, kind text, device text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if kind not in ('view', 'click') then return; end if;
   if not exists (select 1 from campaigns where id = cid and status = 'active' and review_status = 'approved'
@@ -311,7 +311,7 @@ begin
 end $$;
 
 create or replace function public._phone_taken(p_phone text, p_uid uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public, extensions as $$
   select exists (select 1 from profiles
                   where id <> p_uid and phone_verified_at is not null
                     and public._norm_phone(phone) = public._norm_phone(p_phone));
@@ -319,7 +319,7 @@ $$;
 revoke execute on function public._phone_taken(text, uuid) from public, anon, authenticated;
 
 create or replace function public.request_verification_code(p_channel text, p_destination text)
-returns jsonb language plpgsql security definer set search_path = public as $$
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   v_test boolean := coalesce((select value from app_settings where key = 'otp_test_mode'), 'true') = 'true';
@@ -343,7 +343,7 @@ end $$;
 
 -- ответ: 'ok' | 'wrong' | 'taken'
 create or replace function public.verify_verification_code(p_channel text, p_destination text, p_code text)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   c record;
@@ -372,7 +372,7 @@ end $$;
 -- 2. ТЕСТОВЫЙ РЕЖИМ КОДОВ: видно команде + кнопка «выключить»
 -- =====================================================================
 create or replace function public.admin_set_otp_test_mode(p_on boolean)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   insert into app_settings (key, value) values ('otp_test_mode', case when p_on then 'true' else 'false' end)
@@ -381,7 +381,7 @@ begin
 end $$;
 
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(

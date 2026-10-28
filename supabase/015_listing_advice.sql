@@ -25,7 +25,7 @@ create policy "owner reads own views" on public.listing_views_daily for select
 
 -- просмотр объявления: один раз в день с человека (вошедший — по аккаунту, гость — по метке устройства)
 create or replace function public.log_listing_view(pid uuid, device text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare v_owner uuid;
 begin
   select owner_id into v_owner from properties where id = pid and status = 'active';
@@ -41,7 +41,7 @@ grant execute on function public.log_listing_view(uuid, text) to anon, authentic
 
 -- старый вызов (без метки устройства) — тоже через честный счётчик
 create or replace function public.increment_views(pid uuid)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   select public.log_listing_view(pid, null);
 $$;
 
@@ -51,7 +51,7 @@ $$;
 create or replace function public.area_price_stats(p_area int, p_deal text, p_type text, p_beds int default null,
                                                    p_period text default null, p_currency text default 'ZMW',
                                                    p_exclude uuid default null)
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   with s as (
     select p.price from properties p
      where p.status = 'active' and p.area_id = p_area and p.deal_type::text = p_deal
@@ -78,7 +78,7 @@ grant execute on function public.area_price_stats(int, text, text, int, text, te
 --    текст пишет приложение).
 -- =====================================================================
 create or replace function public.listing_advice(pid uuid)
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 declare
   p record;
   v_live_days int;
@@ -163,7 +163,7 @@ grant execute on function public.listing_advice(uuid) to authenticated;
 
 -- все свои объявления разом (для «Мои объявления»)
 create or replace function public.my_listing_advice()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql stable security definer set search_path = public, extensions as $$
   select coalesce(jsonb_agg(public.listing_advice(p.id)), '[]'::jsonb)
     from properties p
    where p.owner_id = auth.uid() and p.status in ('active', 'pending') and not p.is_demo;

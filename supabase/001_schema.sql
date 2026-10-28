@@ -3,7 +3,11 @@
 --  Запускать в Supabase: Dashboard → SQL Editor → New query → Run
 -- =====================================================================
 
-create extension if not exists postgis;
+-- расширения ставим в схему extensions (так рекомендует Supabase); функции ищут их там же
+create schema if not exists extensions;
+create extension if not exists postgis with schema extensions;
+-- в этом окне SQL функции PostGIS и типы ищутся и в public, и в extensions
+set search_path = public, extensions;
 
 -- ---------------------------------------------------------------------
 -- 1. Настройки лимитов (меняются без изменения кода)
@@ -35,7 +39,7 @@ create table public.profiles (
 
 -- автосоздание профиля при регистрации
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   insert into public.profiles (id, full_name, phone, role)
   values (
@@ -143,7 +147,7 @@ create table public.promotions (
 
 -- после оплаты: продвижение продлевает promoted_until у объявления
 create or replace function public.apply_promotion()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   update public.properties
      set promoted_until = greatest(coalesce(promoted_until, now()), new.ends_at)
@@ -160,7 +164,7 @@ create trigger on_promotion_created
 -- ---------------------------------------------------------------------
 create or replace function public.listing_quota(uid uuid)
 returns table (used int, allowed int) language sql stable security definer
-set search_path = public as $$
+set search_path = public, extensions as $$
   select
     (select count(*)::int from properties
       where owner_id = uid and status in ('active','draft') and not is_demo),
@@ -170,7 +174,7 @@ set search_path = public as $$
 $$;
 
 create or replace function public.enforce_listing_limit()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare q record;
 begin
   if new.is_demo then return new; end if;

@@ -22,7 +22,7 @@ revoke update (team_level) on public.profiles from authenticated;
 
 -- is_admin() = любой член команды (модератор или владелец) — проверки, жалобы, поддержка
 create or replace function public.is_owner()
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public, extensions as $$
   select exists (select 1 from profiles where id = auth.uid() and role = 'admin'
                   and coalesce(team_level, 'owner') = 'owner');
 $$;
@@ -30,7 +30,7 @@ $$;
 -- список команды и выдача ролей — только владелец
 create or replace function public.admin_team()
 returns table (user_id uuid, full_name text, email text, level text, since timestamptz)
-language plpgsql stable security definer set search_path = public, auth as $$
+language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
   return query
@@ -42,7 +42,7 @@ end $$;
 
 -- p_level: 'moderator' | 'owner' | null (убрать из команды)
 create or replace function public.admin_set_team(p_email text, p_level text)
-returns void language plpgsql security definer set search_path = public, auth as $$
+returns void language plpgsql security definer set search_path = public, extensions, auth as $$
 declare v_id uuid; v_role text;
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
@@ -78,7 +78,7 @@ create policy "owners read payments" on public.payments for select using (public
 
 -- настройки
 create or replace function public.admin_set_otp_test_mode(p_on boolean)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
   insert into app_settings (key, value) values ('otp_test_mode', case when p_on then 'true' else 'false' end)
@@ -87,7 +87,7 @@ begin
 end $$;
 
 create or replace function public.admin_set_setting(p_key text, p_value text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
   if p_key not in ('otp_test_mode', 'require_licence_to_publish') then raise exception 'BAD_SETTING'; end if;
@@ -99,7 +99,7 @@ end $$;
 
 -- бесплатное продвижение (это деньги) — только владелец
 create or replace function public.admin_grant_promotion(agent uuid, pid uuid, days int, p_placement text default 'search_top')
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_id uuid; a record;
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
@@ -118,7 +118,7 @@ end $$;
 create or replace function public.admin_marketing_list()
 returns table (user_id uuid, full_name text, role text, email text, whatsapp text,
                email_since timestamptz, whatsapp_since timestamptz)
-language plpgsql stable security definer set search_path = public, auth as $$
+language plpgsql stable security definer set search_path = public, extensions, auth as $$
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
   return query
@@ -183,7 +183,7 @@ alter table public.help_votes enable row level security;   -- только че�
 
 create or replace function public.vote_help(aid uuid, p_helpful boolean, p_comment text default null,
                                             device text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare v_voter text;
 begin
   if auth.uid() is not null then v_voter := 'u:' || auth.uid()::text;
@@ -203,7 +203,7 @@ grant execute on function public.vote_help(uuid, boolean, text, text) to anon, a
 -- оценки статей для команды: худшие сверху
 create or replace function public.admin_help_ratings()
 returns table (article_id uuid, title text, category text, yes int, no int, comments jsonb)
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return query
@@ -265,7 +265,7 @@ alter table public.search_stats   enable row level security;
 
 -- приложение сообщает «я открыто»: новый сеанс — если с прошлого прошло больше 30 минут
 create or replace function public.log_visit(device text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_viewer text;
   v_hour timestamptz := date_trunc('hour', now());
@@ -304,7 +304,7 @@ grant execute on function public.log_visit(text) to anon, authenticated;
 
 -- поиск: только счётчики (район (id), тип сделки, тип жилья, спальни, цена, фильтры) — без людей
 create or replace function public.log_search(p jsonb)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare k text; v text;
 begin
   if p is null or jsonb_typeof(p) <> 'object' then return; end if;
@@ -320,7 +320,7 @@ grant execute on function public.log_search(jsonb) to anon, authenticated;
 
 -- ежедневная уборка: + служебные метки посещений (не дольше 2 дней)
 create or replace function public.cleanup_daily()
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public._is_admin_or_service() and current_user not in ('postgres', 'supabase_admin') then
     raise exception 'NOT_ADMIN';
@@ -337,7 +337,7 @@ end $$;
 
 -- панель владельца: p_period = 'day' (сегодня по часам) | 'week' | 'month' (по дням), время Лусаки
 create or replace function public.owner_dashboard(p_period text default 'day')
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 declare
   tz constant text := 'Africa/Lusaka';
   v_today date := (now() at time zone tz)::date;
@@ -407,7 +407,7 @@ end $$;
 
 -- счётчики кабинета: + уровень и оценки помощи
 create or replace function public.admin_stats()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
   return jsonb_build_object(

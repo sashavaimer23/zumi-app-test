@@ -227,7 +227,7 @@ update public.profiles set role = 'admin'
 
 ## Перед запуском (чек-лист)
 
-1. Выполнить все SQL-файлы `001`–`015` в новом проекте Supabase.
+1. Выполнить в новом проекте Supabase один файл `supabase/all_in_one.sql` (это файлы `001`–`015` подряд).
    Затем включить ежедневную уборку документов: Supabase → Edge Functions → Deploy new function →
    имя `purge-verification-docs`, код из `supabase/functions/purge-verification-docs/index.ts`;
    потом Integrations → Cron → New job → каждый день → Supabase Edge Function → `purge-verification-docs`.

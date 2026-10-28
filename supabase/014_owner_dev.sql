@@ -14,7 +14,7 @@
 -- 1. АККАУНТ КОМАНДЫ — НЕ ДЛЯ ОБЪЯВЛЕНИЙ
 -- =====================================================================
 create or replace function public.no_team_listings()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not new.is_demo and exists (select 1 from profiles where id = new.owner_id and role = 'admin') then
     raise exception 'TEAM_ACCOUNT';
@@ -27,7 +27,7 @@ create trigger no_team_listings before insert on public.properties
 
 -- первые 2 объявления — на проверку; исключения для админа больше нет
 create or replace function public.moderate_new_listing()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 begin
   if new.is_demo or new.owner_id is null then
     new.approved_at := coalesce(new.approved_at, now());
@@ -45,7 +45,7 @@ end $$;
 
 -- продвижение — только агенты с проверенной лицензией (команда — нет)
 create or replace function public.check_campaign()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_role text;
   v_licence timestamptz;
@@ -77,7 +77,7 @@ end $$;
 -- 2. КАМПАНИИ АГЕНТОВ СО СВОЕЙ КАРТИНКОЙ — РЕШАЕТ ВЛАДЕЛЕЦ (вкладка «Реклама»)
 -- =====================================================================
 create or replace function public.admin_review_campaign(cid uuid, approve boolean, note text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
   update campaigns
@@ -92,7 +92,7 @@ end $$;
 -- 3. ОТЧЁТ ПО РЕКЛАМЕ: баннеры и кампании продвижения, по дням
 -- =====================================================================
 create or replace function public.owner_ad_report(p_days int default 30)
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 declare v_from date := current_date - greatest(least(p_days, 366), 1) + 1;
 begin
   if not public.is_owner() then raise exception 'OWNER_ONLY'; end if;
@@ -165,7 +165,7 @@ alter table public.error_stats      enable row level security;
 drop function if exists public.log_visit(text);
 create or replace function public.log_visit(device text default null, p_platform text default null,
                                             p_version text default null)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_viewer text;
   v_hour timestamptz := date_trunc('hour', now());
@@ -223,7 +223,7 @@ grant execute on function public.log_visit(text, text, text) to anon, authentica
 
 -- ошибка приложения (без личных данных: цифры и почта вырезаются)
 create or replace function public.log_error(p_platform text, p_version text, p_message text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_day date := (now() at time zone 'Africa/Lusaka')::date;
   v_platform text := case when p_platform in ('web', 'android', 'ios') then p_platform else 'other' end;
@@ -245,7 +245,7 @@ grant execute on function public.log_error(text, text, text) to anon, authentica
 
 -- ежедневная уборка: метки часа — 2 дня; метки дня и месяца (зашифрованы) — до 35 дней (нужны для «вернулся» и «за месяц»)
 create or replace function public.cleanup_daily()
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public._is_admin_or_service() and current_user not in ('postgres', 'supabase_admin') then
     raise exception 'NOT_ADMIN';
@@ -264,7 +264,7 @@ end $$;
 
 -- сводка для разработчика за p_days дней
 create or replace function public.dev_stats(p_days int default 30)
-returns jsonb language plpgsql stable security definer set search_path = public as $$
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $$
 declare
   v_days int := greatest(least(p_days, 90), 1);
   v_today date := (now() at time zone 'Africa/Lusaka')::date;
