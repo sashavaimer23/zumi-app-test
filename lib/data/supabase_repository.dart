@@ -168,6 +168,8 @@ class SupabaseRepository implements Repository {
         final res = await _db.auth.signUp(
           email: email,
           password: password,
+          // на сайте ссылка из письма ведёт обратно на эту же страницу (с путём /zumi-app-test/)
+          emailRedirectTo: kIsWeb ? Uri.base.replace(query: '', fragment: '').toString().replaceAll(RegExp(r'[?#]+$'), '') : null,
           data: {
             'full_name': fullName,
             'phone': phone,
