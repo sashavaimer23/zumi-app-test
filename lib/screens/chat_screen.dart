@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,12 +21,29 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _ctrl = TextEditingController();
+  // каждое новое сообщение, пока переписка открыта, сразу считается прочитанным
   late final Stream<List<ChatMessage>> _stream =
-      context.read<AppState>().repo.messages(widget.conversationId);
+      context.read<AppState>().repo.messages(widget.conversationId).map((list) {
+    if (list.length != _seen) {
+      _seen = list.length;
+      _markRead();
+    }
+    return list;
+  });
+  int _seen = -1;
   bool _sending = false;
+  Timer? _readTimer;
+
+  void _markRead() {
+    _readTimer?.cancel();
+    _readTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) context.read<AppState>().markChatRead(widget.conversationId);
+    });
+  }
 
   @override
   void dispose() {
+    _readTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }

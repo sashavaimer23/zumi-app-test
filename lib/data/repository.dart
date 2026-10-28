@@ -254,6 +254,13 @@ abstract class Repository {
   Future<List<Conversation>> conversations();
   Stream<List<ChatMessage>> messages(String conversationId);
   Future<void> sendMessage(String conversationId, String body);
+
+  /// Непрочитанные: всего (для значка «Chats», считается до 11) и «прочитал переписку»
+  Future<int> unreadCount();
+  Future<void> markChatRead(String conversationId);
+
+  /// Сигнал «пришло новое сообщение» (Realtime) — чтобы обновить значок без перезагрузки
+  Stream<void> incomingMessages();
 }
 
 /// Фото, выбранные в демо-режиме, живут только в памяти (ключ 'mem:...').

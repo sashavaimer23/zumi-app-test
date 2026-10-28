@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/repository.dart';
 import '../models/models.dart';
+import '../utils/app_badge.dart';
 
 /// Общее состояние приложения: пользователь, избранное, недавно просмотренные.
 class AppState extends ChangeNotifier {
@@ -14,11 +15,14 @@ class AppState extends ChangeNotifier {
     _hints = (_prefs.getStringList(_kHints) ?? []).toSet();
     _user = repo.currentUser;
     _sub = repo.userChanges.listen((u) {
+      final changed = u?.id != _user?.id;
       _user = u;
       notifyListeners();
       if (u != null) _syncFavorites();
+      if (changed) _watchUnread();
     });
     if (_user != null) _syncFavorites();
+    _watchUnread();
   }
 
   final Repository repo;
@@ -118,8 +122,58 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------- непрочитанные сообщения (значок «Chats») ----------
+  int _unread = 0;
+  int get unreadChats => _unread;
+
+  /// Текст значка: 1…10, дальше «10+»
+  String get unreadLabel => _unread > 10 ? '10+' : '$_unread';
+
+  StreamSubscription<void>? _inboxSub;
+  Timer? _unreadTimer;
+
+  /// Вошёл / вышел — подписываемся на новые сообщения или всё выключаем
+  void _watchUnread() {
+    _inboxSub?.cancel();
+    _unreadTimer?.cancel();
+    if (_user == null) {
+      _setUnread(0);
+      return;
+    }
+    refreshUnread();
+    _inboxSub = repo.incomingMessages().listen((_) {
+      // сообщение пришло — пересчитываем чуть позже (вдруг человек как раз в этом чате)
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        refreshUnread();
+        chatsChanged();
+      });
+    });
+    // запасной вариант, если связь Realtime прервалась
+    _unreadTimer = Timer.periodic(const Duration(seconds: 60), (_) => refreshUnread());
+  }
+
+  Future<void> refreshUnread() async {
+    if (_user == null) return _setUnread(0);
+    _setUnread(await repo.unreadCount());
+  }
+
+  /// Открыл переписку — она прочитана
+  Future<void> markChatRead(String conversationId) async {
+    await repo.markChatRead(conversationId);
+    await refreshUnread();
+  }
+
+  void _setUnread(int n) {
+    setAppBadge(n);
+    if (n == _unread) return;
+    _unread = n;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _inboxSub?.cancel();
+    _unreadTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }

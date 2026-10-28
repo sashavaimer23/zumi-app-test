@@ -169,6 +169,35 @@ class PropImage extends StatelessWidget {
 }
 
 // ======================================================================
+// Кружок с числом непрочитанных: 1…10, дальше «10+»
+// ======================================================================
+class CountBadge extends StatelessWidget {
+  const CountBadge(this.count, {super.key, this.color = Zc.orange, this.textColor = Colors.white, this.border});
+  final int count;
+  final Color color;
+  final Color textColor;
+  final Color? border; // обводка, чтобы кружок читался поверх иконки
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+    final text = count > 10 ? '10+' : '$count';
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+        border: border == null ? null : Border.all(color: border!, width: 2),
+      ),
+      child: Text(text,
+          style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w700, height: 1.1)),
+    );
+  }
+}
+
+// ======================================================================
 // Кнопки
 // ======================================================================
 class PrimaryButton extends StatelessWidget {

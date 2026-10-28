@@ -1762,6 +1762,15 @@ class DemoRepository implements Repository {
   }
 
   @override
+  Future<int> unreadCount() async => 0; // демо: ответы приходят, пока чат открыт
+
+  @override
+  Future<void> markChatRead(String conversationId) async {}
+
+  @override
+  Stream<void> incomingMessages() => const Stream.empty();
+
+  @override
   Future<void> sendMessage(String conversationId, String body) async {
     final u = _requireUser();
     _checkNotBanned(u);

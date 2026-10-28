@@ -726,6 +726,7 @@ class Conversation {
   final String? otherName;
   final String? lastMessage;
   final DateTime lastMessageAt;
+  final int unread; // непрочитанные сообщения собеседника
 
   const Conversation({
     required this.id,
@@ -735,6 +736,7 @@ class Conversation {
     this.otherName,
     this.lastMessage,
     required this.lastMessageAt,
+    this.unread = 0,
   });
 
   factory Conversation.fromMap(Map<String, dynamic> m) => Conversation(
@@ -745,6 +747,7 @@ class Conversation {
         otherName: m['other_name'] as String?,
         lastMessage: m['last_message'] as String?,
         lastMessageAt: DateTime.tryParse((m['last_message_at'] as String?) ?? '') ?? DateTime.now(),
+        unread: (m['unread'] as num?)?.toInt() ?? 0,
       );
 }
 

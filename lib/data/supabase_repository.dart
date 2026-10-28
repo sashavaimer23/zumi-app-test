@@ -1421,6 +1421,50 @@ class SupabaseRepository implements Repository {
       .map((rows) => rows.map(ChatMessage.fromMap).toList());
 
   @override
+  Future<int> unreadCount() async {
+    if (_db.auth.currentUser == null) return 0;
+    try {
+      return ((await _db.rpc('my_unread_count')) as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0; // значок не должен ломать приложение
+    }
+  }
+
+  @override
+  Future<void> markChatRead(String conversationId) async {
+    if (_db.auth.currentUser == null) return;
+    try {
+      await _db.rpc('mark_chat_read', params: {'cid': conversationId});
+    } catch (_) {}
+  }
+
+  @override
+  Stream<void> incomingMessages() {
+    late final StreamController<void> ctrl;
+    RealtimeChannel? ch;
+    ctrl = StreamController<void>.broadcast(
+      onListen: () {
+        // RLS: приходят только сообщения из моих переписок
+        ch = _db
+            .channel('inbox-${DateTime.now().microsecondsSinceEpoch}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'messages',
+              callback: (_) => ctrl.add(null),
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final c = ch;
+        ch = null;
+        if (c != null) await _db.removeChannel(c);
+      },
+    );
+    return ctrl.stream;
+  }
+
+  @override
   Future<void> sendMessage(String conversationId, String body) => _guard(() async {
         final uid = _requireUserId();
         await _db.from('messages').insert({

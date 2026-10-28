@@ -87,17 +87,34 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     separatorBuilder: (_, __) => const Divider(height: 1, color: Zc.chip),
                     itemBuilder: (_, i) {
                       final c = list[i];
+                      final unread = c.unread > 0;
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         leading: SizedBox(width: 56, height: 56, child: PropImage(c.propertyCover, radius: 12)),
-                        title: Text(c.otherName ?? 'User', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        title: Text(c.otherName ?? 'User',
+                            style: TextStyle(fontWeight: unread ? FontWeight.w800 : FontWeight.w600)),
                         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(c.propertyTitle ?? '',
                               maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Zc.green, fontSize: 12)),
                           Text(c.lastMessage ?? 'No messages yet',
-                              maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Zc.grey)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: unread ? Zc.text : Zc.grey,
+                                  fontWeight: unread ? FontWeight.w600 : FontWeight.w400)),
                         ]),
-                        trailing: Text(_time(c.lastMessageAt), style: const TextStyle(color: Zc.grey, fontSize: 12)),
+                        trailing: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(_time(c.lastMessageAt),
+                                style: TextStyle(color: unread ? Zc.orange : Zc.grey, fontSize: 12)),
+                            if (unread) ...[
+                              const SizedBox(height: 6),
+                              CountBadge(c.unread),
+                            ],
+                          ],
+                        ),
                         onTap: () async {
                           await Navigator.push(
                             context,

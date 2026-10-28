@@ -73,7 +73,10 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _app?.repo.logVisit();
+    if (state == AppLifecycleState.resumed) {
+      _app?.repo.logVisit();
+      _app?.refreshUnread(); // вернулся в приложение — обновить значок сообщений
+    }
   }
 
   // ---------- обучение ----------
@@ -207,6 +210,7 @@ class _PillNavBar extends StatelessWidget {
           child: LayoutBuilder(builder: (context, c) {
             final n = _items.length;
             final sel = _items.indexWhere((e) => e.$1 == index);
+            final unread = context.watch<AppState>().unreadChats;
             final has = sel >= 0;
             final selW = has ? c.maxWidth * 0.38 : 0.0;
             // -0.5 px: запас, чтобы при анимации сумма ширин не вылезла за край
@@ -238,6 +242,7 @@ class _PillNavBar extends StatelessWidget {
                       icon: _items[i].$2,
                       label: _items[i].$3,
                       selected: i == sel,
+                      badge: _items[i].$1 == 3 ? unread : 0,
                       onTap: () => onTap(_items[i].$1),
                     ),
                   ),
@@ -257,12 +262,14 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.badge = 0,
   });
   final double width;
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final int badge; // непрочитанные сообщения
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +289,15 @@ class _NavItem extends StatelessWidget {
                 duration: _PillNavBar._duration,
                 curve: _PillNavBar._curve,
                 tween: ColorTween(end: selected ? Zc.orange : Colors.white),
-                builder: (_, color, __) => Icon(icon, size: 26, color: color),
+                builder: (_, color, __) => Stack(clipBehavior: Clip.none, children: [
+                  Icon(icon, size: 26, color: color),
+                  if (badge > 0)
+                    Positioned(
+                      right: -10,
+                      top: -8,
+                      child: CountBadge(badge, color: Zc.green, border: selected ? _PillNavBar._pillColor : Zc.orange),
+                    ),
+                ]),
               ),
               // подпись видна только у выбранного пункта
               AnimatedSize(
@@ -347,7 +362,13 @@ class _TopBar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(label, style: const TextStyle(fontSize: 16)),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(label, style: const TextStyle(fontSize: 16)),
+                        if (i == 3 && context.watch<AppState>().unreadChats > 0) ...[
+                          const SizedBox(width: 6),
+                          CountBadge(context.watch<AppState>().unreadChats),
+                        ],
+                      ]),
                       const SizedBox(height: 4),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
