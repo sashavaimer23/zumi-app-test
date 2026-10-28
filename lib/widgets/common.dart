@@ -185,14 +185,18 @@ class CountBadge extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
       padding: const EdgeInsets.symmetric(horizontal: 5),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(10),
         border: border == null ? null : Border.all(color: border!, width: 2),
       ),
-      child: Text(text,
-          style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w700, height: 1.1)),
+      // Align с widthFactor 1: кружок по размеру числа, а не на всю доступную ширину
+      child: Align(
+        widthFactor: 1,
+        heightFactor: 1,
+        child: Text(text,
+            style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w700, height: 1.1)),
+      ),
     );
   }
 }
