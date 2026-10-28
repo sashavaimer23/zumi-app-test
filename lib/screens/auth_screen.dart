@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,8 +39,15 @@ class _AuthScreenState extends State<AuthScreen> {
   final _phone = TextEditingController();
   final _licence = TextEditingController(); // номер ZIEA (агенты)
 
+  /// Почта, на которую ушло письмо «подтвердите почту» — пока не null, показываем экран «Проверьте почту»
+  String? _awaitingEmail;
+  int _resendIn = 0; // секунд до повторной отправки
+  Timer? _resendTimer;
+  bool _resending = false;
+
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final c in [_email, _password, _name, _phone, _licence]) {
       c.dispose();
     }
@@ -77,7 +86,11 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!widget.embedded) Navigator.pop(context, true);
     } on AppException catch (e) {
       if (!mounted) return;
-      if (e.code == 'CONFIRM_EMAIL') setState(() => _signUp = false);
+      if (e.code == 'CONFIRM_EMAIL') {
+        // регистрация прошла (или вход до подтверждения) — объясняем, что делать дальше
+        _showCheckEmail(_email.text.trim(), justSent: _signUp);
+        return;
+      }
       showSnack(context, e.message);
     } catch (e) {
       if (mounted) showSnack(context, '$e');
@@ -86,8 +99,136 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  void _showCheckEmail(String email, {required bool justSent}) {
+    setState(() {
+      _awaitingEmail = email;
+      _signUp = false;
+    });
+    if (justSent) _startCooldown();
+  }
+
+  void _startCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendIn = 60);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() => _resendIn--);
+      if (_resendIn <= 0) t.cancel();
+    });
+  }
+
+  Future<void> _resend() async {
+    final email = _awaitingEmail;
+    if (email == null) return;
+    setState(() => _resending = true);
+    try {
+      await context.read<AppState>().repo.resendConfirmation(email);
+      if (!mounted) return;
+      _startCooldown();
+      showSnack(context, 'Sent again. Check your inbox and Spam.');
+    } on AppException catch (e) {
+      if (mounted) showSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _resending = false);
+    }
+  }
+
+  /// Экран «Проверьте почту»: что произошло, что сделать, повторная отправка и вход
+  Widget _checkEmailView(String email) {
+    Widget step(String n, String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 26, height: 26,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: Zc.greenTint, shape: BoxShape.circle),
+              child: Text(n, style: const TextStyle(color: Zc.green, fontWeight: FontWeight.w700, fontSize: 13)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(text, style: const TextStyle(fontSize: 15, color: Zc.text, height: 1.35)),
+            )),
+          ]),
+        );
+    return Scaffold(
+      appBar: widget.embedded ? null : AppBar(),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(26, 32, 26, 120),
+          children: [
+            Center(
+              child: Container(
+                width: 84, height: 84,
+                decoration: const BoxDecoration(color: Zc.orangeSoft, shape: BoxShape.circle),
+                child: const Icon(ZI.envelope, size: 40, color: Zc.orange),
+              ),
+            ),
+            const SizedBox(height: 22),
+            Text('Check your email', textAlign: TextAlign.center, style: zHeadline(context, size: 32)),
+            const SizedBox(height: 10),
+            const Text('We sent a confirmation link to', textAlign: TextAlign.center,
+                style: TextStyle(color: Zc.grey, fontSize: 15)),
+            const SizedBox(height: 4),
+            Text(email, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Zc.text)),
+            const SizedBox(height: 26),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              decoration: BoxDecoration(color: Zc.white, borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Zc.lightGrey)),
+              child: Column(children: [
+                step('1', 'Open your email inbox.'),
+                step('2', 'Find the email from Zumi. Not there? Check Spam or Promotions.'),
+                step('3', 'Tap the link in the email — your account is then confirmed.'),
+                step('4', 'Come back here and sign in.'),
+              ]),
+            ),
+            const SizedBox(height: 26),
+            PrimaryButton(
+              label: "I've confirmed — Sign in",
+              width: double.infinity,
+              onPressed: () => setState(() {
+                _awaitingEmail = null;
+                _email.text = email;
+              }),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: (_resendIn > 0 || _resending) ? null : _resend,
+                child: Text(
+                  _resending
+                      ? 'Sending…'
+                      : _resendIn > 0 ? 'Resend the email in $_resendIn s' : "Didn't get it? Resend the email",
+                  style: TextStyle(color: _resendIn > 0 ? Zc.grey : Zc.green, fontSize: 15),
+                ),
+              ),
+            ),
+            Center(
+              child: TextButton(
+                onPressed: () => setState(() {
+                  _awaitingEmail = null;
+                  _signUp = true;
+                }),
+                child: const Text('Wrong email? Change it', style: TextStyle(color: Zc.grey, fontSize: 14)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final awaiting = _awaitingEmail;
+    if (awaiting != null) return _checkEmailView(awaiting);
     final demo = context.read<AppState>().repo.isDemo;
     return Scaffold(
       appBar: widget.embedded ? null : AppBar(),

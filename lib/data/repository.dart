@@ -24,6 +24,9 @@ abstract class Repository {
   });
   Future<void> signOut();
 
+  /// Ещё раз отправить письмо «подтвердите почту»
+  Future<void> resendConfirmation(String email);
+
   /// Новости и предложения Zumi: channel = 'email' | 'whatsapp', включить / выключить (Settings)
   Future<void> setMarketing(String channel, bool on);
 

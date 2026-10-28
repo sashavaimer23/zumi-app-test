@@ -86,6 +86,13 @@ class SupabaseRepository implements Repository {
     try {
       return await fn();
     } on AuthException catch (e) {
+      final m = e.message.toLowerCase();
+      if (m.contains('email not confirmed') || e.code == 'email_not_confirmed') {
+        throw AppException('Please confirm your email first — open the link we sent you.', code: 'CONFIRM_EMAIL');
+      }
+      if (m.contains('rate limit') || e.statusCode == '429') {
+        throw AppException('Too many emails were sent. Please wait a few minutes and try again.', code: 'RATE_LIMIT');
+      }
       throw AppException(e.message);
     } on PostgrestException catch (e) {
       if (e.message.contains('LISTING_LIMIT_REACHED')) {
@@ -184,6 +191,15 @@ class SupabaseRepository implements Repository {
         }
         _user = await _loadProfile(res.user!);
         _userCtrl.add(_user);
+      });
+
+  @override
+  Future<void> resendConfirmation(String email) => _guard(() async {
+        await _db.auth.resend(
+          type: OtpType.signup,
+          email: email.trim(),
+          emailRedirectTo: kIsWeb ? Uri.base.replace(query: '', fragment: '').toString().replaceAll(RegExp(r'[?#]+$'), '') : null,
+        );
       });
 
   @override

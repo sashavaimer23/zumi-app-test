@@ -134,6 +134,11 @@ class DemoRepository implements Repository {
   }
 
   @override
+  Future<void> resendConfirmation(String email) async {
+    await _lag(); // демо: почту подтверждать не нужно
+  }
+
+  @override
   Future<void> signOut() async {
     _user = null;
     _userCtrl.add(null);
