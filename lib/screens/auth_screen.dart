@@ -261,14 +261,22 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
               const SizedBox(height: 26),
               if (_signUp) ...[
-                _label('I am'),
+                const Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: '* ', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
+                    TextSpan(text: 'required field'),
+                  ]),
+                  style: TextStyle(fontSize: 13, color: Zc.grey),
+                ),
+                const SizedBox(height: 14),
+                _label('I am', req: true),
                 Row(children: [
                   Expanded(child: _roleCard('owner', 'Owner', 'I list my own property', ZI.house)),
                   const SizedBox(width: 12),
                   Expanded(child: _roleCard('agent', 'Agent', 'I list for clients', ZI.badge)),
                 ]),
                 const SizedBox(height: 18),
-                _label('Full name'),
+                _label('Full name', req: true),
                 TextFormField(
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
@@ -276,7 +284,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) => (v ?? '').trim().length < 2 ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 18),
-                _label('Phone'),
+                _label('Phone', req: true),
                 TextFormField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
@@ -285,23 +293,23 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 18),
                 if (_role == 'agent') ...[
-                  _label('ZIEA registration number'),
+                  _label('ZIEA registration number', optional: true),
                   TextFormField(
                     controller: _licence,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(hintText: 'From your ZIEA certificate (you can add it later)'),
+                    decoration: const InputDecoration(hintText: 'e.g. ZIEA-1234 — or leave empty'),
                     validator: (v) => (v ?? '').trim().length > 40 ? 'Too long' : null,
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'The Zumi team checks it with the Zambia Institute of Estate Agents. Until then your listings show '
-                    '"ZIEA licence not verified" and promotion is not available.',
+                    'Not required to sign up — you can add it later in Profile. Agents with a checked ZIEA licence '
+                    'get a "Licence verified" mark and can promote their listings.',
                     style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35),
                   ),
                   const SizedBox(height: 18),
                 ],
               ],
-              _label('Email'),
+              _label('Email', req: _signUp),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
@@ -310,7 +318,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 validator: (v) => RegExp(r'^\S+@\S+\.\S+$').hasMatch((v ?? '').trim()) ? null : 'Enter a valid email',
               ),
               const SizedBox(height: 18),
-              _label('Password'),
+              _label('Password', req: _signUp),
               TextFormField(
                 controller: _password,
                 obscureText: true,
@@ -351,6 +359,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
                         const Text(', and to Zumi processing my data to run my account.',
                             style: TextStyle(fontSize: 13, color: Zc.text)),
+                        const Text(' *', style: TextStyle(fontSize: 13, color: Zc.orange, fontWeight: FontWeight.w700)),
                       ]),
                     ),
                   ),
@@ -414,9 +423,18 @@ class _AuthScreenState extends State<AuthScreen> {
             style: const TextStyle(fontSize: 13, color: Zc.green, decoration: TextDecoration.underline)),
       );
 
-  Widget _label(String t) => Padding(
+  /// Подпись поля: «*» — обязательно, «(optional)» — можно пропустить
+  Widget _label(String t, {bool req = false, bool optional = false}) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.text)),
+        child: Text.rich(
+          TextSpan(children: [
+            TextSpan(text: t),
+            if (req) const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
+            if (optional)
+              const TextSpan(text: '  (optional)', style: TextStyle(color: Zc.grey, fontSize: 14, fontWeight: FontWeight.w400)),
+          ]),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.text),
+        ),
       );
 
   Widget _roleCard(String role, String title, String sub, IconData icon) {
