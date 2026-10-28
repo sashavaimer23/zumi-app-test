@@ -13,8 +13,22 @@ import 'repository.dart';
 /// Работа с настоящим сервером Supabase (таблицы из supabase/*.sql).
 class SupabaseRepository implements Repository {
   SupabaseRepository() {
+    // Сохранённый вход (после перезагрузки страницы) Supabase восстанавливает ещё до создания
+    // репозитория, и это событие могло пройти мимо — поэтому сразу проверяем текущую сессию сами.
+    final restored = _db.auth.currentUser;
+    if (restored != null) {
+      _loadProfile(restored).then((u) {
+        if (_db.auth.currentUser?.id != u.id) return; // за это время успел выйти
+        _user = u;
+        _userCtrl.add(_user);
+      });
+    }
     _authSub = _db.auth.onAuthStateChange.listen((state) async {
-      _user = state.session?.user == null ? null : await _loadProfile(state.session!.user);
+      final u = state.session?.user;
+      if (u != null && _user?.id == u.id && state.event == AuthChangeEvent.tokenRefreshed) {
+        return; // токен обновился — профиль тот же, перечитывать не нужно
+      }
+      _user = u == null ? null : await _loadProfile(u);
       _userCtrl.add(_user);
     });
   }
