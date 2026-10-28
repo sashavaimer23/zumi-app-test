@@ -255,7 +255,7 @@ abstract class Repository {
   Stream<List<ChatMessage>> messages(String conversationId);
   Future<void> sendMessage(String conversationId, String body);
 
-  /// Непрочитанные: всего (для значка «Chats», считается до 11) и «прочитал переписку»
+  /// Непрочитанные: сколько переписок с новыми сообщениями (значок «Chats», считается до 11) и «прочитал переписку»
   Future<int> unreadCount();
   Future<void> markChatRead(String conversationId);
 

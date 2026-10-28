@@ -32,7 +32,7 @@ begin
 end $$;
 grant execute on function public.mark_chat_read(uuid) to authenticated;
 
--- всего непрочитанных у меня (для значка). Считаем до 11 — больше значку не нужно.
+-- для значка (заменено в 017: считаются переписки с новыми сообщениями)
 create or replace function public.my_unread_count()
 returns int language sql stable security definer set search_path = public, extensions as $$
   select count(*)::int from (
