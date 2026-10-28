@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -122,18 +123,48 @@ class PropImage extends StatelessWidget {
     } else if (u.startsWith('mem:')) {
       final bytes = MemoryImages.get(u);
       child = bytes == null ? const ColoredBox(color: Zc.chip) : Image.memory(bytes, fit: fit);
+    } else if (kIsWeb) {
+      // На сайте: если браузер не смог расшифровать фото сам (так бывает на iPhone),
+      // Flutter показывает его обычным <img> браузера — так фото видно всегда.
+      child = Image.network(
+        u,
+        fit: fit,
+        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+        frameBuilder: (_, img, frame, sync) =>
+            (frame == null && !sync) ? const ColoredBox(color: Zc.chip, child: SizedBox.expand()) : img,
+        errorBuilder: (ctx, error, _) {
+          _reportImageError(ctx, error);
+          return const ColoredBox(
+            color: Zc.chip,
+            child: Center(child: Icon(ZI.brokenImage, color: Zc.grey)),
+          );
+        },
+      );
     } else {
       child = CachedNetworkImage(
         imageUrl: u,
         fit: fit,
         placeholder: (_, __) => const ColoredBox(color: Zc.chip),
-        errorWidget: (_, __, ___) => const ColoredBox(
-          color: Zc.chip,
-          child: Center(child: Icon(ZI.brokenImage, color: Zc.grey)),
-        ),
+        errorWidget: (ctx, __, error) {
+          _reportImageError(ctx, error);
+          return const ColoredBox(
+            color: Zc.chip,
+            child: Center(child: Icon(ZI.brokenImage, color: Zc.grey)),
+          );
+        },
       );
     }
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
+  }
+
+  /// Причина, по которой фото не показалось, — в статистику ошибок (раз за сеанс, без адреса фото)
+  static final _reported = <String>{};
+  static void _reportImageError(BuildContext context, Object error) {
+    final text = 'image: ${'$error'.split('\n').first.replaceAll(RegExp(r'https?://\S+'), '[url]')}';
+    if (_reported.length >= 5 || !_reported.add(text)) return;
+    try {
+      context.read<AppState>().repo.logError(text);
+    } catch (_) {}
   }
 }
 
