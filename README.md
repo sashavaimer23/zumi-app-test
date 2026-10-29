@@ -82,6 +82,7 @@ flutter run
    - `supabase/020_help_feedback_promo.sql` — новые статьи помощи (оплата, сайт не открывается…), отзывы о приложении
      (видит владелец в кабинете → Feedback), выключатель продвижения (по умолчанию выключено, кабинет → Ads).
    - `supabase/021_help_update.sql` — старые статьи помощи под новые правила.
+   - `supabase/022_retention.sql` — автоудаление старых данных по срокам из Privacy Policy (нужен pg_cron).
 4. Скопируйте Project URL и anon key в Settings → API.
 5. Запустите приложение с ключами:
 
