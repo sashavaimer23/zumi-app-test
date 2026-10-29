@@ -1286,8 +1286,10 @@ class DemoRepository implements Repository {
   final Map<String, Map<String, (int, int)>> _adStats = {};
 
   @override
-  Future<List<Ad>> liveAds(String placement) async => !Features.ads ? const [] :
-      _ads.where((a) => a.placement == placement && a.isLive).toList()..shuffle();
+  Future<List<Ad>> liveAds(String placement) async {
+    if (!Features.ads) return const []; // баннеры выключены владельцем
+    return _ads.where((a) => a.placement == placement && a.isLive).toList()..shuffle();
+  }
 
   @override
   Future<void> logAdEvent(String adId, String kind) async {
