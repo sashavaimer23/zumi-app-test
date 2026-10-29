@@ -344,7 +344,7 @@ class _FiltersSheetState extends State<FiltersSheet> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: Zc.orange,
             inactiveThumbColor: Colors.white,
             inactiveTrackColor: Zc.lightGrey,

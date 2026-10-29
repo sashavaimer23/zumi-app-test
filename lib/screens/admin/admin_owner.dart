@@ -510,7 +510,7 @@ class _ArticleEditorState extends State<_ArticleEditor> {
                 Row(children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _category,
+                      initialValue: _category,
                       decoration: const InputDecoration(labelText: 'Section'),
                       items: [
                         for (final e in helpCategories.entries) DropdownMenuItem(value: e.key, child: Text(e.value)),
@@ -537,7 +537,7 @@ class _ArticleEditorState extends State<_ArticleEditor> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _published,
-                  activeColor: Zc.orange,
+                  activeThumbColor: Zc.orange,
                   onChanged: (v) => setState(() => _published = v),
                   title: const Text('Published'),
                   subtitle: const Text('Off — the article is hidden from users', style: TextStyle(fontSize: 12)),
@@ -545,7 +545,7 @@ class _ArticleEditorState extends State<_ArticleEditor> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _webOnly,
-                  activeColor: Zc.orange,
+                  activeThumbColor: Zc.orange,
                   onChanged: (v) => setState(() => _webOnly = v),
                   title: const Text('Website only'),
                   subtitle: const Text(

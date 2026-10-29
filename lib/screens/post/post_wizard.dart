@@ -1093,7 +1093,8 @@ class _NumberDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<int>(
-      value: value,
+      key: ValueKey(value), // значение задаёт родитель — пересоздаём поле при смене
+      initialValue: value,
       icon: const Icon(ZI.caretDown, color: Zc.green, size: 28),
       items: [for (var i = 0; i <= max; i++) DropdownMenuItem(value: i, child: Text(i == max ? '$i+' : '$i'))],
       onChanged: (v) => onChanged(v ?? value),

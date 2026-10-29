@@ -245,28 +245,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (!u.isAdmin) ...[
               // ---------- как с вами связываются ----------
               const _Section('How people contact you'),
-              for (final (mode, title, sub) in const [
-                ('phone', 'Show my number', 'People with a confirmed phone can tap "Show number" (max 15 numbers a day each).'),
-                ('chat', 'Chat only', 'Your number is never shown. People write to you in Zumi chat.'),
-              ])
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
-                  value: mode,
-                  groupValue: u.contactMode,
-                  activeColor: Zc.orange,
-                  title: Text(title, style: const TextStyle(fontSize: 15)),
-                  subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Zc.grey)),
-                  onChanged: (v) async {
-                    if (v == null) return;
-                    try {
-                      await app.repo.updateProfile(contactMode: v);
-                      app.dataChanged();
-                      if (context.mounted) showSnack(context, v == 'chat' ? 'Chat only — your number is hidden' : 'Your number can be shown');
-                    } catch (e) {
-                      if (context.mounted) showSnack(context, '$e');
-                    }
-                  },
-                ),
+              // одна группа: выбранный вариант и обработчик — у RadioGroup (новый способ Flutter)
+              RadioGroup<String>(
+                groupValue: u.contactMode,
+                onChanged: (v) async {
+                  if (v == null) return;
+                  try {
+                    await app.repo.updateProfile(contactMode: v);
+                    app.dataChanged();
+                    if (context.mounted) showSnack(context, v == 'chat' ? 'Chat only — your number is hidden' : 'Your number can be shown');
+                  } catch (e) {
+                    if (context.mounted) showSnack(context, '$e');
+                  }
+                },
+                child: Column(children: [
+                  for (final (mode, title, sub) in const [
+                    ('phone', 'Show my number', 'People with a confirmed phone can tap "Show number" (max 15 numbers a day each).'),
+                    ('chat', 'Chat only', 'Your number is never shown. People write to you in Zumi chat.'),
+                  ])
+                    RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      value: mode,
+                      activeColor: Zc.orange,
+                      title: Text(title, style: const TextStyle(fontSize: 15)),
+                      subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                    ),
+                ]),
+              ),
               ],
 
               // ---------- рассылка ----------
@@ -277,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ])
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  activeColor: Zc.orange,
+                  activeThumbColor: Zc.orange,
                   value: on,
                   title: Text(title, style: const TextStyle(fontSize: 15)),
                   subtitle: Text(

@@ -77,7 +77,7 @@ class _CropDialogState extends State<_CropDialog> {
     final cw = widget.iw * _base, ch = widget.ih * _base;
     if (!_centered) {
       _centered = true;
-      _ctrl.value = Matrix4.identity()..translate(-(cw - _vw) / 2, -(ch - vh) / 2);
+      _ctrl.value = Matrix4.identity()..translateByDouble(-(cw - _vw) / 2, -(ch - vh) / 2, 0, 1);
     }
 
     return AlertDialog(
@@ -123,9 +123,9 @@ class _CropDialogState extends State<_CropDialog> {
                   // увеличиваем относительно центра рамки
                   final center = _ctrl.toScene(Offset(_vw / 2, vh / 2));
                   _ctrl.value = Matrix4.identity()
-                    ..translate(_vw / 2, vh / 2)
-                    ..scale(z)
-                    ..translate(-center.dx, -center.dy);
+                    ..translateByDouble(_vw / 2, vh / 2, 0, 1)
+                    ..scaleByDouble(z, z, z, 1)
+                    ..translateByDouble(-center.dx, -center.dy, 0, 1);
                 }),
               ),
             ),

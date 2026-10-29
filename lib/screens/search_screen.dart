@@ -54,9 +54,20 @@ class _SearchScreenState extends State<SearchScreen> {
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 0),
+          // строка поиска с кнопкой «назад» появляется снова, как только листаешь чуть вверх
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            primary: false,
+            automaticallyImplyLeading: false,
+            toolbarHeight: 82,
+            titleSpacing: 0,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Zc.bg,
+            surfaceTintColor: Colors.transparent,
+            title: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 16, 12),
               child: Row(children: [
                 IconButton(
                   icon: const Icon(ZI.back, color: Zc.green),

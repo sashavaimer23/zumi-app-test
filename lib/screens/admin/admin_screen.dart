@@ -657,7 +657,7 @@ class _LicencesState extends State<_Licences> {
           final rule = _Card(
             child: SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              activeColor: Zc.orange,
+              activeThumbColor: Zc.orange,
               value: _require,
               onChanged: widget.canChangeRule ? _setRequire : null,
               title: const Text('Publish only after the licence check',
