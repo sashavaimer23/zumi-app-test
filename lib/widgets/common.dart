@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -119,16 +121,17 @@ class PropImage extends StatelessWidget {
         child: Center(child: Icon(ZI.house, color: Zc.grey, size: 40)),
       );
     } else if (u.startsWith('asset:')) {
-      child = Image.asset('assets/images/${u.substring(6)}', fit: fit);
+      child = _sized((w) => Image.asset('assets/images/${u.substring(6)}', fit: fit, cacheWidth: w));
     } else if (u.startsWith('mem:')) {
       final bytes = MemoryImages.get(u);
       child = bytes == null ? const ColoredBox(color: Zc.chip) : Image.memory(bytes, fit: fit);
     } else if (kIsWeb) {
       // На сайте: если браузер не смог расшифровать фото сам (так бывает на iPhone),
       // Flutter показывает его обычным <img> браузера — так фото видно всегда.
-      child = Image.network(
+      child = _sized((w) => Image.network(
         u,
         fit: fit,
+        cacheWidth: w,
         webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
         frameBuilder: (_, img, frame, sync) =>
             (frame == null && !sync) ? const ColoredBox(color: Zc.chip, child: SizedBox.expand()) : img,
@@ -139,11 +142,12 @@ class PropImage extends StatelessWidget {
             child: Center(child: Icon(ZI.brokenImage, color: Zc.grey)),
           );
         },
-      );
+      ));
     } else {
-      child = CachedNetworkImage(
+      child = _sized((w) => CachedNetworkImage(
         imageUrl: u,
         fit: fit,
+        memCacheWidth: w,
         placeholder: (_, __) => const ColoredBox(color: Zc.chip),
         errorWidget: (ctx, __, error) {
           _reportImageError(ctx, error);
@@ -152,10 +156,22 @@ class PropImage extends StatelessWidget {
             child: Center(child: Icon(ZI.brokenImage, color: Zc.grey)),
           );
         },
-      );
+      ));
     }
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
   }
+
+  /// Расшифровывать фото в размере экрана, а не в полном: на дешёвых телефонах меньше памяти и рывков
+  Widget _sized(Widget Function(int? width) build) => LayoutBuilder(builder: (context, c) {
+        if (!c.hasBoundedWidth || c.maxWidth <= 0) return build(null);
+        final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2;
+        // при «cover» широкое фото в высоком окне растягивается по высоте — берём запас (фото ~3:2)
+        final h = c.hasBoundedHeight ? c.maxHeight * 1.5 : 0.0;
+        final need = (fit == BoxFit.cover ? math.max(c.maxWidth, h) : c.maxWidth) * dpr;
+        // шаг 160 px — чтобы при мелких изменениях ширины не расшифровывать фото заново
+        final px = ((need / 160).ceil() * 160).clamp(160, 2048);
+        return build(px);
+      });
 
   /// Причина, по которой фото не показалось, — в статистику ошибок (раз за сеанс, без адреса фото)
   static final _reported = <String>{};

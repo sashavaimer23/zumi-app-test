@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/ads.dart';
+import '../widgets/availability.dart';
 import '../widgets/common.dart';
 import '../widgets/contact.dart';
 import '../widgets/gallery.dart';
@@ -175,6 +176,9 @@ class _PropertyScreenState extends State<PropertyScreen> {
         SliverPadding(
           padding: EdgeInsets.fromLTRB(side, 22, side, 0),
           sliver: SliverList.list(children: [
+            // автору: «ещё доступно?» прямо на его объявлении
+            if (p.ownerId != null && p.ownerId == context.watch<AppState>().user?.id && StillAvailableCard.shows(p))
+              StillAvailableCard(p: p, margin: const EdgeInsets.only(bottom: 16)),
             Wrap(spacing: 0, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
               if (p.isVerified) ...[VerifiedBadge(compact: true, label: p.badgeLabel), const SizedBox(width: 8)],
               if (p.isPromoted) ...[const PromotedBadge(), const SizedBox(width: 8)],

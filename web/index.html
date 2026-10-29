@@ -32,10 +32,39 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Zumi — homes in Zambia</title>
-  <style>html, body { margin: 0; height: 100%; background: #245045; }</style>
+  <!-- быстрее на медленном интернете: заранее открыть соединение с сервером Zumi (адрес вставляет сборка) -->
+  <!--ZUMI_PRECONNECT-->
+  <style>
+    html, body { margin: 0; height: 100%; background: #245045; }
+    /* заставка, пока загружается приложение (видна сразу, даже на 3G) */
+    #zumi-loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 18px; background: #245045; color: #FEF8EE; z-index: 10;
+      font: 600 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; transition: opacity .3s; }
+    #zumi-loading .logo { font-size: 30px; letter-spacing: 6px; font-weight: 700; }
+    #zumi-loading .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(254,248,238,.25);
+      border-top-color: #FF7A59; animation: zs 0.9s linear infinite; }
+    #zumi-loading .slow { opacity: 0; font-weight: 400; font-size: 13px; text-align: center; max-width: 260px;
+      transition: opacity .4s; }
+    #zumi-loading.is-slow .slow { opacity: .8; }
+    @keyframes zs { to { transform: rotate(360deg); } }
+  </style>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="zumi-loading" role="status" aria-live="polite">
+    <div class="logo">ZUMI</div>
+    <div class="spin"></div>
+    <div class="slow">Slow connection — Zumi is still loading. The next visit will be faster.</div>
+  </div>
+  <script>
+    setTimeout(function () { var l = document.getElementById('zumi-loading'); if (l) l.className = 'is-slow'; }, 6000);
+    window.addEventListener('flutter-first-frame', function () {
+      var l = document.getElementById('zumi-loading');
+      if (!l) return;
+      l.style.opacity = '0';
+      setTimeout(function () { l.remove(); }, 350);
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

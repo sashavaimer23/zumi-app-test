@@ -26,6 +26,8 @@ Future<void> main() async {
   }
 
   final prefs = await SharedPreferences.getInstance();
+  splashSeenBefore = prefs.getBool('splash_seen') ?? false;
+  if (!splashSeenBefore) prefs.setBool('splash_seen', true);
 
   // ошибки приложения → обезличенная статистика для разработчика (без данных людей)
   final reported = <String>{};

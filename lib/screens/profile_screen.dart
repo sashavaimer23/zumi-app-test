@@ -6,15 +6,15 @@ import '../config.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/availability.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import '../widgets/share.dart';
 import '../widgets/trust.dart';
-import 'admin/admin_screen.dart';
+import 'lazy_screens.dart';
 import 'help/help_screen.dart';
 import 'post/post_wizard.dart';
-import 'promotion/promotion_screen.dart';
 import 'public_profile_screen.dart';
 import 'settings_screen.dart';
 import 'verify/get_verified_screen.dart';
@@ -31,6 +31,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _showHidden = false; // «Мои объявления»: показать скрытые
   String _key = '';
   Future<List<dynamic>>? _future;
 
@@ -151,7 +152,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final listings = snap.data![1] as List<Property>;
                   final advice = snap.data![2] as Map<String, ListingStats>;
                   final rating = user.isAgent && snap.data!.length > 3 ? snap.data![3] as Rating : null;
-                  final hidden = listings.where((p) => p.status == 'active' && !p.isFresh).length;
+                  final hiddenList = listings.where((p) => p.hiddenFromSearch).toList();
+                  final shownList = listings.where((p) => !p.hiddenFromSearch).toList();
+                  final toAnswer = listings.where((p) => p.needsAvailabilityAnswer && p.isFresh).length;
+                  final showHidden = _showHidden && hiddenList.isNotEmpty;
+                  final list = showHidden ? hiddenList : shownList;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     // агент: своя страница-витрина с каталогом и отзывами
                     if (user.isAgent) ...[
@@ -175,21 +180,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _IdentityCard(isAgent: user.isAgent),
                     const SizedBox(height: 14),
                     _QuotaCard(quota: quota),
-                    if (hidden > 0) ...[
+                    if (toAnswer > 0) ...[
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(14)),
                         child: Row(children: [
-                          const Icon(ZI.hidden, color: Zc.orange),
+                          const Icon(ZI.clock, color: Zc.orange),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              hidden == 1
-                                  ? '1 listing is hidden from search: it was not confirmed for 60 days. '
-                                      'Tap … → Confirm still available.'
-                                  : '$hidden listings are hidden from search: they were not confirmed for 60 days. '
-                                      'Tap … → Confirm still available.',
+                              toAnswer == 1
+                                  ? '1 listing needs your answer: is it still available? One tap below.'
+                                  : '$toAnswer listings need your answer: are they still available? One tap below.',
                               style: const TextStyle(fontSize: 13, height: 1.35),
                             ),
                           ),
@@ -209,13 +212,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ]),
                     const SizedBox(height: 8),
+                    // В поиске / Скрытые
+                    if (hiddenList.isNotEmpty) ...[
+                      Wrap(spacing: 10, children: [
+                        ZChip(
+                          label: 'In search (${shownList.length})',
+                          selected: !showHidden,
+                          onTap: () => setState(() => _showHidden = false),
+                        ),
+                        ZChip(
+                          label: 'Hidden (${hiddenList.length})',
+                          selected: showHidden,
+                          onTap: () => setState(() => _showHidden = true),
+                        ),
+                      ]),
+                      const SizedBox(height: 12),
+                    ],
+                    if (showHidden)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'People don\'t see these in search. Nothing is deleted — show a listing again in one tap.',
+                          style: TextStyle(fontSize: 13, color: Zc.grey),
+                        ),
+                      ),
                     if (listings.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
                         child: Text("You haven't listed anything yet.",
                             textAlign: TextAlign.center, style: TextStyle(color: Zc.grey)),
+                      )
+                    else if (list.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Text('All your listings are hidden. Open "Hidden" to show them again.',
+                            textAlign: TextAlign.center, style: TextStyle(color: Zc.grey)),
                       ),
-                    for (final p in listings) _MyListingTile(p: p, stats: advice[p.id]),
+                    for (final p in list) _MyListingTile(p: p, stats: advice[p.id]),
                   ]);
                 },
               ),
@@ -226,14 +259,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Zumi team panel',
                   subtitle: 'Listings, licences, reports, support, reviews',
                   highlight: true,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
+                  onTap: () => openAdminScreen(context),
                 ),
               if (user.isAgent)
                 _MenuTile(
                   icon: ZI.bolt,
                   title: 'Promotion',
                   subtitle: 'Campaigns that show your listings first · views and clicks',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromotionScreen())),
+                  onTap: () => openPromotionScreen(context),
                 ),
               _MenuTile(
                 icon: ZI.settings,
@@ -493,7 +526,8 @@ class _MyListingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.read<AppState>();
     final active = p.status == 'active';
-    final stale = active && !p.isFresh;
+    final stale = p.expired;
+    final hidden = p.hiddenFromSearch;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
@@ -518,10 +552,10 @@ class _MyListingTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: stale ? Zc.orangeSoft : (active ? Zc.greenTint : Zc.chip),
+                    color: stale ? Zc.orangeSoft : (active && !hidden ? Zc.greenTint : Zc.chip),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(stale ? 'Hidden · confirm' : _statusLabel(p.status),
+                  child: Text(stale ? 'Not confirmed · hidden' : _statusLabel(p),
                       style: TextStyle(fontSize: 11, color: stale ? Zc.orange : Zc.green)),
                 ),
                 const SizedBox(width: 8),
@@ -535,10 +569,12 @@ class _MyListingTile extends StatelessWidget {
                   child: Text('The Zumi team checks first listings — usually about 15 minutes.',
                       style: TextStyle(fontSize: 11, color: Zc.grey)),
                 ),
-              if (p.status == 'archived' && (p.moderationNote ?? '').isNotEmpty)
+              if (p.hiddenByTeam)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('Not approved: ${p.moderationNote}. Edit the listing and publish again.',
+                  child: Text(
+                      'Hidden by the Zumi team: ${p.hiddenReason ?? p.moderationNote ?? 'see Help & support'}. '
+                      'Edit the listing and send it for review again.',
                       style: const TextStyle(fontSize: 11, color: Color(0xFFD64545))),
                 ),
             ]),
@@ -563,7 +599,7 @@ class _MyListingTile extends StatelessWidget {
                     return;
                   case 'promote':
                     if (app.user?.isAgent ?? false) {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const PromotionScreen()));
+                      await openPromotionScreen(context);
                     } else {
                       showSnack(context, 'Promotion will be available with payments (coming soon).');
                     }
@@ -573,6 +609,9 @@ class _MyListingTile extends StatelessWidget {
                     if (context.mounted) showSnack(context, 'Thanks! People will see that the listing is up to date.');
                   case 'archive':
                     await app.repo.setListingStatus(p.id, p.dealType == DealType.sale ? 'sold' : 'rented');
+                  case 'hide':
+                    await app.repo.setListingStatus(p.id, 'archived');
+                    if (context.mounted) showSnack(context, 'Hidden from search. You can find it in Hidden.');
                   case 'activate':
                     await app.repo.setListingStatus(p.id, 'active');
                   case 'delete':
@@ -600,6 +639,7 @@ class _MyListingTile extends StatelessWidget {
               if (active) const PopupMenuItem(value: 'share', child: Text('Share')),
               if (active) const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
               if (active) const PopupMenuItem(value: 'confirm', child: Text('Confirm still available')),
+              if (active) const PopupMenuItem(value: 'hide', child: Text('Hide from search')),
               if (active)
                 PopupMenuItem(
                   value: 'archive',
@@ -608,26 +648,28 @@ class _MyListingTile extends StatelessWidget {
               if (!active && !p.isPending)
                 PopupMenuItem(
                   value: 'activate',
-                  child: Text((p.moderationNote ?? '').isNotEmpty ? 'Send for review again' : 'Publish again'),
+                  child: Text(p.hiddenByTeam ? 'Send for review again' : 'Show in search again'),
                 ),
               const PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
         ]),
       ),
+      // «ещё доступно?» — одним нажатием
+      if (StillAvailableCard.shows(p)) StillAvailableCard(p: p, margin: const EdgeInsets.only(top: 10)),
       // советы после публикации и цифры за 7 дней
-      if (stats != null && p.status == 'active') _TipStrip(p: p, stats: stats!),
+      if (stats != null && p.status == 'active' && !stale) _TipStrip(p: p, stats: stats!),
       ]),
     );
   }
 
-  String _statusLabel(String s) => switch (s) {
-        'active' => 'Active',
-        'sold' => 'Sold',
-        'rented' => 'Rented',
+  String _statusLabel(Property p) => switch (p.status) {
+        'active' => 'In search',
+        'sold' => 'Sold · hidden',
+        'rented' => 'Rented · hidden',
         'draft' => 'Draft',
         'pending' => 'Under review',
-        _ => 'Archived',
+        _ => p.hiddenByTeam ? 'Hidden by Zumi' : 'Hidden by you',
       };
 }
 

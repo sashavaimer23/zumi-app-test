@@ -69,7 +69,7 @@ class Onboarding {
           ],
         Tour.owner => [
             _Step(TourKeys.profile, 'Your listings', 'Profile → My listings: edit, see views and confirm '
-                '"still available" every 60 days.', round: true),
+                'every 30 days answer "still available?" in one tap.', round: true),
             _Step(TourKeys.chats, 'Messages', 'Questions from tenants and buyers arrive here.', round: true),
           ],
         Tour.agent => [

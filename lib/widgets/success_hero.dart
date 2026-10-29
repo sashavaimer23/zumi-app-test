@@ -1,11 +1,9 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'success_house_data.dart';
 
 /// Анимация «Объявление опубликовано»:
 /// 1) появляется дом, 2) сзади снизу пружинисто выезжает круг,
@@ -24,7 +22,11 @@ class ListingLiveHero extends StatefulWidget {
 
 const double _W = 1291, _H = 966;
 // дом вшит в код (WebP), поэтому грузится мгновенно и без файлов
-final _house = MemoryImage(base64Decode(kSuccessHouseWebp));
+// отдельным файлом, а не внутри кода: так основная часть сайта легче на ~200 КБ
+const _house = AssetImage('assets/images/success_house.webp');
+
+/// Загрузить картинку заранее (вызывается, когда человек открывает мастер)
+void precacheSuccessHero(BuildContext context) => precacheImage(_house, context).catchError((_) {});
 const _houseRect = Rect.fromLTWH(9, 384, 1272, 571); // где дом лежит на иллюстрации
 
 const _peach = Color(0xFFFEEACE);

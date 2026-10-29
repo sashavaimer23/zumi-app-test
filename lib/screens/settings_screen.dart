@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/data_notice.dart';
 import '../widgets/trust.dart';
 import '../widgets/zicons.dart';
 import 'legal_screen.dart';
@@ -356,6 +357,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: ZI.shieldFill,
                 title: 'Privacy Policy',
                 onTap: () => openLegal(context, LegalDoc.privacy),
+              ),
+              _Row(
+                icon: ZI.globe,
+                title: 'Your data: where it is stored',
+                subtitle: 'EU servers (Ireland), encrypted, never sold',
+                onTap: () => showDataNotice(context),
               ),
 
               const SizedBox(height: 26),

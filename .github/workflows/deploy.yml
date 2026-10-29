@@ -39,6 +39,12 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=MAPTILER_KEY="$MAPTILER_KEY"
+          # заранее открыть соединение с сервером базы — на 3G экономит ~1 секунду
+          if [ -n "$SUPABASE_URL" ]; then
+            sed -i "s#<!--ZUMI_PRECONNECT-->#<link rel=\"preconnect\" href=\"$SUPABASE_URL\" crossorigin><link rel=\"dns-prefetch\" href=\"$SUPABASE_URL\">#" build/web/index.html
+          fi
+          # размер того, что скачивает человек при первом входе (в журнале сборки)
+          du -k build/web/main.dart.js build/web/canvaskit/*.wasm build/web/canvaskit/chromium/*.wasm 2>/dev/null || true
       - name: Code check (report is published next to the app as analyze.txt)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings > build/web/analyze.txt 2>&1 || true
       - uses: actions/upload-pages-artifact@v3

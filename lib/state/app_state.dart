@@ -112,6 +112,24 @@ class AppState extends ChangeNotifier {
   void dataChanged() {
     _dataVersion++;
     notifyListeners();
+    refreshToConfirm();
+  }
+
+  // ---------- «Ещё доступно?» — сколько объявлений ждут ответа (значок на «Профиль») ----------
+  int _toConfirm = 0;
+  int get listingsToConfirm => _toConfirm;
+
+  Future<void> refreshToConfirm() async {
+    final n = _user == null || _user!.isAdmin ? 0 : await repo.listingsToConfirm();
+    if (n == _toConfirm) return;
+    _toConfirm = n;
+    notifyListeners();
+  }
+
+  /// Ответ одним нажатием
+  Future<void> answerStillAvailable(String propertyId, bool available) async {
+    await repo.answerStillAvailable(propertyId, available);
+    dataChanged();
   }
 
   // ---------- сигнал для списка чатов ----------
@@ -141,6 +159,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     refreshUnread();
+    refreshToConfirm();
     _inboxSub = repo.incomingMessages().listen((_) {
       // сообщение пришло — пересчитываем чуть позже (вдруг человек как раз в этом чате)
       Future.delayed(const Duration(milliseconds: 1200), () {

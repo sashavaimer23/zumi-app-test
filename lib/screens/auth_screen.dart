@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/data_notice.dart';
 import 'forgot_password_screen.dart';
 import 'legal_screen.dart';
 import 'help/help_screen.dart';
@@ -366,6 +367,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ]),
+                // где хранятся данные — до согласия, простыми словами
+                const Padding(padding: EdgeInsets.only(top: 6, bottom: 6), child: DataNotice(compact: true)),
                 // отдельная галочка — не обязательна, по умолчанию не отмечена
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Checkbox(

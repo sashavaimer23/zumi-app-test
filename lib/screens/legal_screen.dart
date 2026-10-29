@@ -82,7 +82,10 @@ const _terms = <(String, String)>[
         '• To publish a listing you must confirm your phone number with a code (once).\n'
         '• Put the pin on the map where the property really is. The address and "what\'s nearby" are optional, '
         'but must be true if you add them.\n'
-        '• A listing that has not been confirmed as available for 60 days is hidden from search until you confirm it.'
+        '• 30 days after you last confirmed a listing, Zumi asks you "Is it still available?". If you do not answer '
+        'within 7 days, the listing is hidden from search (not deleted) until you confirm it. You can hide or show '
+        'your listings yourself at any time. The Zumi team may hide listings that break these rules — they then go '
+        'back for review before they are shown again.'
   ),
   (
     '4. Safety rules',

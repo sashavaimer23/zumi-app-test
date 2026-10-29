@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
+// Библиотека обработки фото большая — грузится только когда человек добавляет фото (сайт открывается быстрее)
+import 'package:image/image.dart' deferred as img;
 
-/// Маленькая копия фото для карточек (JPEG ~800 px).
+/// Маленькая копия фото для карточек (JPEG 640 px, ~40–60 КБ — быстро даже на 3G).
 /// Карточки в ленте грузят её вместо оригинала — это в разы меньше трафика.
 /// null — если не получилось; тогда используется оригинал.
-Future<Uint8List?> makeThumb(Uint8List bytes, {int width = 800, int quality = 72}) async {
+Future<Uint8List?> makeThumb(Uint8List bytes, {int width = 640, int quality = 70}) async {
   try {
     return await compute(_thumb, (bytes, width, quality, false));
   } catch (_) {
@@ -21,12 +22,13 @@ Future<Uint8List?> makeAvatar(Uint8List bytes) async {
   }
 }
 
-Uint8List? _thumb((Uint8List, int, int, bool) a) {
+Future<Uint8List?> _thumb((Uint8List, int, int, bool) a) async {
+  await img.loadLibrary();
   final (bytes, width, quality, square) = a;
   final src = img.decodeImage(bytes);
   if (src == null) return null;
   final oriented = img.bakeOrientation(src);
-  final img.Image out;
+  final dynamic out;
   if (square) {
     out = img.copyResizeCropSquare(oriented, size: width);
   } else if (oriented.width > width) {
@@ -55,7 +57,8 @@ Future<Uint8List?> cropBanner(Uint8List bytes, double left, double top, double w
   }
 }
 
-Uint8List? _cropBanner((Uint8List, double, double, double, double, int, int) a) {
+Future<Uint8List?> _cropBanner((Uint8List, double, double, double, double, int, int) a) async {
+  await img.loadLibrary();
   final (bytes, l, t, w, h, outW, outH) = a;
   final src = img.decodeImage(bytes);
   if (src == null) return null;
@@ -75,6 +78,7 @@ Uint8List? _cropBanner((Uint8List, double, double, double, double, int, int) a) 
 /// Возвращает коды: small (мало пикселей), dark (темно), portrait (вертикальное).
 Future<List<String>> photoWarnings(Uint8List bytes) async {
   try {
+    await img.loadLibrary();
     final image = img.decodeImage(bytes);
     if (image == null) return const [];
     final out = <String>[];

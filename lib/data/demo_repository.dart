@@ -482,7 +482,13 @@ class DemoRepository implements Repository {
     if (i < 0) return;
     // без одобрения модератора объявление снова уходит на проверку
     final s = status == 'active' && !_approved.contains(id) && _props[i].ownerId != null ? 'pending' : status;
-    _props[i] = _props[i].copyWith(status: s);
+    final hiding = const {'archived', 'sold', 'rented'}.contains(s);
+    _props[i] = _props[i].copyWith(
+      status: s,
+      hiddenBy: hiding ? 'owner' : null,
+      clearHidden: !hiding,
+      confirmedAt: s == 'active' ? DateTime.now() : null,
+    );
   }
 
   @override
@@ -795,6 +801,22 @@ class DemoRepository implements Repository {
   Future<String?> myListingPhone(String propertyId) async {
     final p = await getProperty(propertyId);
     return p != null && p.ownerId == _user?.id ? p.contactPhone : null;
+  }
+
+  @override
+  Future<void> answerStillAvailable(String propertyId, bool available) async {
+    final i = _props.indexWhere((p) => p.id == propertyId);
+    if (i < 0) return;
+    final p = _props[i];
+    _props[i] = available
+        ? p.copyWith(confirmedAt: DateTime.now())
+        : p.copyWith(status: p.dealType == DealType.sale ? 'sold' : 'rented', hiddenBy: 'owner');
+  }
+
+  @override
+  Future<int> listingsToConfirm() async {
+    final uid = _user?.id;
+    return _props.where((p) => p.ownerId == uid && p.needsAvailabilityAnswer).length;
   }
 
   @override

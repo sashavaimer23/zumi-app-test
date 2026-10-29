@@ -130,12 +130,15 @@ class Property {
   final String? highlights;             // «Gated street | Borehole | Solar backup»
   final String? ownerAvatarUrl;         // фото автора
   final List<String> thumbs;            // маленькие копии фото для карточек (экономия трафика)
-  final bool isFresh;                   // подтверждено «ещё доступно» за последние 60 дней
+  final bool isFresh;                   // подтверждено «ещё доступно» за последние 37 дней (спросим через 30)
   final String contactMode;             // 'phone' — номер можно показать, 'chat' — только чат
   final bool hasPhone;                  // у объявления есть номер (сам номер выдаёт сервер по кнопке)
   final String? moderationNote;         // почему модератор не одобрил
   final Map<String, String> nearby;     // что рядом: shop/school/hospital/main_road → lt1/1_3/3_5/gt5
   final bool ownerLicensed;             // автор — агент с проверенной лицензией ZIEA
+  final String? hiddenBy;               // кто скрыл: owner · team · expired
+  final String? hiddenReason;           // почему скрыла команда Zumi
+  final DateTime? approvedAt;
 
   const Property({
     required this.id,
@@ -189,6 +192,9 @@ class Property {
     this.moderationNote,
     this.nearby = const {},
     this.ownerLicensed = false,
+    this.hiddenBy,
+    this.hiddenReason,
+    this.approvedAt,
   }) : hasPhone = hasPhone ?? (contactPhone != null && contactPhone != '');
 
   factory Property.fromMap(Map<String, dynamic> m) => Property(
@@ -243,6 +249,9 @@ class Property {
         moderationNote: m['moderation_note'] as String?,
         nearby: _nearby(m['nearby']),
         ownerLicensed: (m['owner_licensed'] as bool?) ?? false,
+        hiddenBy: m['hidden_by'] as String?,
+        hiddenReason: m['hidden_reason'] as String?,
+        approvedAt: DateTime.tryParse((m['approved_at'] as String?) ?? ''),
       );
 
   static Map<String, String> _nearby(Object? v) {
@@ -267,6 +276,8 @@ class Property {
     String? contactName,
     String? contactMode,
     bool? ownerLicenceVerified,
+    String? hiddenBy,
+    bool clearHidden = false,
   }) =>
       Property(
         id: id, ownerId: ownerId, title: title, description: description,
@@ -290,9 +301,37 @@ class Property {
         isFresh: confirmedAt != null ? true : isFresh,
         contactMode: contactMode ?? this.contactMode, hasPhone: hasPhone, moderationNote: moderationNote,
         nearby: nearby, ownerLicensed: ownerLicensed,
+        hiddenBy: clearHidden ? null : (hiddenBy ?? this.hiddenBy),
+        hiddenReason: clearHidden ? null : hiddenReason,
+        approvedAt: approvedAt,
       );
 
   bool get isPending => status == 'pending';
+
+  // ---------- «Ещё доступно?» и скрытые объявления ----------
+  /// Через сколько дней спросить «ещё доступно?» и через сколько скрыть без ответа
+  static const askAfterDays = 30;
+  static const hideAfterDays = 37;
+
+  /// Дней с последнего подтверждения
+  int get daysSinceConfirmed =>
+      DateTime.now().difference(confirmedAt ?? approvedAt ?? createdAt).inDays;
+
+  /// Пора спросить автора «ещё доступно?» (объявление ещё в поиске)
+  bool get needsAvailabilityAnswer => status == 'active' && !isDemo && daysSinceConfirmed >= askAfterDays;
+
+  /// Дней до скрытия, если не ответить
+  int get daysUntilHidden => (hideAfterDays - daysSinceConfirmed).clamp(0, hideAfterDays);
+
+  /// Не видно в поиске: скрыто, продано/сдано или не подтверждено вовремя
+  bool get hiddenFromSearch =>
+      const {'archived', 'sold', 'rented'}.contains(status) || (status == 'active' && !isFresh);
+
+  /// Скрыто командой Zumi (вернуть можно только через проверку)
+  bool get hiddenByTeam => status == 'archived' && hiddenBy == 'team';
+
+  /// Не ответил «ещё доступно?» вовремя
+  bool get expired => status == 'active' && !isFresh;
   bool get chatOnly => contactMode == 'chat';
 
   /// Агент без сверенной лицензии ZIEA — на объявлении пометка
@@ -1968,7 +2007,8 @@ class ListingStats {
       tips: [
         for (final t in (m['tips'] as List? ?? const []))
           // проверку на месте больше не делаем — старый совет не показываем
-          if ('${(t as Map)['code']}' != 'verify_onsite') ListingTip('${t['code']}', Map<String, dynamic>.from(t)),
+          // «подтвердите» показывает отдельная карточка «Ещё доступно?»; проверки на месте больше нет
+          if (!const {'verify_onsite', 'confirm'}.contains('${(t as Map)['code']}')) ListingTip('${t['code']}', Map<String, dynamic>.from(t)),
       ],
     );
   }

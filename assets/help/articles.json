@@ -43,7 +43,7 @@
   "id": "ce7fd462-5a6c-59d9-be2a-337af0146f09",
   "category": "listings",
   "title": "Why is my listing hidden from search?",
-  "body": "A listing is hidden from search when:\n- It was not confirmed as \"still available\" for 60 days. Open Profile → My listings, tap ⋯ → \"Confirm still available\".\n- It is waiting for review or was not approved (see \"Why is my listing under review?\").\n- People reported it and the team is checking it.\n- You archived it or marked it as rented or sold.\n\nYou can always see your own listings in Profile → My listings, whatever their status.",
+  "body": "A listing is hidden from search when:\n- It was not confirmed as \"still available\". After 30 days Zumi asks you \"Is it still available?\" on the listing and in Profile. If there is no answer within 7 days, the listing is hidden. Tap \"Yes, still available\" to show it again.\n- You hid it yourself, or marked it as sold or rented.\n- The Zumi team hid it — for example after reports or if it was not approved. The reason is shown on the listing.\n\nAll hidden listings are in Profile → My listings → Hidden. Nothing is deleted: you can show a listing again in one tap. A listing hidden by the Zumi team goes back for a quick review first.",
   "sort": 30,
   "web_only": false
  },

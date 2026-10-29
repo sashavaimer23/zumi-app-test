@@ -312,7 +312,7 @@ class SupabaseRepository implements Repository {
         return _areasCache!;
       });
 
-  /// Общие фильтры поиска. Объявления, не подтверждённые 60 дней, не показываются.
+  /// Общие фильтры поиска. Объявления, не подтверждённые 37 дней, не показываются.
   PostgrestFilterBuilder<PostgrestList> _filtered(SearchFilters f, {String columns = '*', bool withPrice = true}) {
     var q = _db.from('property_feed').select(columns).eq('status', 'active').eq('is_fresh', true);
     if (f.dealType != null) q = q.eq('deal_type', f.dealType == DealType.sale ? 'sale' : 'rent');
@@ -840,6 +840,21 @@ class SupabaseRepository implements Repository {
       return await _db.rpc('my_listing_phone', params: {'pid': propertyId}) as String?;
     } catch (_) {
       return null;
+    }
+  }
+
+  @override
+  Future<void> answerStillAvailable(String propertyId, bool available) => _guard(() async {
+        await _db.rpc('answer_still_available', params: {'pid': propertyId, 'p_available': available});
+      });
+
+  @override
+  Future<int> listingsToConfirm() async {
+    if (_db.auth.currentUser == null) return 0;
+    try {
+      return ((await _db.rpc('my_listings_to_confirm')) as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
     }
   }
 

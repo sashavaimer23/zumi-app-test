@@ -153,6 +153,12 @@ abstract class Repository {
   /// Автор подтверждает, что объект ещё доступен
   Future<void> confirmListing(String propertyId);
 
+  /// «Ещё доступно?»: да — подтвердить, нет — отметить сданным / проданным (уходит в «Скрытые»)
+  Future<void> answerStillAvailable(String propertyId, bool available);
+
+  /// Сколько моих объявлений ждут ответа «ещё доступно?»
+  Future<int> listingsToConfirm();
+
   // --- поддержка (пользователь)
   Future<List<SupportTicket>> myTickets();
   Future<String> openTicket({

@@ -9,7 +9,7 @@ import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import '../widgets/wide_card.dart';
 import '../widgets/zicons.dart';
-import 'admin/admin_screen.dart';
+import 'lazy_screens.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
 import 'post/post_wizard.dart';
@@ -76,6 +76,7 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _app?.repo.logVisit();
       _app?.refreshUnread(); // вернулся в приложение — обновить значок сообщений
+      _app?.refreshToConfirm();
     }
   }
 
@@ -211,6 +212,7 @@ class _PillNavBar extends StatelessWidget {
             final n = _items.length;
             final sel = _items.indexWhere((e) => e.$1 == index);
             final unread = context.watch<AppState>().unreadChats;
+            final toConfirm = context.watch<AppState>().listingsToConfirm;
             final has = sel >= 0;
             final selW = has ? c.maxWidth * 0.38 : 0.0;
             // -0.5 px: запас, чтобы при анимации сумма ширин не вылезла за край
@@ -242,7 +244,7 @@ class _PillNavBar extends StatelessWidget {
                       icon: _items[i].$2,
                       label: _items[i].$3,
                       selected: i == sel,
-                      badge: _items[i].$1 == 3 ? unread : 0,
+                      badge: switch (_items[i].$1) { 3 => unread, 4 => toConfirm, _ => 0 },
                       onTap: () => onTap(_items[i].$1),
                     ),
                   ),
@@ -368,6 +370,10 @@ class _TopBar extends StatelessWidget {
                           const SizedBox(width: 6),
                           CountBadge(context.watch<AppState>().unreadChats),
                         ],
+                        if (i == 4 && context.watch<AppState>().listingsToConfirm > 0) ...[
+                          const SizedBox(width: 6),
+                          CountBadge(context.watch<AppState>().listingsToConfirm),
+                        ],
                       ]),
                       const SizedBox(height: 4),
                       AnimatedContainer(
@@ -383,7 +389,7 @@ class _TopBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: TextButton.icon(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
+                    onPressed: () => openAdminScreen(context),
                     icon: const Icon(ZI.shieldFill, size: 18, color: Zc.green),
                     label: const Text('Team', style: TextStyle(color: Zc.green, fontSize: 16)),
                   ),

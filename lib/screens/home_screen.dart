@@ -85,6 +85,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            // напоминание автору: «ещё доступно?» (то же число — на значке «Профиль»)
+            if (context.watch<AppState>().listingsToConfirm > 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,
+                      isDesktop(context) ? desktopSide(context) : 16, 16),
+                  child: Material(
+                    color: Zc.orangeSoft,
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Shell.of(context)?.go(4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(children: [
+                          const Icon(ZI.clock, color: Zc.orange),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              context.watch<AppState>().listingsToConfirm == 1
+                                  ? 'Is your listing still available? Tap to answer — it takes one tap.'
+                                  : '${context.watch<AppState>().listingsToConfirm} listings: are they still available? '
+                                      'Tap to answer.',
+                              style: const TextStyle(fontSize: 14, height: 1.35),
+                            ),
+                          ),
+                          const Icon(ZI.caretRight, color: Zc.orange),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // реклама: большой баннер вверху главной
             if (_isPlainHome)
               SliverToBoxAdapter(

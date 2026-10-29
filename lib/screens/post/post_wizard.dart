@@ -121,6 +121,10 @@ class _PostWizardState extends State<PostWizard> {
   @override
   void initState() {
     super.initState();
+    // картинка «Your listing is live!» — подгружаем заранее, пока человек заполняет объявление
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) precacheSuccessHero(context);
+    });
     final e = widget.editing;
     if (e != null) {
       _title.text = e.title;
@@ -464,7 +468,7 @@ class _PostWizardState extends State<PostWizard> {
   // ------------------------------ ШАГ 3 ------------------------------
   Future<void> _pickPhotos() async {
     try {
-      final files = await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 1600, maxHeight: 1600);
+      final files = await ImagePicker().pickMultiImage(imageQuality: 75, maxWidth: 1280, maxHeight: 1280);
       final room = 10 - _d.photos.length;
       var skipped = 0;
       final fresh = <PickedPhoto>[];
@@ -472,7 +476,7 @@ class _PostWizardState extends State<PostWizard> {
         var bytes = await f.readAsBytes();
         // фото до 5 MB: большое пробуем сжать, если не вышло — пропускаем
         if (bytes.lengthInBytes > kMaxImageBytes) {
-          final smaller = await makeThumb(bytes, width: 1600, quality: 78);
+          final smaller = await makeThumb(bytes, width: 1280, quality: 75);
           if (smaller == null || smaller.lengthInBytes > kMaxImageBytes) {
             skipped++;
             continue;

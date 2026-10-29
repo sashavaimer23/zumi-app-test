@@ -12,6 +12,9 @@ import '../widgets/common.dart';
 /// 4) расходится мягкая волна, по одной выпрыгивают буквы Z U M I;
 /// 5) появляется слоган; 6) заставка растворяется и открывается главная.
 /// Пока идёт заставка, главная уже загружается под ней.
+/// Заставку уже видели раньше — показываем короткую версию (не заставляем ждать каждый раз)
+bool splashSeenBefore = false;
+
 class SplashGate extends StatefulWidget {
   const SplashGate({super.key, required this.child});
   final Widget child;
@@ -21,8 +24,8 @@ class SplashGate extends StatefulWidget {
 }
 
 class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 3300));
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: Duration(milliseconds: splashSeenBefore ? 1400 : 3300));
   bool _done = false;
 
   @override
