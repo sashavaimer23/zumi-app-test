@@ -32,12 +32,14 @@ jobs:
       PGHOST: localhost
       PGUSER: postgres
       PGPASSWORD: postgres
-      PGDATABASE: postgres
+      PGDATABASE: zumi
     steps:
       - uses: actions/checkout@v4
       - name: Build the database from all_in_one.sql and run the checks
         run: |
           set -o pipefail
+          # чистая база, как новый проект Supabase (в готовом образе PostGIS уже стоит в public)
+          createdb -T template0 zumi
           psql -q -v ON_ERROR_STOP=1 -f supabase/tests/00_supabase_stubs.sql
           psql -q -v ON_ERROR_STOP=1 -f supabase/all_in_one.sql > build.txt 2>&1 || {
             grep -B2 -A3 "ERROR" build.txt | sed 's/^/::error::/' ; exit 1; }
