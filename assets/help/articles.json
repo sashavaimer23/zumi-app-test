@@ -3,7 +3,7 @@
   "id": "e2bf5b54-9919-58d0-9461-2de87c71309d",
   "category": "account",
   "title": "Signing in and confirmation codes",
-  "body": "You sign in to Zumi with your email and password.\n\n## Confirming your phone\nTo see phone numbers in listings, and to get the \"Phone confirmed\" mark, confirm your own phone once:\n- Open Profile → Settings → Phone & verification.\n- Choose WhatsApp or SMS and enter your number with the country code, e.g. +260 97 123 4567.\n- Type the 6-digit code you receive. It works for 10 minutes.\n\nYou can also confirm your email with a code, but only a WhatsApp or SMS code gives the \"Phone confirmed\" mark.\n\n## Good to know\n- One phone number can be confirmed on only one Zumi account.\n- If you change your number in the profile, you need to confirm the new one.\n- Forgot your password? On the sign-in screen tap \"Forgot password?\" — we send a code to your email.",
+  "body": "You sign in to Zumi with your email and password.\n\n## Confirming your phone\nYou need a confirmed phone to publish a listing and to see phone numbers in listings. Your listings then show \"Number checked\". You do it only once:\n- Open Profile → Get verified (or Settings → Phone & verification).\n- Choose WhatsApp or SMS and enter your number with the country code, e.g. +260 97 123 4567.\n- Type the 6-digit code you receive. It works for 10 minutes.\n\n## Good to know\n- One phone number can be confirmed on only one Zumi account.\n- If you change your number in the profile, you need to confirm the new one.\n- Forgot your password? On the sign-in screen tap \"Forgot password?\" — we send a code to your email. Type the whole code from the email (it can be 6–8 digits).",
   "sort": 10,
   "web_only": false
  },
@@ -27,7 +27,7 @@
   "id": "e2232f2d-41f2-569a-a8f0-f3ebc63e88b5",
   "category": "listings",
   "title": "How to post a listing",
-  "body": "Tap \"Post\" on the home screen (or \"Post a listing\" on the website) and follow the steps:\n- Choose rent or sale and the type of property.\n- Add a clear title, the price and the main details (bedrooms, bathrooms, size).\n- Put the pin exactly on the property on the map.\n- Add good photos: daylight, every room, the outside and the street. 5 or more photos give people a clear picture.\n- Check the preview and publish.\n\n## Tips\n- Write the real price, so people know right away if the home fits their budget.\n- Do not put phone numbers or links inside photos or the description — use the contact settings instead.\n- Confirm \"still available\" every 60 days, otherwise the listing is hidden from search.",
+  "body": "Tap \"Post\" on the home screen (or \"Post a listing\" on the website) and follow the steps:\n- Choose rent or sale and the type of property.\n- Add a clear title, the price and the main details (bedrooms, bathrooms, size).\n- Add good photos: daylight, every room, the outside and the street. 5 or more photos give people a clear picture.\n- Put the pin on the map where the property is (required). The address and \"what's nearby\" are optional.\n- Check the preview and publish. The first time, Zumi asks you to confirm your phone with a code.\n\n## Tips\n- Write the real price, so people know right away if the home fits their budget.\n- Do not put phone numbers or links inside photos or the description — use the contact settings instead.\n- Every 30 days Zumi asks \"Is it still available?\" — answer in one tap. Without an answer for 7 days the listing is hidden from search (not deleted).",
   "sort": 10,
   "web_only": false
  },
@@ -75,7 +75,7 @@
   "id": "a44d1cea-2bb5-5fdc-81f2-6aea36e74198",
   "category": "verification",
   "title": "ZIEA licence for agents",
-  "body": "Estate agents in Zambia are registered with the Zambia Institute of Estate Agents (ZIEA). Zumi checks your registration number with the register.\n\n- Add the number when you sign up as an agent, or later in Profile → Get verified.\n- Until it is checked, your listings and agent page show \"ZIEA licence not verified\".\n- Promotion of listings is available only to agents with a checked licence.\n\nIf your number was not approved, the reason is shown in Get verified. Check the number and send it again.",
+  "body": "Estate agents in Zambia are registered with the Zambia Institute of Estate Agents (ZIEA). Zumi checks your registration number with the register — you don't upload any documents.\n\n- Add the number when you sign up as an agent (it is optional), or later in Profile → Get verified.\n- Until it is checked, your listings and agent page show \"ZIEA licence not verified\".\n- After the check your listings show the \"Licensed agent\" badge — people trust them more.\n\nIf your number was not approved, the reason is shown in Get verified. Check the number and send it again.",
   "sort": 20,
   "web_only": false
  },

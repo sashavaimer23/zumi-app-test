@@ -714,48 +714,10 @@ class SupabaseRepository implements Repository {
       });
 
   @override
-  Future<void> submitIdentity({
-    required String docType,
-    required PickedPhoto document,
-    required PickedPhoto selfie,
-  }) =>
-      _guard(() async {
-        final uid = _requireUserId();
-        final paths = await _uploadPrivate(uid, 'identity', docType, [document, selfie]);
-        await _db.from('verification_requests').insert({
-          'user_id': uid,
-          'kind': 'identity',
-          'doc_type': docType,
-          'doc_paths': paths,
-          'consent_at': DateTime.now().toUtc().toIso8601String(),
-        });
-        await _reloadUser(); // статус «на проверке»
-      });
-
-  @override
   Future<void> submitAgentLicence(String licenceNo) => _guard(() async {
         final uid = _requireUserId();
         await _db.from('profiles').update({'agent_licence_no': licenceNo.trim()}).eq('id', uid);
         await _reloadUser();
-      });
-
-  @override
-  Future<void> requestVerification({
-    required String kind,
-    String? propertyId,
-    required List<PickedPhoto> docs,
-    String? note,
-  }) =>
-      _guard(() async {
-        final uid = _requireUserId();
-        final paths = await _uploadPrivate(uid, propertyId ?? 'identity', kind, docs);
-        await _db.from('verification_requests').insert({
-          'user_id': uid,
-          'property_id': propertyId,
-          'kind': kind,
-          'doc_paths': paths,
-          'note': note,
-        });
       });
 
   Future<List<String>> _uploadPrivate(String uid, String folder, String prefix, List<PickedPhoto> files) async {
@@ -771,40 +733,6 @@ class SupabaseRepository implements Repository {
     }
     return paths;
   }
-
-  @override
-  Future<String?> verificationStatus({required String kind, String? propertyId}) async {
-    if (_db.auth.currentUser == null) return null;
-    return _guard(() async {
-      var q = _db.from('verification_requests').select('status').eq('kind', kind);
-      q = propertyId == null ? q.isFilter('property_id', null) : q.eq('property_id', propertyId);
-      final rows = await q.order('created_at', ascending: false).limit(1);
-      return rows.isEmpty ? null : rows.first['status'] as String?;
-    });
-  }
-
-  @override
-  Future<PropertyCheckResult> submitPropertyCheck(
-    String propertyId,
-    List<PickedPhoto> photos,
-    double lat,
-    double lng,
-  ) =>
-      _guard(() async {
-        final uid = _requireUserId();
-        final paths = await _uploadPrivate(uid, propertyId, 'onsite', photos);
-        final res = await _db.rpc('submit_property_check', params: {
-          'pid': propertyId,
-          'dev_lat': lat,
-          'dev_lng': lng,
-          'photo_paths': paths,
-        }) as Map<String, dynamic>;
-        // решение принято сразу — фото с места больше не нужны, удаляем
-        try {
-          await _db.storage.from('verification-docs').remove(paths);
-        } catch (_) {/* не успели — уберёт ежедневная уборка */}
-        return PropertyCheckResult(res['verified'] == true, (res['distance_m'] as num?)?.round() ?? 0);
-      });
 
   @override
   Future<bool> sendCode(String channel, String destination) => _guard(() async {
@@ -1020,32 +948,6 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> adminReviewAccount(String userId, String action, {String? note}) => _guard(() async {
         await _db.rpc('admin_review_account', params: {'uid': userId, 'p_action': action, 'p_note': note});
-      });
-
-  @override
-  Future<List<VerificationItem>> adminVerificationQueue({String status = 'pending'}) => _guard(() async {
-        final rows = await _db
-            .from('admin_verification_queue')
-            .select()
-            .eq('status', status)
-            .neq('kind', 'property')
-            .order('created_at', ascending: status == 'pending')
-            .limit(100);
-        return rows.map(VerificationItem.fromMap).toList();
-      });
-
-  @override
-  Future<List<String>> adminDocUrls(List<String> paths) => _guard(() async {
-        if (paths.isEmpty) return <String>[];
-        final signed = await _db.storage.from('verification-docs').createSignedUrls(paths, 600);
-        return signed.map((s) => s.signedUrl).toList();
-      });
-
-  @override
-  Future<void> adminReviewVerification(String id, bool approve, {String? note}) => _guard(() async {
-        await _db.rpc('admin_review_verification', params: {'rid': id, 'approve': approve, 'p_note': note});
-        // решение есть — фото документа и селфи удаляем из хранилища
-        await adminPurgeDocs();
       });
 
   // ---------------- помощь ----------------

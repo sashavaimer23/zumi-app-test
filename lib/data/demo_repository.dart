@@ -628,77 +628,12 @@ class DemoRepository implements Repository {
   }
 
   @override
-  Future<void> submitIdentity({
-    required String docType,
-    required PickedPhoto document,
-    required PickedPhoto selfie,
-  }) async {
-    final u = _requireUser();
-    await _lag();
-    // как на сервере: заявка уходит команде Zumi и ждёт проверки
-    _vQueue.insert(
-      0,
-      VerificationItem(
-        id: _uuid.v4(),
-        userId: u.id,
-        userName: u.fullName,
-        userRole: u.role,
-        kind: 'identity',
-        docType: docType,
-        docPaths: [
-          MemoryImages.put('doc-${u.id}-${DateTime.now().millisecondsSinceEpoch}', document.bytes),
-          MemoryImages.put('selfie-${u.id}-${DateTime.now().millisecondsSinceEpoch}', selfie.bytes),
-        ],
-        createdAt: DateTime.now(),
-      ),
-    );
-    _setUser(u.copyWith(idStatus: 'pending'));
-  }
-
-  @override
   Future<void> submitAgentLicence(String licenceNo) async {
     final u = _requireUser();
     await _lag();
     _licences.removeWhere((l) => l.userId == u.id);
     _licences.add(LicenceItem(userId: u.id, userName: u.fullName, licenceNo: licenceNo.trim()));
     _setUser(u.copyWith(licenceNo: licenceNo.trim(), licenceVerified: false, clearLicence: false, licenceNote: ''));
-  }
-
-  @override
-  Future<void> requestVerification({
-    required String kind,
-    String? propertyId,
-    required List<PickedPhoto> docs,
-    String? note,
-  }) async {
-    _requireUser();
-    await _lag();
-    _verification['$kind:${propertyId ?? ''}'] = 'pending';
-  }
-
-  @override
-  Future<String?> verificationStatus({required String kind, String? propertyId}) async {
-    final u = _user;
-    if (u == null) return null;
-    if (kind == 'identity' && propertyId == null) return u.idVerified ? 'approved' : u.idStatus;
-    return _verification['$kind:${propertyId ?? ''}'];
-  }
-
-  @override
-  Future<PropertyCheckResult> submitPropertyCheck(
-    String propertyId,
-    List<PickedPhoto> photos,
-    double lat,
-    double lng,
-  ) async {
-    _requireUser();
-    if (photos.length < 3) throw AppException('Please take at least 3 photos at the property');
-    await _lag();
-    // В демо-режиме проверка расстояния не выполняется — объект считается подтверждённым
-    final i = _props.indexWhere((p) => p.id == propertyId);
-    if (i >= 0) _props[i] = _props[i].copyWith(propertyVerified: true);
-    _verification['property:$propertyId'] = 'approved';
-    return const PropertyCheckResult(true, 0);
   }
 
   @override
@@ -917,16 +852,6 @@ class DemoRepository implements Repository {
         body: 'The house was not as in the photos. This person is a liar!!!', flagsCount: 2, createdAt: _ago(60 * 5)),
   ];
 
-  late final List<VerificationItem> _vQueue = [
-    VerificationItem(id: 'v1', userId: 'u-chanda', userName: 'Chanda Phiri', userRole: 'owner', kind: 'identity',
-        docType: 'nrc', docPaths: const ['asset:p6.jpg', 'asset:n1.jpg'], createdAt: _ago(50)),
-    VerificationItem(id: 'v2', userId: 'u-joseph', userName: 'Joseph Tembo', userRole: 'agent', kind: 'identity',
-        docType: 'passport', docPaths: const ['asset:p2.jpg', 'asset:n3.jpg'], createdAt: _ago(180)),
-    VerificationItem(id: 'v3', userId: 'u-mwila', userName: 'Mwila Banda', userRole: 'owner', kind: 'ownership',
-        docPaths: const ['asset:p4.jpg'], propertyTitle: 'Starter house in New Kasama', note: 'Title deed attached',
-        createdAt: _ago(300)),
-  ];
-  final List<VerificationItem> _vDone = [];
 
   final List<LicenceItem> _licences = [
     const LicenceItem(userId: 'u-joseph', userName: 'Joseph Tembo', licenceNo: 'ZIEA/2024/0417'),
@@ -1058,8 +983,8 @@ class DemoRepository implements Repository {
           _otherVotes.values.fold<int>(0, (a, l) => a + l.where((v) => !v.$1).length),
       otpTestMode: _otpTestMode,
       requireLicence: _requireLicence,
-      idChecks: _vQueue.where((v) => v.kind == 'identity').length,
-      ownership: _vQueue.where((v) => v.kind == 'ownership').length,
+      idChecks: 0, // документы больше не проверяем
+      ownership: 0,
       licences: _licences.length,
       reports: _reports.where((r) => r.status == 'new').length,
       tickets: _tickets.where((t) => t.status == 'open').length,
@@ -1067,35 +992,6 @@ class DemoRepository implements Repository {
       listings: _props.where((p) => p.status == 'active').length,
       users: 128 + _known.length,
     );
-  }
-
-  @override
-  Future<List<VerificationItem>> adminVerificationQueue({String status = 'pending'}) async {
-    _requireAdmin();
-    await _lag();
-    return status == 'pending' ? List.of(_vQueue) : _vDone.where((v) => v.status == status).toList();
-  }
-
-  @override
-  Future<List<String>> adminDocUrls(List<String> paths) async => paths;
-
-  @override
-  Future<void> adminReviewVerification(String id, bool approve, {String? note}) async {
-    _requireAdmin();
-    final i = _vQueue.indexWhere((v) => v.id == id);
-    if (i < 0) return;
-    final v = _vQueue.removeAt(i);
-    _vDone.insert(0, VerificationItem(id: v.id, userId: v.userId, userName: v.userName, userRole: v.userRole,
-        kind: v.kind, docType: v.docType, status: approve ? 'approved' : 'rejected', reviewerNote: note,
-        propertyTitle: v.propertyTitle, createdAt: v.createdAt));
-    _log(approve ? 'approve' : 'reject', v.kind, v.userName ?? v.id, note);
-    final target = _known[v.userId];
-    if (target != null && v.kind == 'identity') {
-      _setUser(approve
-          ? target.copyWith(idVerified: true, idStatus: 'approved')
-          : target.copyWith(idStatus: 'rejected', idNote: note ?? ''));
-      _syncBadgeFor(v.userId);
-    }
   }
 
   /// Плашка Verified на объявлениях конкретного человека

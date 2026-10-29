@@ -56,7 +56,11 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      // ошибки видны у полей; если человек внизу формы — подскажем, что смотреть выше
+      showSnack(context, 'Please check the fields marked in red');
+      return;
+    }
     if (_signUp && !_consent) {
       showSnack(context, 'Please accept the Terms of Service and Privacy Policy');
       return;

@@ -29,12 +29,9 @@ part 'admin_owner.dart';
 // ======================================================================
 
 enum _Section {
-  inbox, accounts, listings, ids, licences, reports, phones, support, reviews, help, // модератор
+  inbox, accounts, listings, licences, reports, phones, support, reviews, help, // модератор
   ads, adStats, stats, dev, feedback, team, log, // владелец
 }
-
-/// Выключенные разделы: документы (NRC/паспорт, собственность) Zumi больше не проверяет
-const _hidden = {_Section.ids};
 
 /// Только для владельца Zumi (сервер тоже проверяет)
 const _ownerOnly = {
@@ -54,7 +51,6 @@ extension on _Section {
         _Section.listings => 'Listings to check',
         _Section.phones => 'Phone views',
         _Section.ads => 'Ads',
-        _Section.ids => 'ID checks',
         _Section.licences => 'Licences',
         _Section.reports => 'Reports',
         _Section.support => 'Support',
@@ -73,7 +69,6 @@ extension on _Section {
         _Section.listings => ZI.house,
         _Section.phones => ZI.phone,
         _Section.ads => ZI.bolt,
-        _Section.ids => ZI.idCard,
         _Section.licences => ZI.badge,
         _Section.reports => ZI.flag,
         _Section.support => ZI.chat,
@@ -125,7 +120,6 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.listings => _stats.listingsNew,
         _Section.phones => 0,
         _Section.ads => _stats.campaignsNew, // кампании агентов со своей картинкой ждут решения
-        _Section.ids => _stats.idChecks + _stats.ownership,
         _Section.licences => _stats.licences,
         _Section.reports => _stats.reports,
         _Section.support => _stats.tickets,
@@ -146,7 +140,6 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.listings => _ListingsQueue(onChanged: _refreshStats),
         _Section.phones => const _PhoneViews(),
         _Section.ads => _AdsHub(onChanged: _refreshStats, pending: _stats.campaignsNew),
-        _Section.ids => _IdChecks(onChanged: _refreshStats),
         _Section.licences => _Licences(
             onChanged: _refreshStats,
             requireLicence: _stats.requireLicence,
@@ -171,7 +164,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
     final nav = [
       for (final s in _Section.values)
-        if (!_hidden.contains(s) && (user.isOwner || !_ownerOnly.contains(s)))
+        if (user.isOwner || !_ownerOnly.contains(s))
         _NavItem(
           section: s,
           selected: s == _section,
@@ -591,175 +584,6 @@ class _AccountsState extends State<_Accounts> {
           ),
         ],
       ]),
-    );
-  }
-}
-
-// ======================================================================
-// ID CHECKS (+ ownership documents)
-// ======================================================================
-class _IdChecks extends StatefulWidget {
-  const _IdChecks({required this.onChanged});
-  final VoidCallback onChanged;
-
-  @override
-  State<_IdChecks> createState() => _IdChecksState();
-}
-
-class _IdChecksState extends State<_IdChecks> {
-  String _status = 'pending';
-  late Future<List<VerificationItem>> _future = _load();
-
-  Future<List<VerificationItem>> _load() => context.read<AppState>().repo.adminVerificationQueue(status: _status);
-
-  Future<void> _decide(VerificationItem v, bool approve) async {
-    String? note;
-    if (!approve) {
-      note = await _askNote(context, 'Reject — tell the user why', [
-        'Photo is blurry',
-        'Face does not match the ID',
-        'Document is not readable',
-        'Name does not match the profile',
-        'Document is not valid',
-      ]);
-      if (note == null) return;
-    }
-    try {
-      await context.read<AppState>().repo.adminReviewVerification(v.id, approve, note: note);
-      if (!mounted) return;
-      showSnack(context, approve ? '${v.userName ?? 'User'} approved' : 'Rejected');
-      setState(() => _future = _load());
-      widget.onChanged();
-    } catch (e) {
-      if (mounted) showSnack(context, '$e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _Page(
-      title: 'ID & document checks',
-      subtitle: 'Compare the face on the ID with the selfie and the name with the profile.',
-      trailing: SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(value: 'pending', label: Text('Waiting')),
-          ButtonSegment(value: 'approved', label: Text('Approved')),
-          ButtonSegment(value: 'rejected', label: Text('Rejected')),
-        ],
-        selected: {_status},
-        onSelectionChanged: (s) => setState(() {
-          _status = s.first;
-          _future = _load();
-        }),
-      ),
-      child: _Loader<List<VerificationItem>>(
-        future: _future,
-        builder: (list) {
-          if (list.isEmpty) return _emptyDone('No checks here.');
-          return Column(children: [for (final v in list) _VerificationCard(v: v, onDecide: _decide)]);
-        },
-      ),
-    );
-  }
-}
-
-class _VerificationCard extends StatelessWidget {
-  const _VerificationCard({required this.v, required this.onDecide});
-  final VerificationItem v;
-  final void Function(VerificationItem v, bool approve) onDecide;
-
-  @override
-  Widget build(BuildContext context) {
-    final kindLabel = switch (v.kind) {
-      'identity' => 'ID check · ${v.docType == 'passport' ? 'Passport' : 'NRC'}',
-      'ownership' => 'Ownership documents',
-      _ => 'Location check',
-    };
-    return _Card(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          CircleAvatar(
-            backgroundColor: Zc.green,
-            child: Text((v.userName ?? '').isEmpty ? '?' : v.userName!.characters.first.toUpperCase(),
-                style: const TextStyle(color: Colors.white)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(v.userName ?? 'No name', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              Text('$kindLabel · ${v.userRole == 'agent' ? 'Agent' : 'Owner'} · ${timeAgo(v.createdAt)}',
-                  style: const TextStyle(fontSize: 12, color: Zc.grey)),
-            ]),
-          ),
-        ]),
-        if (v.propertyTitle != null) ...[
-          const SizedBox(height: 8),
-          Text('Listing: ${v.propertyTitle}', style: const TextStyle(fontSize: 13)),
-        ],
-        if ((v.note ?? '').isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text('Note from user: ${v.note}', style: const TextStyle(fontSize: 13, color: Zc.grey)),
-        ],
-        const SizedBox(height: 12),
-        if (v.status == 'pending')
-          _DocImages(paths: v.docPaths, labels: v.kind == 'identity' ? const ['Document', 'Selfie'] : const []),
-        if (v.status != 'pending')
-          Text(
-            v.status == 'approved' ? 'Approved' : 'Rejected: ${v.reviewerNote ?? ''}',
-            style: TextStyle(color: v.status == 'approved' ? const Color(0xFF2E9E5B) : const Color(0xFFD64545)),
-          ),
-        if (v.status == 'pending') ...[
-          const SizedBox(height: 14),
-          Wrap(spacing: 10, runSpacing: 8, children: [
-            _actionBtn('Approve', () => onDecide(v, true), primary: true),
-            _actionBtn('Reject', () => onDecide(v, false)),
-          ]),
-        ],
-      ]),
-    );
-  }
-}
-
-/// Фото документов: по клику открываются крупно
-class _DocImages extends StatefulWidget {
-  const _DocImages({required this.paths, this.labels = const []});
-  final List<String> paths;
-  final List<String> labels;
-
-  @override
-  State<_DocImages> createState() => _DocImagesState();
-}
-
-class _DocImagesState extends State<_DocImages> {
-  late final Future<List<String>> _urls = context.read<AppState>().repo.adminDocUrls(widget.paths);
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<String>>(
-      future: _urls,
-      builder: (context, snap) {
-        final urls = snap.data ?? const <String>[];
-        if (urls.isEmpty) return const SizedBox(height: 10);
-        return Wrap(spacing: 10, runSpacing: 10, children: [
-          for (var i = 0; i < urls.length; i++)
-            GestureDetector(
-              onTap: () => showDialog<void>(
-                context: context,
-                builder: (_) => Dialog(
-                  child: InteractiveViewer(child: PropImage(urls[i], fit: BoxFit.contain)),
-                ),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                SizedBox(width: 200, height: 140, child: PropImage(urls[i], radius: 12)),
-                if (i < widget.labels.length)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(widget.labels[i], style: const TextStyle(fontSize: 12, color: Zc.grey)),
-                  ),
-              ]),
-            ),
-        ]);
-      },
     );
   }
 }

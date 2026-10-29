@@ -885,13 +885,6 @@ String daysAgo(DateTime d) {
   return '$n days ago';
 }
 
-/// Результат автоматической проверки объекта (фото на месте + геолокация)
-class PropertyCheckResult {
-  final bool verified;
-  final int distanceM;
-  const PropertyCheckResult(this.verified, this.distanceM);
-}
-
 // ======================================================================
 // Поддержка, отзывы, кабинет команды
 // ======================================================================

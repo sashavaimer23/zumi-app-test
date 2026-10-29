@@ -111,30 +111,8 @@ abstract class Repository {
   Future<PublicProfile?> publicProfile(String userId);
   Future<List<Property>> listingsBy(String userId);
 
-  /// Проверка личности: фото NRC/паспорта + селфи, с согласием на обработку данных
-  Future<void> submitIdentity({required String docType, required PickedPhoto document, required PickedPhoto selfie});
-
   /// Агент: номер регистрации ZIEA (сверяет команда Zumi)
   Future<void> submitAgentLicence(String licenceNo);
-
-  /// Отправить документы на проверку: kind = 'identity' | 'ownership'
-  Future<void> requestVerification({
-    required String kind,
-    String? propertyId,
-    required List<PickedPhoto> docs,
-    String? note,
-  });
-
-  /// Статус последней заявки: 'pending' | 'approved' | 'rejected' | null
-  Future<String?> verificationStatus({required String kind, String? propertyId});
-
-  /// Property Verified: 3+ фото на месте и геолокация телефона (автоматически)
-  Future<PropertyCheckResult> submitPropertyCheck(
-    String propertyId,
-    List<PickedPhoto> photos,
-    double lat,
-    double lng,
-  );
 
   /// Код подтверждения: channel = whatsapp | sms | email. Возвращает true в тестовом режиме (код 123456).
   /// Значок «телефон подтверждён» — только за WhatsApp или SMS.
@@ -193,9 +171,6 @@ abstract class Repository {
   Future<AdminStats> adminStats();
   Future<List<AccountItem>> adminAccounts({bool onlyNew = true});
   Future<void> adminReviewAccount(String userId, String action, {String? note});
-  Future<List<VerificationItem>> adminVerificationQueue({String status = 'pending'});
-  Future<List<String>> adminDocUrls(List<String> paths);
-  Future<void> adminReviewVerification(String id, bool approve, {String? note});
   Future<List<LicenceItem>> adminLicenceQueue();
   Future<void> adminReviewLicence(String userId, bool approve, {String? note});
   Future<List<ReportItem>> adminReports({bool onlyNew = true});
