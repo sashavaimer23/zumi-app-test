@@ -357,7 +357,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
                         const Text(' and ', style: TextStyle(fontSize: 13, color: Zc.text)),
                         _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
-                        const Text(', and to Zumi processing my data to run my account.',
+                        const Text(
+                            ', and to Zumi processing my data to run my account and storing it on servers outside '
+                            'Zambia (European Union).',
                             style: TextStyle(fontSize: 13, color: Zc.text)),
                         const Text(' *', style: TextStyle(fontSize: 13, color: Zc.orange, fontWeight: FontWeight.w700)),
                       ]),

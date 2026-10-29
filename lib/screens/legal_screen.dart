@@ -7,7 +7,7 @@ import '../theme.dart';
 /// ВАЖНО: это черновики. Перед запуском их должен проверить юрист в Замбии.
 /// Когда тексты будут проверены — поставьте kLegalDraft = false (плашка «Draft» исчезнет).
 const kLegalDraft = true;
-const kLegalUpdated = '25 October 2026';
+const kLegalUpdated = '29 October 2026';
 
 enum LegalDoc { terms, privacy }
 
@@ -59,8 +59,10 @@ const _terms = <(String, String)>[
     '1. About Zumi',
     'Zumi is an online platform where property owners and estate agents in Zambia publish listings for sale '
         'and rent, and where people looking for a home can find them and get in touch. Zumi is not an estate '
-        'agent and is not a party to any deal between users. Any agreement, payment or lease is made directly '
-        'between you and the other person.'
+        'agent, broker, landlord, seller or legal adviser, and is not a party to any deal between users. Zumi does '
+        'not own, inspect, value or manage any property and does not hold or handle money between users. Any '
+        'viewing, agreement, payment or lease is arranged directly between you and the other person, at your own '
+        'decision and risk.'
   ),
   (
     '2. Your account',
@@ -82,12 +84,17 @@ const _terms = <(String, String)>[
   (
     '4. Safety rules',
     'It is not allowed to:\n'
-        '• ask for any deposit, "viewing fee" or "booking fee" before the person has seen the property;\n'
+        '• ask for a "viewing fee", "booking fee", "registration fee" or any other payment for showing a property — '
+        'at any time: before, during or after a viewing;\n'
+        '• ask for a deposit or rent before the person has seen the property and a written agreement is signed;\n'
         '• publish fake listings or pretend to be someone else;\n'
         '• refuse people because of tribe, religion, gender, disability or nationality;\n'
         '• send spam, insults or threats, or share other people\'s personal data;\n'
         '• use Zumi for anything illegal.\n'
-        'Never pay before you have seen the property in person and checked who the owner is.'
+        'Never pay before you have seen the property in person, checked who the owner is and signed a written '
+        'agreement. If anyone asks you for a viewing fee, do not pay and report the listing in Zumi.\n'
+        'Viewings: meet in daylight, tell someone where you are going, go with a friend if you can, and do not '
+        'carry large amounts of cash. You go to viewings and meet other users at your own risk.'
   ),
   (
     '5. Verified badge',
@@ -112,11 +119,31 @@ const _terms = <(String, String)>[
   ),
   (
     '9. Liability',
-    'Zumi provides the platform "as is". We do our best to keep it safe and working, but we are not '
-        'responsible for the content users publish or for deals between users, to the extent allowed by law.'
+    'Zumi provides the platform "as is" and "as available". We work to keep it safe and working, but we do not '
+        'promise that it will always be available, error-free, or that listings are accurate, legal or still on '
+        'offer.\n'
+        'To the fullest extent allowed by the law of Zambia, Zumi, its owners and team are not responsible for:\n'
+        '• any money you lose — including deposits, rent, fees or payments made to other users;\n'
+        '• fraud, false information, scams or other wrongdoing by owners, agents, buyers, tenants or anyone else '
+        'you met through Zumi;\n'
+        '• injury, theft, damage to property or any other harm that happens during or after a viewing or a meeting;\n'
+        '• the condition, ownership, title, legal status or price of any property;\n'
+        '• deals, contracts and disputes between users;\n'
+        '• lost profits, lost data or indirect damage of any kind.\n'
+        'Badges (for example a checked phone number or a checked licence) only show what the Zumi team checked at '
+        'that time — they are not a guarantee of the person or the property.\n'
+        'If Zumi is found liable for anything despite this, our total liability is limited to the amount you paid '
+        'Zumi in the 12 months before the claim. Nothing in these terms limits liability that cannot be limited '
+        'under the law of Zambia.'
   ),
   (
-    '10. Changes and law',
+    '10. Your responsibility',
+    'You are responsible for what you publish and do on Zumi. If your listing, message or actions break these '
+        'terms or the law and someone makes a claim against Zumi because of it, you agree to cover Zumi\'s '
+        'reasonable losses and costs from that claim.'
+  ),
+  (
+    '11. Changes and law',
     'We may update these terms. If the changes are important, we will tell you in the app. '
         'These terms are governed by the laws of the Republic of Zambia. Questions: Profile → Help & support.'
   ),
@@ -179,23 +206,44 @@ const _privacy = <(String, String)>[
   ),
   (
     'Storage and security',
-    'Data is stored with our cloud provider (Supabase) and may be processed on servers outside Zambia with '
-        'the safeguards required by the Data Protection Act. Access is protected and limited to what each person needs.'
+    '• Where your data is stored: Zumi uses the cloud provider Supabase. Your account data, listings, photos and '
+        'messages are stored on Supabase servers in the European Union (Ireland), which means outside Zambia.\n'
+        '• Other services we use: Google — to send emails from Zumi (codes and messages about your account); '
+        'GitHub Pages — to deliver the Zumi website; a map provider — to show maps (it sees your IP address when '
+        'map images load). They receive only what they need for that job.\n'
+        '• Your consent: when you create an account, you give your explicit consent to this transfer and storage of '
+        'your data outside Zambia. Without it we cannot create an account, because Zumi has no servers in Zambia yet.\n'
+        '• How it is protected: data in the European Union is protected by the EU General Data Protection Regulation, '
+        'which gives a level of protection at least equal to the Data Protection Act No. 3 of 2021 of Zambia. On top of '
+        'that, data is encrypted when it travels between your device and our servers and when it is stored; access '
+        'is limited by strict rules to what each person needs; phone numbers and documents are hidden from other users; '
+        'only the Zumi team can open the team panel and every moderator action is logged.\n'
+        '• If something goes wrong: if a data breach affects your data, we will inform the Data Protection '
+        'Commissioner and you as required by law.\n'
+        '• If the rules for keeping data in Zambia change, or the Commissioner requires it, we will move or copy the '
+        'data as required.'
   ),
   (
     'How long we keep it',
-    'Account data — until you delete the account. Verification photos (documents, selfie, on-site photos) — '
+    'We keep data only as long as we need it for the reason it was collected.\n'
+        'Account data of active users (including checked phone numbers and licence numbers) — in protected form '
+        'for as long as the account is open, to keep Zumi safe.  Verification photos (documents, selfie, on-site photos) — '
         'deleted as soon as the team approves or rejects the check, and in any case within 30 days if no decision '
         'is made; we keep only the result (status, date, who checked it and the reason if rejected). '
-        'IP addresses and device codes for ad statistics — 2 days. Phone-number view records and safety records — '
-        'as long as needed to protect users. '
-        'When you delete your account, your profile, listings, photos and chats are deleted. Records of payments '
+        'IP addresses and device codes for ad statistics — 2 days. Phone-number view records — up to 1 year. '
+        'Accounts blocked for fraud, scams or abuse: the data needed to prevent the same person from coming back '
+        'and to help the police or other authorities (name, email, phone number, the reason and the evidence) is '
+        'kept for up to 2 years after the block, or longer only while a police investigation or court case needs it.\n'
+        'When you delete your account, your profile, listings, photos and chats are deleted within 30 days, except '
+        'what the law requires us to keep or what is needed for a fraud case described above. Records of payments '
         'may be kept without your name where the law requires it.'
   ),
   (
     'Your rights',
-    'You can see and correct your data in Settings, download a copy or ask questions through Help & support, '
-        'withdraw consent for verification, and delete your account at any time (Settings → Delete my account). '
+    'Under the Data Protection Act No. 3 of 2021 you can: see and correct your data in Settings; ask for a copy '
+        'of your data or ask questions through Help & support; object to or ask us to limit some uses of your data; '
+        'withdraw consent for news and offers (Settings) or for verification; and delete your account at any time '
+        '(Settings → Delete my account). Withdrawing consent to storage outside Zambia means closing the account. '
         'You can also complain to the Data Protection Commissioner of Zambia.'
   ),
   (
