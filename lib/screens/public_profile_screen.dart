@@ -220,10 +220,9 @@ class _Header extends StatelessWidget {
       ]),
       const SizedBox(height: 16),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        if (pr.verified) const VerifiedBadge(compact: true),
-        if (pr.isAgent && pr.licenceVerified) const _Chip(icon: ZI.badge, text: 'ZIEA licence checked'),
+        if (pr.isAgent && pr.licenceVerified) const VerifiedBadge(compact: true, label: 'Licensed agent'),
         if (pr.isAgent && !pr.licenceVerified) const LicenceWarning(),
-        if (pr.phoneVerified) const _Chip(icon: ZI.mobile, text: 'Phone confirmed'),
+        if (pr.phoneVerified) const VerifiedBadge(compact: true, label: 'Number checked'),
         if (pr.memberSince != null) _Chip(icon: ZI.calendar, text: 'On Zumi since ${formatMonthYear(pr.memberSince!)}'),
         _Chip(icon: ZI.house, text: '${pr.activeListings} active ${pr.activeListings == 1 ? 'listing' : 'listings'}'),
       ]),

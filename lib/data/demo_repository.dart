@@ -319,7 +319,6 @@ class DemoRepository implements Repository {
         if (p.images.length < 5) tips.add(ListingTip('photos', {'photos': p.images.length}));
         if ((p.description ?? '').length < 150) tips.add(const ListingTip('description'));
         if (liveDays >= 7 && views7 < 10) tips.add(ListingTip('few_views', {'views': views7}));
-        if (!p.propertyVerified && liveDays >= 3) tips.add(const ListingTip('verify_onsite'));
         if (tips.isEmpty && contacts7 >= 3) tips.add(ListingTip('doing_well', {'contacts': contacts7}));
       }
       out[p.id] = ListingStats(
@@ -367,6 +366,9 @@ class DemoRepository implements Repository {
       throw AppException('Agents can publish listings after the Zumi team checks their ZIEA licence. '
           'Add your licence number in Profile → Get verified.', code: 'LICENCE');
     }
+    if (!u.phoneVerified) {
+      throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
+    }
     final q = await myQuota();
     if (q.reached) throw AppException('Listing limit reached', code: 'LISTING_LIMIT_REACHED');
     await _lag();
@@ -394,6 +396,9 @@ class DemoRepository implements Repository {
       city: area?.city ?? 'Lusaka',
       lat: d.lat ?? area?.lat ?? -15.4167,
       lng: d.lng ?? area?.lng ?? 28.2833,
+      address: d.address.trim().isEmpty ? null : d.address.trim(),
+      nearby: Map.of(d.nearby),
+      ownerLicensed: u.isAgent && u.licenceVerified,
       images: images,
       listedBy: u.isAgent ? 'agent' : 'owner',
       contactName: u.fullName,
@@ -445,6 +450,9 @@ class DemoRepository implements Repository {
       city: area?.city ?? old.city,
       lat: d.lat ?? area?.lat ?? old.lat,
       lng: d.lng ?? area?.lng ?? old.lng,
+      address: d.address.trim().isEmpty ? null : d.address.trim(),
+      nearby: Map.of(d.nearby),
+      ownerLicensed: u.isAgent && u.licenceVerified,
       status: old.status,
       images: images,
       listedBy: old.listedBy,
@@ -813,7 +821,7 @@ class DemoRepository implements Repository {
     SupportTicket(
       id: 't3', userId: 'u-joseph', userName: 'Joseph Tembo', category: 'account',
       subject: 'How do I become Verified?', status: 'answered',
-      lastMessage: 'Open Profile → Get the Verified badge, it takes 3 minutes.', lastMessageAt: _ago(60 * 26),
+      lastMessage: 'Open Profile → Get verified and confirm your phone — it takes a minute.', lastMessageAt: _ago(60 * 26),
     ),
   ];
 
@@ -824,9 +832,9 @@ class DemoRepository implements Repository {
         body: 'Step 3 keeps spinning when I add photos from my gallery.')],
     't3': [
       SupportMessage(id: 'm3', senderId: 'u-joseph', isStaff: false, createdAt: _ago(60 * 27),
-          body: 'How do I get the Verified badge on my listings?'),
+          body: 'How do I get the Number checked badge on my listings?'),
       SupportMessage(id: 'm4', senderId: 'staff', isStaff: true, createdAt: _ago(60 * 26),
-          body: 'Open Profile → Get the Verified badge, it takes 3 minutes.'),
+          body: 'Open Profile → Get verified and confirm your phone — it takes a minute.'),
     ],
   };
   final Map<String, StreamController<List<SupportMessage>>> _ticketCtrls = {};

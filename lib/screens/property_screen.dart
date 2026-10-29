@@ -110,7 +110,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   images: images,
                   height: (MediaQuery.sizeOf(context).width * 0.36).clamp(380.0, 560.0),
                   badges: [
-                    if (p.isVerified) ...[const VerifiedBadge(), const SizedBox(width: 8)],
+                    if (p.isVerified) ...[VerifiedBadge(label: p.badgeLabel), const SizedBox(width: 8)],
                     if (p.isPromoted) const PromotedBadge(),
                   ],
                 ),
@@ -176,7 +176,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
           padding: EdgeInsets.fromLTRB(side, 22, side, 0),
           sliver: SliverList.list(children: [
             Wrap(spacing: 0, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              if (p.isVerified) ...[const VerifiedBadge(compact: true), const SizedBox(width: 8)],
+              if (p.isVerified) ...[VerifiedBadge(compact: true, label: p.badgeLabel), const SizedBox(width: 8)],
               if (p.isPromoted) ...[const PromotedBadge(), const SizedBox(width: 8)],
               _Tag(p.dealType == DealType.sale ? 'For sale' : 'For rent'),
               const SizedBox(width: 8),
@@ -205,6 +205,10 @@ class _PropertyScreenState extends State<PropertyScreen> {
             ]),
             const SizedBox(height: 22),
             TrustPanel(p: p),
+            if (p.nearby.isNotEmpty) ...[
+              _h("What's nearby"),
+              NearbyList(p.nearby),
+            ],
             if ((p.description ?? '').isNotEmpty) ...[
               _h('Description'),
               Text(p.description!, style: const TextStyle(fontSize: 15, height: 1.45)),

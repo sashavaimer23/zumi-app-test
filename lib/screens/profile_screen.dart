@@ -18,7 +18,6 @@ import 'promotion/promotion_screen.dart';
 import 'public_profile_screen.dart';
 import 'settings_screen.dart';
 import 'verify/get_verified_screen.dart';
-import 'verify/verify_listing_screen.dart';
 import 'auth_screen.dart';
 import 'shell.dart';
 import '../widgets/zicons.dart';
@@ -225,7 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _MenuTile(
                   icon: ZI.shieldFill,
                   title: 'Zumi team panel',
-                  subtitle: 'ID checks, reports, support, reviews',
+                  subtitle: 'Listings, licences, reports, support, reviews',
                   highlight: true,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
                 ),
@@ -335,8 +334,6 @@ Future<void> _tipAction(BuildContext context, Property p, String action) async {
       case 'edit':
         final changed = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => PostWizard(editing: p)));
         if (changed != true) return;
-      case 'verify':
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => VerifyListingScreen(property: p)));
       case 'confirm':
         await app.repo.confirmListing(p.id);
         if (context.mounted) showSnack(context, 'Thanks! People will see that the listing is up to date.');
@@ -349,7 +346,6 @@ Future<void> _tipAction(BuildContext context, Property p, String action) async {
 
 String _tipButton(String action) => switch (action) {
       'confirm' => 'Confirm',
-      'verify' => 'Check on site',
       _ => 'Edit listing',
     };
 
@@ -572,11 +568,6 @@ class _MyListingTile extends StatelessWidget {
                       showSnack(context, 'Promotion will be available with payments (coming soon).');
                     }
                     return;
-                  case 'verify':
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => VerifyListingScreen(property: p)),
-                    );
                   case 'confirm':
                     await app.repo.confirmListing(p.id);
                     if (context.mounted) showSnack(context, 'Thanks! People will see that the listing is up to date.');
@@ -608,7 +599,6 @@ class _MyListingTile extends StatelessWidget {
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               if (active) const PopupMenuItem(value: 'share', child: Text('Share')),
               if (active) const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
-              if (active) PopupMenuItem(value: 'verify', child: Text(p.isVerified ? 'Verification' : 'Get the Verified badge')),
               if (active) const PopupMenuItem(value: 'confirm', child: Text('Confirm still available')),
               if (active)
                 PopupMenuItem(
@@ -762,7 +752,7 @@ class _IdentityCard extends StatelessWidget {
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              const VerifiedBadge(compact: true),
+              VerifiedBadge(compact: true, label: isAgent ? 'Licensed agent' : 'Number checked'),
               const Spacer(),
               Text(verified ? 'Done' : '$done of $total',
                   style: TextStyle(fontWeight: FontWeight.w600, color: verified ? const Color(0xFF2E9E5B) : Zc.orange)),
@@ -771,14 +761,18 @@ class _IdentityCard extends StatelessWidget {
             ]),
             const SizedBox(height: 10),
             Text(
-              verified ? 'You are Verified' : 'Get the Verified badge',
+              verified
+                  ? (isAgent ? 'Number and licence checked' : 'Your number is checked')
+                  : (isAgent ? 'Get the Licensed agent badge' : 'Get the Number checked badge'),
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green),
             ),
             const SizedBox(height: 2),
             Text(
               verified
                   ? 'The badge is shown on all your listings.'
-                  : 'Confirm your phone and ID once — about 3 minutes. The badge shows people that Zumi checked who you are.',
+                  : isAgent
+                      ? 'Confirm your phone and add your ZIEA number — no documents to upload. You need a confirmed phone to publish.'
+                      : 'Confirm your phone once with a code — about 1 minute. You need it to publish a listing.',
               style: const TextStyle(fontSize: 13, color: Zc.grey, height: 1.35),
             ),
             if (!verified) ...[

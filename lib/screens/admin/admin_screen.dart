@@ -33,6 +33,9 @@ enum _Section {
   ads, adStats, stats, dev, team, log, // владелец
 }
 
+/// Выключенные разделы: документы (NRC/паспорт, собственность) Zumi больше не проверяет
+const _hidden = {_Section.ids};
+
 /// Только для владельца Zumi (сервер тоже проверяет)
 const _ownerOnly = {_Section.ads, _Section.adStats, _Section.stats, _Section.dev, _Section.team, _Section.log};
 
@@ -162,7 +165,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
     final nav = [
       for (final s in _Section.values)
-        if (user.isOwner || !_ownerOnly.contains(s))
+        if (!_hidden.contains(s) && (user.isOwner || !_ownerOnly.contains(s)))
         _NavItem(
           section: s,
           selected: s == _section,
@@ -390,8 +393,6 @@ class _Inbox extends StatelessWidget {
       (_Section.accounts, stats.accounts, 'New accounts', 'Everyone who signed up — take a quick look'),
       (_Section.listings, stats.listingsNew, 'Listings to check', 'First listings of new people'),
       if (owner) (_Section.ads, stats.campaignsNew, 'Agent campaigns to check', 'Own pictures, names and links — in Ads'),
-      (_Section.ids, stats.idChecks, 'ID checks', 'NRC / passport + selfie'),
-      (_Section.ids, stats.ownership, 'Ownership documents', 'Title deeds and mandates'),
       (_Section.licences, stats.licences, 'Agent licences', 'Check the number with ZIEA'),
       (_Section.support, stats.tickets, 'Support requests', 'Waiting for your reply'),
       (_Section.reviews, stats.reviews, 'Flagged reviews', 'Reported by users'),
@@ -570,7 +571,6 @@ class _AccountsState extends State<_Accounts> {
           const SizedBox(height: 12),
           Wrap(spacing: 10, runSpacing: 8, children: [
             _actionBtn('Looks OK', () => _act(a, 'ok'), primary: true),
-            if (a.idStatus == 'pending') _actionBtn('Open ID check', () => widget.onOpen(_Section.ids)),
             if (a.isAgent && a.licenceNo != null && !a.licenceVerified)
               _actionBtn('Open licence', () => widget.onOpen(_Section.licences)),
             _actionBtn('Block', () => _act(a, 'ban'), danger: true),

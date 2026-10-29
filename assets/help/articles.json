@@ -66,8 +66,8 @@
  {
   "id": "f131b212-3739-54b4-8711-d0657f8640a7",
   "category": "verification",
-  "title": "How to get the Verified badge",
-  "body": "The Verified badge shows that Zumi checked who you are.\n\nSteps (about 3 minutes):\n- Confirm your phone with a WhatsApp or SMS code.\n- Take a photo of your NRC or passport and a selfie.\n- Agents also add their ZIEA registration number.\n\nThe Zumi team checks the documents, usually within the same day. As soon as the team approves or rejects the check, the photos of your documents and selfie are deleted. We keep only the result.\n\nIf there is no decision within 30 days, the photos are deleted and you need to send them again.",
+  "title": "Number checked and Licensed agent badges",
+  "body": "Zumi shows two simple badges:\n- Number checked — the owner or agent confirmed their phone number with a code.\n- Licensed agent — the Zumi team checked the agent's registration with the Zambia Institute of Estate Agents (ZIEA).\n\n## How to get them\n- Profile → Get verified → confirm your phone with a WhatsApp or SMS code. You do it once.\n- Agents: add your ZIEA registration number. We check it with ZIEA — you don't upload any documents.\n\nYou need a confirmed phone number to publish a listing.\n\nBadges show what Zumi checked at that time. They are not a guarantee — always view the property and check the documents yourself.",
   "sort": 10,
   "web_only": false
  },
@@ -91,7 +91,7 @@
   "id": "92e9e1e2-0b00-5793-ac95-3fc27a6d1090",
   "category": "safety",
   "title": "How to spot a scam",
-  "body": "Most people on Zumi are honest, but be careful. Warning signs:\n- The price is much lower than similar homes in the area.\n- The person asks for a deposit or \"booking fee\" before you see the property.\n- They say they are abroad and will send the keys after payment.\n- They push you to decide today or to pay by mobile money to a private number.\n- They refuse a video call or a viewing.\n\n## Stay safe\n- Never pay before you have seen the property and the documents.\n- Meet in daylight and bring someone with you.\n- Prefer listings with the Verified badge and photos taken on site.\n- Keep the conversation in Zumi chat — it helps us if something goes wrong.\n\nIf something feels wrong, report the listing. It takes 10 seconds.",
+  "body": "Most people on Zumi are honest, but be careful. Warning signs:\n- The price is much lower than similar homes in the area.\n- The person asks for a \"viewing fee\" or \"booking fee\". On Zumi nobody may charge for a viewing — not before, during or after it.\n- They say they are abroad and will send the keys after payment.\n- They push you to decide today or to pay by mobile money to a private number.\n- They refuse a video call or a viewing.\n\n## Stay safe\n- Never pay before you have seen the property and the documents.\n- Meet in daylight and bring someone with you.\n- Prefer listings with the Number checked or Licensed agent badge.\n- Keep the conversation in Zumi chat — it helps us if something goes wrong.\n\nIf something feels wrong, report the listing. It takes 10 seconds.",
   "sort": 10,
   "web_only": false
  },

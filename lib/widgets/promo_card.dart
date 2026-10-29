@@ -87,7 +87,7 @@ class _PromotedCardState extends State<PromotedCard> {
       child: Stack(fit: StackFit.expand, children: [
         img,
         const Positioned(top: 12, left: 12, child: PromotedTag()),
-        if (p.isVerified) const Positioned(top: 12, right: 12, child: VerifiedBadge(compact: true)),
+        if (p.isVerified) Positioned(top: 12, right: 12, child: VerifiedBadge(compact: true, label: p.badgeLabel)),
       ]),
     );
   }

@@ -69,7 +69,7 @@ class _Gallery extends StatelessWidget {
         aspectRatio: 1.45,
         child: Stack(fit: StackFit.expand, children: [
           PropImage(p.coverThumb),
-          if (p.isVerified) const Positioned(top: 14, left: 14, child: VerifiedBadge()),
+          if (p.isVerified) Positioned(top: 14, left: 14, child: VerifiedBadge(label: p.badgeLabel)),
           Positioned(
             right: 14,
             bottom: 14,

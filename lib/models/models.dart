@@ -134,6 +134,8 @@ class Property {
   final String contactMode;             // 'phone' — номер можно показать, 'chat' — только чат
   final bool hasPhone;                  // у объявления есть номер (сам номер выдаёт сервер по кнопке)
   final String? moderationNote;         // почему модератор не одобрил
+  final Map<String, String> nearby;     // что рядом: shop/school/hospital/main_road → lt1/1_3/3_5/gt5
+  final bool ownerLicensed;             // автор — агент с проверенной лицензией ZIEA
 
   const Property({
     required this.id,
@@ -185,6 +187,8 @@ class Property {
     this.contactMode = 'phone',
     bool? hasPhone,
     this.moderationNote,
+    this.nearby = const {},
+    this.ownerLicensed = false,
   }) : hasPhone = hasPhone ?? (contactPhone != null && contactPhone != '');
 
   factory Property.fromMap(Map<String, dynamic> m) => Property(
@@ -237,10 +241,21 @@ class Property {
         contactMode: (m['contact_mode'] as String?) ?? 'phone',
         hasPhone: m['has_phone'] as bool?,
         moderationNote: m['moderation_note'] as String?,
+        nearby: _nearby(m['nearby']),
+        ownerLicensed: (m['owner_licensed'] as bool?) ?? false,
       );
 
-  /// Плашка «Verified» — автор (собственник или агент) прошёл проверку личности
-  bool get isVerified => ownerIdentityVerified;
+  static Map<String, String> _nearby(Object? v) {
+    if (v is! Map) return const {};
+    return {
+      for (final e in v.entries)
+        if (kNearbyPlaces.containsKey(e.key) && kNearbyDistances.containsKey(e.value)) '${e.key}': '${e.value}',
+    };
+  }
+
+  /// Плашка на фото: агент с проверенной лицензией — «Licensed agent», иначе подтверждённый номер — «Number checked»
+  bool get isVerified => ownerLicensed || ownerPhoneVerified;
+  String get badgeLabel => ownerLicensed ? 'Licensed agent' : 'Number checked';
 
   Property copyWith({
     String? status,
@@ -274,6 +289,7 @@ class Property {
         ownerAvatarUrl: ownerAvatarUrl ?? this.ownerAvatarUrl, thumbs: thumbs,
         isFresh: confirmedAt != null ? true : isFresh,
         contactMode: contactMode ?? this.contactMode, hasPhone: hasPhone, moderationNote: moderationNote,
+        nearby: nearby, ownerLicensed: ownerLicensed,
       );
 
   bool get isPending => status == 'pending';
@@ -322,6 +338,22 @@ class Property {
   /// «Lusaka, Ibex Hill, The 3rd street»
   String get locationLine => [city, areaName, address].whereType<String>().where((s) => s.isNotEmpty).join(', ');
 }
+
+/// Что рядом с жильём: ключ → подпись
+const kNearbyPlaces = <String, String>{
+  'shop': 'Shops',
+  'school': 'School',
+  'hospital': 'Hospital / clinic',
+  'main_road': 'Main road',
+};
+
+/// Расстояние: ключ → подпись
+const kNearbyDistances = <String, String>{
+  'lt1': 'Under 1 km',
+  '1_3': '1–3 km',
+  '3_5': '3–5 km',
+  'gt5': 'Over 5 km',
+};
 
 String _num(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 
@@ -535,13 +567,12 @@ class AppUser {
   /// Владелец Zumi: + статистика, реклама, деньги, настройки, роли, журнал действий
   bool get isOwner => isAdmin && (teamLevel ?? 'owner') == 'owner';
 
-  /// Плашка Verified: профиль + телефон + документ (+ лицензия ZIEA у агентов)
-  bool get identityVerified =>
-      profileComplete && phoneVerified && idVerified && (!isAgent || licenceVerified);
+  /// Проверен: имя + телефон (+ лицензия ZIEA у агентов). Документы больше не проверяем.
+  bool get identityVerified => profileComplete && phoneVerified && (!isAgent || licenceVerified);
 
   /// Шаги проверки: (сделано, всего)
   (int, int) get verificationProgress {
-    final steps = [profileComplete, phoneVerified, idVerified, if (isAgent) licenceVerified];
+    final steps = [profileComplete, phoneVerified, if (isAgent) licenceVerified];
     return (steps.where((s) => s).length, steps.length);
   }
 
@@ -624,6 +655,9 @@ class ListingDraft {
       ..rentPeriod = p.rentPeriod ?? 'month'
       ..lat = p.lat
       ..lng = p.lng
+      ..pinned = true
+      ..address = p.address ?? ''
+      ..nearby = {...p.nearby}
       ..contactPhone = p.contactPhone ?? '';
     return d;
   }
@@ -641,8 +675,11 @@ class ListingDraft {
   String currency = 'ZMW';
   String rentPeriod = 'month';
   Area? area;
-  double? lat; // точка на карте (если не выбрана — центр района)
+  double? lat; // точка на карте — обязательна при публикации
   double? lng;
+  bool pinned = false; // человек сам поставил точку на карте
+  String address = ''; // улица / номер участка — по желанию
+  Map<String, String> nearby = {}; // что рядом (kNearbyPlaces → kNearbyDistances)
   String contactPhone = '';
 }
 
@@ -1888,7 +1925,6 @@ class ListingTip {
             : 'Only ${n('photos')} ${n('photos') == 1 ? 'photo' : 'photos'}. Add at least 5: every room, the outside and the street.',
         'description' => 'Add details people ask about: water, power, security, schools and roads.',
         'few_views' => 'Few views this week (${n('views')}). Try a clearer title and a bright cover photo.',
-        'verify_onsite' => 'Confirm the location with your phone on site — the listing shows "photos taken on site".',
         'doing_well' => 'Doing well: ${n('contacts')} contacts this week.',
         _ => code,
       };
@@ -1896,7 +1932,6 @@ class ListingTip {
   /// Что нажать: edit · confirm · verify · null
   String? get action => switch (code) {
         'confirm' => 'confirm',
-        'verify_onsite' => 'verify',
         'doing_well' => null,
         _ => 'edit',
       };
@@ -1932,7 +1967,8 @@ class ListingStats {
       ],
       tips: [
         for (final t in (m['tips'] as List? ?? const []))
-          ListingTip('${(t as Map)['code']}', Map<String, dynamic>.from(t)),
+          // проверку на месте больше не делаем — старый совет не показываем
+          if ('${(t as Map)['code']}' != 'verify_onsite') ListingTip('${t['code']}', Map<String, dynamic>.from(t)),
       ],
     );
   }

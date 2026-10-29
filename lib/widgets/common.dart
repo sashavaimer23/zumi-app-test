@@ -169,6 +169,42 @@ class PropImage extends StatelessWidget {
 }
 
 // ======================================================================
+// Что рядом с жильём
+// ======================================================================
+IconData nearbyIcon(String key) => switch (key) {
+      'shop' => ZI.shoppingCart,
+      'school' => ZI.school,
+      'hospital' => ZI.hospital,
+      _ => ZI.road,
+    };
+
+/// Список «Shops — under 1 km» на странице объявления
+class NearbyList extends StatelessWidget {
+  const NearbyList(this.nearby, {super.key});
+  final Map<String, String> nearby;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [for (final k in kNearbyPlaces.keys) if (nearby[k] != null) k];
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Wrap(spacing: 10, runSpacing: 10, children: [
+      for (final k in items)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(color: Zc.chip, borderRadius: BorderRadius.circular(12)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(nearbyIcon(k), size: 18, color: Zc.green),
+            const SizedBox(width: 8),
+            Text(kNearbyPlaces[k]!, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(' · ${kNearbyDistances[nearby[k]]!.toLowerCase()}',
+                style: const TextStyle(color: Zc.grey, fontSize: 14)),
+          ]),
+        ),
+    ]);
+  }
+}
+
+// ======================================================================
 // Кружок с числом непрочитанных: 1…10, дальше «10+»
 // ======================================================================
 class CountBadge extends StatelessWidget {
@@ -289,7 +325,7 @@ class PropertyCard extends StatelessWidget {
                       top: 12,
                       left: 12,
                       child: Row(children: [
-                        if (p.isVerified) const VerifiedBadge(),
+                        if (p.isVerified) VerifiedBadge(label: p.badgeLabel),
                         if (p.isVerified && p.isPromoted) const SizedBox(width: 6),
                         if (p.isPromoted) const PromotedBadge(),
                       ]),

@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextField(
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(hintText: 'As on your NRC or passport'),
+                decoration: const InputDecoration(hintText: 'Your first and last name'),
               ),
               if (u.isAgent) ...[
                 _label('Agency name'),
@@ -311,10 +311,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (!u.isAdmin)
               _Row(
                 icon: ZI.shield,
-                title: u.identityVerified ? 'You are Verified' : 'Get the Verified badge',
+                title: u.identityVerified
+                    ? (u.isAgent ? 'Number and licence checked' : 'Your number is checked')
+                    : (u.isAgent ? 'Confirm phone and licence' : 'Confirm your phone'),
                 subtitle: u.identityVerified
                     ? 'The badge is shown on all your listings.'
-                    : 'Phone + NRC / passport${u.isAgent ? ' + ZIEA licence' : ''} — about 3 minutes',
+                    : 'Phone code${u.isAgent ? ' + ZIEA number' : ''} — no documents. Needed to publish.',
                 trailingWidget: u.identityVerified ? const VerifiedMark(size: 20) : null,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen())),
               ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -10,15 +9,10 @@ import 'common.dart';
 import 'zicons.dart';
 
 // ======================================================================
-// Verification (всё добровольно). Плашка «Verified» = проверенный автор.
-// Три строки на странице объявления:
+// Проверки. Документы Zumi не проверяет — только две вещи:
 //
-//  Identity Verified  — телефон подтверждён SMS-кодом + документ (NRC/паспорт)
-//  Property Verified  — объект существует: 3 фото на месте + геолокация
-//                       рядом с точкой объявления (или визит команды Zumi)
-//  Ownership Verified — документы о собственности / полномочия агента
-//
-// На объявлении с Property Verified показывается плашка «Verified».
+//  Number checked  — автор подтвердил телефон кодом (нужно для публикации)
+//  Licensed agent  — команда сверила номер агента с реестром ZIEA
 // ======================================================================
 
 const _tealTint = Color(0x140F5D4E);
@@ -31,27 +25,23 @@ class VerificationLevel {
   final String description;
   const VerificationLevel(this.icon, this.title, this.description);
 
-  static const identity = VerificationLevel(
-    ZI.checkCircle,
-    'Identity Verified',
-    'The owner or agent confirmed their phone by SMS and their NRC / passport. Agents are also checked with ZIEA.',
+  static const phone = VerificationLevel(
+    ZI.mobile,
+    'Number checked',
+    'The owner or agent confirmed their phone number with a code.',
   );
-  static const property = VerificationLevel(
-    ZI.houseCheck,
-    'Location Verified',
-    'Photos were taken at the property and the location matches the listing.',
-  );
-  static const ownership = VerificationLevel(
-    ZI.shield,
-    'Ownership Verified',
-    'Ownership documents or the agent\'s authority to represent the owner were checked.',
+  static const licence = VerificationLevel(
+    ZI.badge,
+    'Licensed agent',
+    'The Zumi team checked this agent\'s registration with the Zambia Institute of Estate Agents (ZIEA).',
   );
 }
 
 /// Плашка «✓ Verified» поверх фото
 class VerifiedBadge extends StatelessWidget {
-  const VerifiedBadge({super.key, this.compact = false});
+  const VerifiedBadge({super.key, this.compact = false, this.label = 'Number checked'});
   final bool compact;
+  final String label; // 'Number checked' | 'Licensed agent'
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +55,7 @@ class VerifiedBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(ZI.verified, size: compact ? 14 : 18, color: _okGreen),
         SizedBox(width: compact ? 4 : 6),
-        Text('Verified',
+        Text(label,
             style: TextStyle(fontSize: compact ? 12 : 14, color: Zc.text, fontWeight: FontWeight.w500)),
       ]),
     );
@@ -101,7 +91,7 @@ class VerifiedMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: 'Identity Verified',
+        message: 'Number checked',
         child: Icon(ZI.verified, size: size, color: _okGreen),
       );
 }
@@ -112,10 +102,6 @@ class TrustLine extends StatelessWidget {
   final Property p;
 
   static String? textFor(Property p) {
-    // Пока у Zumi нет выездной команды, показываем только автоматическую проверку на месте
-    if (p.propertyVerified && p.propertyVerifiedAt != null && p.propertyVerifyMethod == 'geo_photos') {
-      return 'Photos taken on site and location checked on ${formatDayMonth(p.propertyVerifiedAt!)}';
-    }
     if (p.confirmedAt != null) return 'Availability confirmed ${daysAgo(p.confirmedAt!)}';
     return null;
   }
@@ -128,7 +114,7 @@ class TrustLine extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(color: _tealTint, borderRadius: BorderRadius.circular(10)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(p.propertyVerified ? ZI.sparkle : ZI.clock, size: 16, color: Zc.green),
+        const Icon(ZI.clock, size: 16, color: Zc.green),
         const SizedBox(width: 8),
         Flexible(child: Text(text, style: const TextStyle(fontSize: 14, color: Zc.green))),
       ]),
@@ -193,9 +179,9 @@ class TrustPanel extends StatelessWidget {
         border: Border.all(color: Zc.chip),
       ),
       child: Column(children: [
-        VerificationRow(level: VerificationLevel.identity, done: p.ownerIdentityVerified),
-        VerificationRow(level: VerificationLevel.property, done: p.propertyVerified),
-        VerificationRow(level: VerificationLevel.ownership, done: p.ownershipVerified, showDivider: false),
+        VerificationRow(level: VerificationLevel.phone, done: p.ownerPhoneVerified, showDivider: p.listedBy == 'agent'),
+        if (p.listedBy == 'agent')
+          VerificationRow(level: VerificationLevel.licence, done: p.ownerLicensed, showDivider: false),
       ]),
     );
   }
@@ -341,171 +327,6 @@ class _ReportSheetState extends State<_ReportSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ----------------------------------------------------------------------
-// Загрузка документов: kind = 'identity' (NRC/паспорт) или 'ownership'
-// ----------------------------------------------------------------------
-Future<bool?> showDocumentsSheet(
-  BuildContext context, {
-  required String kind,
-  Property? property,
-  required bool isAgent,
-}) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Zc.bg,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (_) => FractionallySizedBox(
-      heightFactor: 0.9,
-      child: _DocumentsSheet(kind: kind, property: property, isAgent: isAgent),
-    ),
-  );
-}
-
-class _DocumentsSheet extends StatefulWidget {
-  const _DocumentsSheet({required this.kind, this.property, required this.isAgent});
-  final String kind;
-  final Property? property;
-  final bool isAgent;
-
-  @override
-  State<_DocumentsSheet> createState() => _DocumentsSheetState();
-}
-
-class _DocumentsSheetState extends State<_DocumentsSheet> {
-  final List<PickedPhoto> _docs = [];
-  final _note = TextEditingController();
-  bool _sending = false;
-
-  bool get _ownership => widget.kind == 'ownership';
-
-  List<String> get _needed => _ownership
-      ? [
-          'Title deed, or a lease agreement in your name',
-          if (widget.isAgent) 'A signed letter from the owner allowing you to list the property',
-          'Your NRC or passport — the name must match the documents',
-        ]
-      : [
-          'NRC or passport (front side)',
-          'A selfie holding your NRC / passport',
-          if (widget.isAgent) 'Agency registration (PACRA certificate)',
-        ];
-
-  @override
-  void dispose() {
-    _note.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pick() async {
-    try {
-      final files = await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 2000, maxHeight: 2000);
-      var skipped = 0;
-      for (final f in files.take(8 - _docs.length)) {
-        final bytes = await f.readAsBytes();
-        if (bytes.lengthInBytes > kMaxDocBytes) {
-          skipped++; // документы — до 10 MB
-          continue;
-        }
-        _docs.add(PickedPhoto(f.name, bytes));
-      }
-      if (skipped > 0 && mounted) showSnack(context, 'Files larger than 10 MB were skipped');
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (mounted) showSnack(context, 'Could not open the gallery: $e');
-    }
-  }
-
-  Future<void> _send() async {
-    if (_docs.isEmpty) {
-      showSnack(context, 'Please add the documents first');
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      await context.read<AppState>().repo.requestVerification(
-            kind: widget.kind,
-            propertyId: widget.property?.id,
-            docs: _docs,
-            note: _note.text.trim(),
-          );
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) showSnack(context, '$e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final level = _ownership ? VerificationLevel.ownership : VerificationLevel.identity;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(22, 22, 22, 30),
-        children: [
-          Row(children: [
-            Icon(level.icon, color: _okGreen, size: 30),
-            const Spacer(),
-            IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(ZI.close, color: Zc.green)),
-          ]),
-          const SizedBox(height: 10),
-          Text(level.title, style: zHeadline(context, size: 28)),
-          const SizedBox(height: 8),
-          Text(level.description, style: const TextStyle(color: Zc.grey, fontSize: 15, height: 1.4)),
-          const SizedBox(height: 20),
-          const Text('What we need', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          for (final n in _needed)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(ZI.fileText, size: 18, color: Zc.green),
-                const SizedBox(width: 10),
-                Expanded(child: Text(n, style: const TextStyle(fontSize: 14, height: 1.4))),
-              ]),
-            ),
-          const SizedBox(height: 18),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Zc.green,
-              side: const BorderSide(color: Zc.green),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            ),
-            onPressed: _pick,
-            icon: const Icon(ZI.camera),
-            label: Text(_docs.isEmpty ? 'Add photos of documents' : 'Add more (${_docs.length}/8)'),
-          ),
-          if (_docs.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            PhotoThumbs(photos: _docs, onRemove: (i) => setState(() => _docs.removeAt(i))),
-          ],
-          const SizedBox(height: 14),
-          TextField(
-            controller: _note,
-            minLines: 2,
-            maxLines: 4,
-            decoration: const InputDecoration(hintText: 'Comment for the Zumi team (optional)'),
-          ),
-          const SizedBox(height: 10),
-          const Row(children: [
-            Icon(ZI.shield, size: 16, color: Zc.grey),
-            SizedBox(width: 6),
-            Expanded(
-              child: Text('Documents are stored privately and seen only by the Zumi verification team.',
-                  style: TextStyle(fontSize: 12, color: Zc.grey)),
-            ),
-          ]),
-          const SizedBox(height: 22),
-          PrimaryButton(label: 'Send for review', width: double.infinity, loading: _sending, onPressed: _send),
-        ],
       ),
     );
   }

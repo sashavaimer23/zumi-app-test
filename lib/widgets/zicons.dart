@@ -88,4 +88,10 @@ class ZI {
   static const IconData userCircle = IconData(0xe4c4, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData hidden = IconData(0xe224, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData history = IconData(0xe1a0, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+
+  // что рядом с жильём
+  static const IconData shoppingCart = IconData(0xe41e, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+  static const IconData school = IconData(0xe62c, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+  static const IconData hospital = IconData(0xe844, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+  static const IconData road = IconData(0xe838, fontFamily: 'PhosphorRegular', matchTextDirection: true);
 }

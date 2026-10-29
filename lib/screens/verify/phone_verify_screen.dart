@@ -131,8 +131,8 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
             Text(
               _codeSent
                   ? 'We sent a 6-digit code by $via to $_sentTo'
-                  : 'A confirmed phone is the first step to the Verified badge, and you need it to see '
-                      'phone numbers in listings.',
+                  : 'You confirm your phone only once. You need it to publish a listing and to see phone numbers '
+                      'in listings — and your listings show "Number checked".',
               style: const TextStyle(color: Zc.grey, fontSize: 15, height: 1.4),
             ),
             if (_codeSent && _testMode) ...[

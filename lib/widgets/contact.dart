@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../models/models.dart';
 import '../screens/auth_screen.dart';
 import '../screens/chat_screen.dart';
@@ -103,7 +104,7 @@ class Contact {
     }
     final repo = context.read<AppState>().repo;
     final n = await _ask(context, key, () => repo.revealAgentWhatsapp(pr.id));
-    if (n != null) await _waText(n, 'Hello! I found you on Zumi.');
+    if (n != null) await _waText(n, 'Hi! I found you on Zumi and would like to ask about your properties.');
   }
 
   /// «Show number»: окно с номером и кнопками Call / WhatsApp / Copy
@@ -181,7 +182,21 @@ class Contact {
 
   static Future<void> _dial(String n) => launchUrl(Uri(scheme: 'tel', path: n.replaceAll(' ', '')));
 
-  static Future<void> _wa(String n, Property p) => _waText(n, 'Hello! I saw your listing on Zumi: ${p.title}');
+  static Future<void> _wa(String n, Property p) => _waText(n, whatsappTemplate(p));
+
+  /// Готовое сообщение для WhatsApp: какой дом, сколько стоит, где — человек может дописать своё
+  static String whatsappTemplate(Property p) {
+    final link = AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/?listing=${p.id}';
+    return [
+      'Hi! I found your listing on Zumi:',
+      '🏠 ${p.title}${p.specsLine.isEmpty ? '' : ' (${p.specsLine.replaceAll(',  ', ', ')})'}',
+      '💰 ${p.priceLabel}',
+      '📍 ${p.locationLine.isEmpty ? 'Zambia' : p.locationLine}',
+      if (link != null) link,
+      '',
+      'Is it still available? When can I come to view it?',
+    ].join('\n');
+  }
 
   static Future<void> _waText(String n, String message) {
     final phone = n.replaceAll(RegExp(r'[^0-9]'), '');

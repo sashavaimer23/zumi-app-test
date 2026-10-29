@@ -127,6 +127,10 @@ class SupabaseRepository implements Repository {
         throw AppException('You have seen 15 numbers today. Please use chat or try again tomorrow.', code: 'LIMIT');
       }
       if (e.message.contains('NO_PHONE')) throw AppException('No phone number here — use chat');
+      if (e.message.contains('PHONE_REQUIRED')) {
+        throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
+      }
+      if (e.message.contains('FEATURE_OFF')) throw AppException('This feature is not available');
       if (e.message.contains('TEAM_ACCOUNT')) {
         throw AppException('Team accounts do not post listings — use your personal Zumi account.', code: 'TEAM');
       }
@@ -502,6 +506,8 @@ class SupabaseRepository implements Repository {
               'amenities': d.amenities.toList(),
               'area_id': area?.id,
               'location': 'SRID=4326;POINT($lng $lat)',
+              'address': d.address.trim().isEmpty ? null : d.address.trim(),
+              'nearby': d.nearby,
               'contact_phone': d.contactPhone.trim(),
               'contact_name': _user?.fullName,
               'status': 'active',
@@ -574,6 +580,8 @@ class SupabaseRepository implements Repository {
           if (d.area != null) 'area_id': d.area!.id,
           // точку меняем только если её сдвинули — иначе проверка места сохраняется
           if (moved) 'location': 'SRID=4326;POINT($lng $lat)',
+          'address': d.address.trim().isEmpty ? null : d.address.trim(),
+          'nearby': d.nearby,
           'contact_phone': d.contactPhone.trim(),
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', id);

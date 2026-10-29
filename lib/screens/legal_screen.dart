@@ -79,6 +79,9 @@ const _terms = <(String, String)>[
         '• Price, photos, location and details must be true and current. Use your own photos.\n'
         '• Do not post the same property twice. Mark a property as sold or rented when it is no longer available.\n'
         '• Free listings: owners — 2 active listings, agents — 5. More listings and promotion may be paid.\n'
+        '• To publish a listing you must confirm your phone number with a code (once).\n'
+        '• Put the pin on the map where the property really is. The address and "what\'s nearby" are optional, '
+        'but must be true if you add them.\n'
         '• A listing that has not been confirmed as available for 60 days is hidden from search until you confirm it.'
   ),
   (
@@ -97,10 +100,12 @@ const _terms = <(String, String)>[
         'carry large amounts of cash. You go to viewings and meet other users at your own risk.'
   ),
   (
-    '5. Verified badge',
-    'The Verified badge means that the Zumi team checked the person\'s phone number and identity document '
-        '(and, for agents, ZIEA registration) at the time of the check. It does not guarantee the property, '
-        'the price or the outcome of a deal. Always view the property and check documents yourself.'
+    '5. Badges',
+    '"Number checked" means the person confirmed their phone number with a code. "Licensed agent" means the '
+        'Zumi team checked the agent\'s registration number with the Zambia Institute of Estate Agents (ZIEA) at '
+        'the time of the check. Zumi does not check identity documents, ownership documents or the property itself. '
+        'Badges do not guarantee the person, the property, the price or the outcome of a deal. Always view the '
+        'property and check the documents yourself.'
   ),
   (
     '6. Reviews and reports',
@@ -162,7 +167,8 @@ const _privacy = <(String, String)>[
         'and offers by WhatsApp and/or email (you can turn each off any time in Settings).\n'
         '• Profile: photo, agency name, "about you" and business WhatsApp number (agents), ZIEA licence number '
         '(agents), and how people may contact you (phone or chat only).\n'
-        '• Listings: photos, description, price, location on the map, contact number you add.\n'
+        '• Listings: photos, description, price, the pin on the map, the address and "what\'s nearby" (if you '
+        'add them), contact number you add.\n'
         '• Messages you send in Zumi chats and to support.\n'
         '• Phone-number views: when you open a phone or WhatsApp number, we record who opened whose number and '
         'when. This protects agents and owners from spam and lets us find bots.\n'
@@ -170,8 +176,8 @@ const _privacy = <(String, String)>[
         'made (the code itself is stored only in protected, scrambled form).\n'
         '• Safety records: reports about listings or reviews, blocked accounts and the reason, and a log of '
         'actions taken by Zumi moderators.\n'
-        '• Verification (only if you choose to get verified): photo of your NRC or passport and a selfie; '
-        'for the on-site check — photos and your location at that moment.\n'
+        '• Checks: whether your phone number is confirmed and, for agents, the ZIEA registration number and the '
+        'result of our check. Zumi does not collect ID documents, selfies or ownership documents.\n'
         '• View statistics for ads, promotions and listings: your IP address and a random device code, used only '
         'to count each person once a day. They are deleted after 2 days. Authors see only the numbers, never who '
         'viewed their listing.\n'
@@ -189,7 +195,7 @@ const _privacy = <(String, String)>[
   (
     'Why we use it',
     'To run your account and show your listings; to let people contact you; to prevent scams and keep users '
-        'safe; to check identity for the Verified badge; to answer support requests; to improve the app. '
+        'safe; to show the "Number checked" and "Licensed agent" badges; to answer support requests; to improve the app. '
         'We do not sell your personal data.'
   ),
   (
@@ -201,8 +207,7 @@ const _privacy = <(String, String)>[
         '"WhatsApp", and only up to a daily limit. Each such view is recorded.\n'
         '• Agents and owners can choose "Chat only" — then their number is not shown at all and people '
         'contact them through Zumi chat.\n'
-        '• Private: your email, your personal phone number and your confirmation codes.\n'
-        '• Verification documents are stored privately and seen only by the Zumi verification team.'
+        '• Private: your email, your personal phone number and your confirmation codes.'
   ),
   (
     'Storage and security',
@@ -216,7 +221,7 @@ const _privacy = <(String, String)>[
         '• How it is protected: data in the European Union is protected by the EU General Data Protection Regulation, '
         'which gives a level of protection at least equal to the Data Protection Act No. 3 of 2021 of Zambia. On top of '
         'that, data is encrypted when it travels between your device and our servers and when it is stored; access '
-        'is limited by strict rules to what each person needs; phone numbers and documents are hidden from other users; '
+        'is limited by strict rules to what each person needs; phone numbers are hidden from other users; '
         'only the Zumi team can open the team panel and every moderator action is logged.\n'
         '• If something goes wrong: if a data breach affects your data, we will inform the Data Protection '
         'Commissioner and you as required by law.\n'
@@ -227,9 +232,7 @@ const _privacy = <(String, String)>[
     'How long we keep it',
     'We keep data only as long as we need it for the reason it was collected.\n'
         'Account data of active users (including checked phone numbers and licence numbers) — in protected form '
-        'for as long as the account is open, to keep Zumi safe.  Verification photos (documents, selfie, on-site photos) — '
-        'deleted as soon as the team approves or rejects the check, and in any case within 30 days if no decision '
-        'is made; we keep only the result (status, date, who checked it and the reason if rejected). '
+        'for as long as the account is open, to keep Zumi safe. '
         'IP addresses and device codes for ad statistics — 2 days. Phone-number view records — up to 1 year. '
         'Accounts blocked for fraud, scams or abuse: the data needed to prevent the same person from coming back '
         'and to help the police or other authorities (name, email, phone number, the reason and the evidence) is '
@@ -242,7 +245,7 @@ const _privacy = <(String, String)>[
     'Your rights',
     'Under the Data Protection Act No. 3 of 2021 you can: see and correct your data in Settings; ask for a copy '
         'of your data or ask questions through Help & support; object to or ask us to limit some uses of your data; '
-        'withdraw consent for news and offers (Settings) or for verification; and delete your account at any time '
+        'withdraw consent for news and offers (Settings); and delete your account at any time '
         '(Settings → Delete my account). Withdrawing consent to storage outside Zambia means closing the account. '
         'You can also complain to the Data Protection Commissioner of Zambia.'
   ),

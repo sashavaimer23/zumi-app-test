@@ -7,13 +7,12 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/trust.dart';
 import '../../widgets/zicons.dart';
-import 'id_verify_screen.dart';
 import 'phone_verify_screen.dart';
 
 const _ok = Color(0xFF2E9E5B);
 
-/// «Get verified» — понятный чек-лист из 3–4 шагов.
-/// Пройдя его, человек получает плашку Verified на всех своих объявлениях.
+/// «Get verified» — 2–3 шага: имя, телефон (+ номер ZIEA у агентов). Документы не нужны.
+/// Телефон обязателен для публикации; у агента с проверенной лицензией — плашка «Licensed agent».
 class GetVerifiedScreen extends StatefulWidget {
   const GetVerifiedScreen({super.key});
 
@@ -22,7 +21,7 @@ class GetVerifiedScreen extends StatefulWidget {
 }
 
 class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
-  late Future<String?> _idStatus;
+  late Future<void> _loaded;
 
   @override
   void initState() {
@@ -30,11 +29,8 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
     _reload();
   }
 
-  void _reload() {
-    final repo = context.read<AppState>().repo;
-    // статусы могли поменяться — команда Zumi проверяет заявки вручную
-    _idStatus = repo.refreshUser().then((_) => repo.verificationStatus(kind: 'identity'));
-  }
+  // статус лицензии мог поменяться — команда Zumi проверяет номер вручную
+  void _reload() => _loaded = context.read<AppState>().repo.refreshUser();
 
   // ---------------- шаги ----------------
   Future<void> _editName(AppUser u) async {
@@ -47,7 +43,7 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
           controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(hintText: 'As on your NRC or passport'),
+          decoration: const InputDecoration(hintText: 'Your first and last name'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -65,11 +61,6 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
 
   Future<void> _phone() =>
       Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()));
-
-  Future<void> _id() async {
-    final sent = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const IdVerifyScreen()));
-    if (sent == true && mounted) setState(_reload);
-  }
 
   Future<void> _licence(AppUser u) async {
     final ctrl = TextEditingController(text: u.licenceNo ?? '');
@@ -112,17 +103,15 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
     final u = context.watch<AppState>().user;
     if (u == null) return const Scaffold(body: SizedBox.shrink());
 
-    return FutureBuilder<String?>(
-      future: _idStatus,
+    return FutureBuilder<void>(
+      future: _loaded,
       builder: (context, snap) {
-        final idStatus = u.idVerified ? 'approved' : (u.idStatus ?? snap.data);
-        final idNote = (u.idNote ?? '').trim();
         final licNote = (u.licenceNote ?? '').trim();
         final steps = <_StepData>[
           _StepData(
             icon: ZI.user,
             title: 'Your name',
-            subtitle: u.profileComplete ? u.fullName! : 'Add your full name as on your ID',
+            subtitle: u.profileComplete ? u.fullName! : 'Add your first and last name',
             done: u.profileComplete,
             action: () => _editName(u),
             actionLabel: 'Add',
@@ -130,25 +119,12 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
           _StepData(
             icon: ZI.mobile,
             title: 'Phone number',
-            subtitle: u.phoneVerified ? 'Confirmed by SMS' : 'We send a 6-digit code by SMS',
+            subtitle: u.phoneVerified
+                ? 'Confirmed — your listings show "Number checked"'
+                : 'We send a 6-digit code. Needed to publish a listing.',
             done: u.phoneVerified,
             action: _phone,
             actionLabel: 'Verify',
-          ),
-          _StepData(
-            icon: ZI.idCard,
-            title: 'ID check',
-            subtitle: switch (idStatus) {
-              'approved' => 'NRC / passport confirmed',
-              'pending' => 'With the Zumi team — usually about 15 minutes',
-              'rejected' => idNote.isEmpty ? 'Not approved — please try again' : 'Not approved: $idNote. Please try again.',
-              'expired' => 'No decision within 30 days — your photos were deleted. Please send them again.',
-              _ => 'Photo of your NRC or passport + a selfie',
-            },
-            done: u.idVerified,
-            pending: idStatus == 'pending',
-            action: _id,
-            actionLabel: idStatus == 'rejected' || idStatus == 'expired' ? 'Retry' : 'Start',
           ),
           if (u.isAgent)
             _StepData(
@@ -185,18 +161,24 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const VerifiedBadge(),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    const VerifiedBadge(label: 'Number checked'),
+                    if (u.isAgent) const VerifiedBadge(label: 'Licensed agent'),
+                  ]),
                   const SizedBox(height: 14),
                   Text(
-                    allDone ? 'You are Verified!' : 'Get the Verified badge',
+                    allDone ? 'All done!' : (u.isAgent ? 'Get your badges' : 'Confirm your number'),
                     style: zHeadline(context, size: 26),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     allDone
-                        ? 'The Verified badge is shown on all your listings.'
-                        : 'The badge shows buyers and tenants that Zumi checked who you are. '
-                            'It takes about 3 minutes and you do it only once — the badge appears on all your listings.',
+                        ? 'The badges are shown on all your listings.'
+                        : u.isAgent
+                            ? 'Confirm your phone (needed to publish) and add your ZIEA number. '
+                                'No documents to upload — you do it only once.'
+                            : 'Confirm your phone once with a code — about 1 minute. '
+                                'You need it to publish a listing, and your listings show "Number checked".',
                     style: const TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),
                   ),
                   const SizedBox(height: 14),
@@ -265,8 +247,7 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Your documents are used only to confirm your identity, are stored privately and are '
-                    'deleted after the check. We never show them to other users.',
+                    'Zumi does not ask for ID documents — only your phone number and, for agents, the ZIEA number.',
                     style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.4),
                   ),
                 ),

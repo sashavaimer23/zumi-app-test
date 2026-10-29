@@ -19,7 +19,7 @@ import 'location_picker.dart';
 import 'seller_help.dart';
 import '../../widgets/trust.dart';
 import '../verify/get_verified_screen.dart';
-import '../verify/verify_listing_screen.dart';
+import '../verify/phone_verify_screen.dart';
 import '../../widgets/zicons.dart';
 
 /// Подача объявления в 5 шагов (макеты «постинг 1–5»).
@@ -49,6 +49,7 @@ class _PostWizardState extends State<PostWizard> {
   final _desc = TextEditingController();
   final _price = TextEditingController();
   final _phone = TextEditingController();
+  final _address = TextEditingController();
 
   // ---- помощь продавцу ----
   /// Мягкая проверка фото: коды предупреждений для каждого нового фото
@@ -127,6 +128,7 @@ class _PostWizardState extends State<PostWizard> {
       _desc.text = e.description ?? '';
       _price.text = e.price.round().toString();
       _phone.text = e.contactPhone ?? '';
+      _address.text = e.address ?? '';
       // номер не приходит с объявлением — свой берём отдельно
       if (_phone.text.isEmpty) {
         context.read<AppState>().repo.myListingPhone(e.id).then((n) {
@@ -146,7 +148,7 @@ class _PostWizardState extends State<PostWizard> {
 
   @override
   void dispose() {
-    for (final c in [_title, _size, _desc, _price, _phone]) {
+    for (final c in [_title, _size, _desc, _price, _phone, _address]) {
       c.dispose();
     }
     super.dispose();
@@ -652,6 +654,7 @@ class _PostWizardState extends State<PostWizard> {
                 _d.area = a;
                 _d.lat = null;
                 _d.lng = null;
+                _d.pinned = false;
               });
             }
           },
@@ -661,30 +664,44 @@ class _PostWizardState extends State<PostWizard> {
                 style: TextStyle(fontSize: 15, color: _d.area == null ? Zc.grey : Zc.text)),
           ),
         ),
-        if (_d.area != null)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () async {
-                final start = LatLng(_d.lat ?? _d.area!.lat, _d.lng ?? _d.area!.lng);
-                final res = await Navigator.push<LatLng>(
-                  context,
-                  MaterialPageRoute(builder: (_) => LocationPickerScreen(start: start)),
-                );
-                if (res != null) {
-                  setState(() {
-                    _d.lat = res.latitude;
-                    _d.lng = res.longitude;
-                  });
-                }
-              },
-              icon: Icon(_d.lat == null ? ZI.pin : ZI.check, color: Zc.orange),
-              label: Text(
-                _d.lat == null ? 'Pin exact location on map (optional)' : 'Location pinned · change',
-                style: const TextStyle(color: Zc.orange),
-              ),
-            ),
-          ),
+        _label('Location on the map *'),
+        _PinCard(
+          draft: _d,
+          onPick: _d.area == null
+              ? () => showSnack(context, 'Choose the neighbourhood first')
+              : () async {
+                  final start = LatLng(_d.lat ?? _d.area!.lat, _d.lng ?? _d.area!.lng);
+                  final res = await Navigator.push<LatLng>(
+                    context,
+                    MaterialPageRoute(builder: (_) => LocationPickerScreen(start: start)),
+                  );
+                  if (res != null) {
+                    setState(() {
+                      _d.lat = res.latitude;
+                      _d.lng = res.longitude;
+                      _d.pinned = true;
+                    });
+                  }
+                },
+        ),
+        _label('Address (optional)'),
+        TextField(
+          controller: _address,
+          maxLength: 120,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(hintText: 'e.g. Plot 12, Leopards Hill Road', counterText: ''),
+          onChanged: (v) => _d.address = v,
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('Shown on the listing. Leave it empty if you prefer to share the address in chat.',
+              style: TextStyle(fontSize: 12, color: Zc.grey)),
+        ),
+        _label("What's nearby (optional)"),
+        const Text('Helps people decide faster. Choose the distance for what you know.',
+            style: TextStyle(fontSize: 13, color: Zc.grey)),
+        const SizedBox(height: 10),
+        _NearbyPicker(value: _d.nearby, onChanged: (m) => setState(() => _d.nearby = m)),
         _label('Contact number'),
         TextField(
           controller: _phone,
@@ -700,6 +717,29 @@ class _PostWizardState extends State<PostWizard> {
     );
   }
 
+  /// «Подтвердите номер, чтобы опубликовать» → экран кода. true — номер подтверждён.
+  Future<bool> _askPhone() async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm your phone number'),
+        content: const Text(
+          'To publish a listing, confirm your phone number with a code. You do it only once — '
+          'after that your listings show "Number checked".',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return false;
+    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()));
+    if (!mounted) return false;
+    await context.read<AppState>().repo.refreshUser();
+    return ok == true || (mounted && (context.read<AppState>().user?.phoneVerified ?? false));
+  }
+
   Future<void> _publish() async {
     final price = double.tryParse(_price.text.replaceAll(',', ''));
     if (price == null || price <= 0) {
@@ -709,6 +749,15 @@ class _PostWizardState extends State<PostWizard> {
     if (_d.area == null) {
       showSnack(context, 'Please select the neighbourhood');
       return;
+    }
+    if (!_d.pinned || _d.lat == null) {
+      showSnack(context, 'Please put the pin on the map where the property is');
+      return;
+    }
+    // публиковать можно только с подтверждённым телефоном (подтверждается один раз)
+    if (!_editing && !(context.read<AppState>().user?.phoneVerified ?? false)) {
+      final ok = await _askPhone();
+      if (!ok || !mounted) return;
     }
     if (_phone.text.replaceAll(RegExp(r'\D'), '').length < 9) {
       showSnack(context, 'Please enter a valid contact number');
@@ -747,6 +796,8 @@ class _PostWizardState extends State<PostWizard> {
       if (!mounted) return;
       if (e.code == 'LISTING_LIMIT_REACHED') {
         setState(() => _quota = app.repo.myQuota());
+      } else if (e.code == 'PHONE_REQUIRED') {
+        if (await _askPhone() && mounted) _publish();
       } else {
         showSnack(context, e.message);
       }
@@ -778,64 +829,53 @@ class _PostWizardState extends State<PostWizard> {
           style: const TextStyle(fontSize: 18, color: Zc.grey, height: 1.35),
         ),
         const SizedBox(height: 28),
-        // предложение пройти проверку (необязательно)
-        if (_created != null)
-          Builder(builder: (context) {
-            final verified = context.watch<AppState>().user?.identityVerified ?? false;
-            return Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Zc.chip),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  const VerifiedBadge(compact: true),
-                  const Spacer(),
-                  if (!verified) const Text('Optional', style: TextStyle(color: Zc.grey, fontSize: 13)),
-                ]),
-                const SizedBox(height: 12),
-                Text(
-                  verified ? 'Your listing has the Verified badge' : 'Get the Verified badge?',
-                  style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600, color: Zc.green),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  verified
-                      ? 'Want even more trust? Confirm the location on site or add ownership documents — both optional.'
-                      : 'Confirm your phone and ID once (about 3 minutes) and all your listings get the Verified '
-                          'badge — it shows people that Zumi checked who you are.',
-                  style: const TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                Row(children: [
-                  Expanded(
-                    child: PrimaryButton(
-                      label: verified ? 'Add more trust' : 'Get verified',
-                      width: double.infinity,
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => verified
-                                ? VerifyListingScreen(property: _created!)
-                                : const GetVerifiedScreen(),
-                          ),
-                        );
-                        if (mounted) Shell.of(this.context)?.resetPost(goTo: 4);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  TextButton(
-                    onPressed: () => Shell.of(this.context)?.resetPost(goTo: 4),
-                    child: Text(verified ? 'Done' : 'Maybe later', style: const TextStyle(color: Zc.grey)),
-                  ),
-                ]),
+        // агенту без проверенной лицензии — предложить добавить номер ZIEA (необязательно)
+        if (_created != null &&
+            (context.watch<AppState>().user?.isAgent ?? false) &&
+            !(context.watch<AppState>().user?.licenceVerified ?? false))
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Zc.chip),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Row(children: [
+                VerifiedBadge(compact: true, label: 'Licensed agent'),
+                Spacer(),
+                Text('Optional', style: TextStyle(color: Zc.grey, fontSize: 13)),
               ]),
-            );
-          })
+              const SizedBox(height: 12),
+              const Text('Get the Licensed agent badge?',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600, color: Zc.green)),
+              const SizedBox(height: 6),
+              const Text(
+                'Add your ZIEA registration number — the Zumi team checks it with ZIEA. Your listings then show '
+                '"Licensed agent" and people trust them more. No documents to upload.',
+                style: TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Add licence number',
+                    width: double.infinity,
+                    onPressed: () async {
+                      await Navigator.push(
+                          context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen()));
+                      if (mounted) Shell.of(this.context)?.resetPost(goTo: 4);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: () => Shell.of(this.context)?.resetPost(goTo: 4),
+                  child: const Text('Maybe later', style: TextStyle(color: Zc.grey)),
+                ),
+              ]),
+            ]),
+          )
         else
           Center(
             child: PrimaryButton(
@@ -851,6 +891,85 @@ class _PostWizardState extends State<PostWizard> {
 // ======================================================================
 // Вспомогательные виджеты мастера
 // ======================================================================
+
+/// Точка на карте: обязательна — иначе человек не поймёт, где именно жильё
+class _PinCard extends StatelessWidget {
+  const _PinCard({required this.draft, required this.onPick});
+  final ListingDraft draft;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final pinned = draft.pinned && draft.lat != null;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onPick,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: pinned ? Zc.greenTint : Zc.orangeSoft,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(children: [
+          Icon(pinned ? ZI.checkCircle : ZI.pin, color: pinned ? Zc.green : Zc.orange, size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(pinned ? 'Location pinned' : 'Put the pin where the property is',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: pinned ? Zc.green : Zc.text)),
+              const SizedBox(height: 2),
+              Text(
+                pinned
+                    ? 'Tap to move the pin'
+                    : 'Zoom in and place it as close as you can — people use it to plan a visit.',
+                style: const TextStyle(fontSize: 13, color: Zc.grey),
+              ),
+            ]),
+          ),
+          Icon(ZI.caretRight, color: pinned ? Zc.green : Zc.orange),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Что рядом: магазины, школа, больница, главная дорога — расстояние по выбору
+class _NearbyPicker extends StatelessWidget {
+  const _NearbyPicker({required this.value, required this.onChanged});
+  final Map<String, String> value;
+  final ValueChanged<Map<String, String>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      for (final place in kNearbyPlaces.entries)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(nearbyIcon(place.key), size: 18, color: Zc.green),
+              const SizedBox(width: 6),
+              Text(place.value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final d in kNearbyDistances.entries)
+                ZChip(
+                  label: d.value,
+                  selected: value[place.key] == d.key,
+                  onTap: () {
+                    final m = Map<String, String>.of(value);
+                    // повторное нажатие снимает выбор
+                    m[place.key] == d.key ? m.remove(place.key) : m[place.key] = d.key;
+                    onChanged(m);
+                  },
+                ),
+            ]),
+          ]),
+        ),
+    ]);
+  }
+}
 class _DealCard extends StatelessWidget {
   const _DealCard({
     required this.image,
