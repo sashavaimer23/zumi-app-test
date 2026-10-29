@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
@@ -46,6 +49,9 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
 
   AppState? _app;
   String _appKey = '';
+  // сколько времени приложение открыто — для мягкой просьбы об отзыве
+  Timer? _usage;
+  bool _foreground = true;
   int _tourTries = 0;
 
   @override
@@ -58,6 +64,9 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
       _app = context.read<AppState>()..addListener(_onAppChanged);
       _appKey = _keyOf(_app!);
       _app!.repo.logVisit(); // обезличенный счётчик посещений
+      _usage = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (_foreground) _app?.addUsage(30);
+      });
       // первый тур — когда заставка закончилась и главная уже видна
       _scheduleTour(const Duration(milliseconds: 4200));
     });
@@ -65,6 +74,7 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _usage?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _app?.removeListener(_onAppChanged);
     if (Shell.current == this) Shell.current = null;
@@ -73,6 +83,7 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
     if (state == AppLifecycleState.resumed) {
       _app?.repo.logVisit();
       _app?.refreshUnread(); // вернулся в приложение — обновить значок сообщений
@@ -145,12 +156,18 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
       ],
     );
 
+    final askFeedback = context.watch<AppState>().feedbackPromptVisible && _index != 2;
+
     // компьютер: шапка сайта сверху, без «острова»
     if (isDesktop(context)) {
       return Scaffold(
-        body: Column(children: [
-          _TopBar(index: _index, onTap: go),
-          Expanded(child: pages),
+        body: Stack(children: [
+          Column(children: [
+            _TopBar(index: _index, onTap: go),
+            Expanded(child: pages),
+          ]),
+          if (askFeedback)
+            const Positioned(right: 24, bottom: 24, width: 380, child: FeedbackPromptCard()),
         ]),
       );
     }
@@ -158,7 +175,11 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     // телефон: меню-«остров» парит над контентом
     return Scaffold(
       extendBody: true,
-      body: pages,
+      body: Stack(children: [
+        pages,
+        if (askFeedback)
+          const Positioned(left: 16, right: 16, bottom: Shell.navSpace, child: FeedbackPromptCard()),
+      ]),
       bottomNavigationBar: _index == 2 ? null : _PillNavBar(index: _index, onTap: go),
     );
   }

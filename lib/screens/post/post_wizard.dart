@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/images.dart';
+import '../../features.dart';
 import '../../models/models.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
@@ -1232,16 +1233,16 @@ class _LimitReached extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
-          kIsWeb
+          kIsWeb && Features.promotion
               ? '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
                   'To add more, buy an extra listing slot.'
               : '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
-                  'Archive or mark a listing as rented or sold to post a new one.',
+                  'Hide a listing or mark it as rented or sold to post a new one.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),
         const SizedBox(height: 36),
-        if (kIsWeb)
+        if (kIsWeb && Features.promotion)
           Center(
             child: PrimaryButton(
               label: 'Buy extra listing',

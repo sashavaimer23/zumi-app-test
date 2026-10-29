@@ -75,7 +75,7 @@ class Onboarding {
         Tour.agent => [
             _Step(TourKeys.post, 'Add listings', 'Post homes for your clients — each one takes about 3 minutes.'),
             _Step(TourKeys.profile, 'Your agent cabinet', 'Profile: your listings, Promotion and the ZIEA licence '
-                'check. Add your ZIEA number to unlock promotion.', round: true),
+                'check. Add your ZIEA number to get the "Licensed agent" badge.', round: true),
             _Step(TourKeys.chats, 'Messages', 'Enquiries from clients arrive here.', round: true),
           ],
       };

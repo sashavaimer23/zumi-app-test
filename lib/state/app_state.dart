@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/repository.dart';
+import '../features.dart';
 import '../models/models.dart';
 import '../utils/app_badge.dart';
 
@@ -23,6 +24,54 @@ class AppState extends ChangeNotifier {
     });
     if (_user != null) _syncFavorites();
     _watchUnread();
+    loadFlags();
+  }
+
+  // ---------- что включено (с сервера) ----------
+  bool get promotionOn => Features.promotion;
+
+  Future<void> loadFlags() async {
+    final f = await repo.appFlags();
+    final promo = (f['promotion'] as bool?) ?? false;
+    if (promo == Features.promotion) return;
+    Features.promotion = promo;
+    notifyListeners();
+  }
+
+  Future<void> setPromotion(bool on) async {
+    await repo.setPromotionEnabled(on);
+    Features.promotion = on;
+    dataChanged();
+  }
+
+  // ---------- «Как вам Zumi?» — мягкая просьба об отзыве ----------
+  // Через 7 минут пользования (суммарно, за несколько визитов). Не чаще раза в 14 дней, не больше 3 раз,
+  // и больше никогда — если человек уже оставил отзыв.
+  static const _kUseSecs = 'fb_use_secs', _kAskedAt = 'fb_asked_at', _kAskedTimes = 'fb_asked_times', _kGiven = 'fb_given';
+  static const feedbackAfterSecs = 7 * 60;
+  bool _feedbackVisible = false;
+  bool get feedbackPromptVisible => _feedbackVisible;
+
+  /// Вызывается каждые 30 секунд, пока приложение открыто и на экране
+  void addUsage(int secs) {
+    final total = (_prefs.getInt(_kUseSecs) ?? 0) + secs;
+    _prefs.setInt(_kUseSecs, total);
+    if (_feedbackVisible || total < feedbackAfterSecs) return;
+    if (_prefs.getBool(_kGiven) ?? false) return;
+    if ((_prefs.getInt(_kAskedTimes) ?? 0) >= 3) return;
+    final last = _prefs.getInt(_kAskedAt);
+    if (last != null && DateTime.now().millisecondsSinceEpoch - last < const Duration(days: 14).inMilliseconds) return;
+    _feedbackVisible = true;
+    _prefs.setInt(_kAskedAt, DateTime.now().millisecondsSinceEpoch);
+    _prefs.setInt(_kAskedTimes, (_prefs.getInt(_kAskedTimes) ?? 0) + 1);
+    notifyListeners();
+  }
+
+  void hideFeedbackPrompt({bool given = false}) {
+    if (given) _prefs.setBool(_kGiven, true);
+    if (!_feedbackVisible) return;
+    _feedbackVisible = false;
+    notifyListeners();
   }
 
   final Repository repo;

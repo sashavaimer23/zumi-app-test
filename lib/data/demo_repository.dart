@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:uuid/uuid.dart';
 
+import '../features.dart';
 import '../models/models.dart';
 import 'demo_data.dart';
 import 'repository.dart';
@@ -813,6 +814,51 @@ class DemoRepository implements Repository {
         : p.copyWith(status: p.dealType == DealType.sale ? 'sold' : 'rented', hiddenBy: 'owner');
   }
 
+  bool _promotionOn = false;
+  final _feedback = <AppFeedbackItem>[];
+
+  @override
+  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn};
+
+  @override
+  Future<void> sendAppFeedback({required int rating, required List<String> issues, String? comment}) async {
+    await _lag();
+    _feedback.insert(0, AppFeedbackItem(
+      rating: rating, issues: issues, comment: comment, platform: 'web', version: 'demo',
+      at: DateTime.now(), who: _user?.fullName ?? 'Guest',
+    ));
+  }
+
+  @override
+  Future<AppFeedbackReport> ownerAppFeedback(int days) async {
+    final from = DateTime.now().subtract(Duration(days: days));
+    final items = _feedback.where((f) => f.at.isAfter(from)).toList();
+    final issues = <String, int>{};
+    final byRating = <int, int>{};
+    for (final f in items) {
+      byRating[f.rating] = (byRating[f.rating] ?? 0) + 1;
+      for (final i in f.issues) {
+        issues[i] = (issues[i] ?? 0) + 1;
+      }
+    }
+    return AppFeedbackReport(
+      count: items.length,
+      average: items.isEmpty ? null : items.map((f) => f.rating).reduce((a, b) => a + b) / items.length,
+      byRating: byRating,
+      issues: issues,
+      items: items,
+    );
+  }
+
+  @override
+  Future<(bool, int)> promotionStatus() async => (_promotionOn, _campaigns.where((c) => c.isLive).length);
+
+  @override
+  Future<void> setPromotionEnabled(bool on) async {
+    _promotionOn = on;
+    Features.promotion = on;
+  }
+
   @override
   Future<int> listingsToConfirm() async {
     final uid = _user?.id;
@@ -1299,6 +1345,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<List<(Campaign, Property)>> liveCampaigns(String placement, {SearchFilters? filters}) async {
+    if (!Features.promotion) return const [];
     final out = <(Campaign, Property)>[];
     for (final c in _campaigns) {
       if (c.placement != placement || !c.isLive) continue;

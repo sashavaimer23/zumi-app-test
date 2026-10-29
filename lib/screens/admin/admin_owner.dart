@@ -249,14 +249,15 @@ class _TopList extends StatelessWidget {
 // HELP ARTICLES — правка статей без обновления приложения + оценки
 // ======================================================================
 class _HelpAdmin extends StatefulWidget {
-  const _HelpAdmin();
+  const _HelpAdmin({this.ratingsOnly = false});
+  final bool ratingsOnly; // в кабинете разработчика — только оценки статей
 
   @override
   State<_HelpAdmin> createState() => _HelpAdminState();
 }
 
 class _HelpAdminState extends State<_HelpAdmin> {
-  bool _ratings = false;
+  late bool _ratings = widget.ratingsOnly;
   late Future<List<HelpArticle>> _articles = context.read<AppState>().repo.adminHelpArticles();
   late Future<List<HelpRating>> _rates = context.read<AppState>().repo.adminHelpRatings();
 
@@ -272,6 +273,13 @@ class _HelpAdminState extends State<_HelpAdmin> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.ratingsOnly) {
+      return _Page(
+        title: 'Help articles: was it helpful?',
+        subtitle: 'Articles that did not help are on top. Read the comments and improve the text.',
+        child: _ratingList(),
+      );
+    }
     return _Page(
       title: 'Help articles',
       subtitle: 'Changes appear in the app at once — no app update needed.',
@@ -713,6 +721,7 @@ class _AdsHubState extends State<_AdsHub> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
+      const _PromotionSwitch(),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Align(
@@ -1073,6 +1082,229 @@ class _Funnel extends StatelessWidget {
             ]),
           ),
       ]),
+    );
+  }
+}
+
+
+// ======================================================================
+// ВЫКЛЮЧАТЕЛЬ ПРОДВИЖЕНИЯ (только владелец). Пока выключено: агенты не видят «Promote»,
+// кампании не запускаются и не показываются, платных мест нет. Включается здесь — без обновления приложения.
+// ======================================================================
+class _PromotionSwitch extends StatefulWidget {
+  const _PromotionSwitch();
+
+  @override
+  State<_PromotionSwitch> createState() => _PromotionSwitchState();
+}
+
+class _PromotionSwitchState extends State<_PromotionSwitch> {
+  late Future<(bool, int)> _status = context.read<AppState>().repo.promotionStatus();
+  bool _busy = false;
+
+  Future<void> _set(bool on) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(on ? 'Turn on promotion?' : 'Turn off promotion?'),
+        content: Text(on
+            ? 'Agents with a checked licence will see "Promote", campaigns can start and will be shown in search '
+                'and on the home page. Test it first with one agent you trust.'
+            : 'All agent campaigns stop being shown at once. Agents keep their campaigns — they come back when you '
+                'turn promotion on again.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(on ? 'Turn on' : 'Turn off')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AppState>().setPromotion(on);
+      if (mounted) setState(() => _status = context.read<AppState>().repo.promotionStatus());
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: FutureBuilder<(bool, int)>(
+        future: _status,
+        builder: (context, snap) {
+          final (on, live) = snap.data ?? (false, 0);
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: on ? Zc.greenTint : Zc.orangeSoft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(children: [
+              Icon(ZI.bolt, color: on ? Zc.green : Zc.orange),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(on ? 'Agent promotion is ON' : 'Agent promotion is OFF',
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    on
+                        ? '$live ${live == 1 ? 'campaign is' : 'campaigns are'} running now.'
+                        : 'Agents don\'t see "Promote", no campaigns are shown, no paid listing slots. '
+                            'Your own banners (Banners tab) still work.',
+                    style: const TextStyle(fontSize: 12, color: Zc.text),
+                  ),
+                ]),
+              ),
+              Switch(
+                value: on,
+                activeTrackColor: Zc.green,
+                onChanged: _busy || !snap.hasData ? null : _set,
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ======================================================================
+// FEEDBACK — отзывы о приложении и оценки статей помощи (кабинет разработчика, только владелец)
+// ======================================================================
+class _Feedback extends StatefulWidget {
+  const _Feedback();
+
+  @override
+  State<_Feedback> createState() => _FeedbackState();
+}
+
+class _FeedbackState extends State<_Feedback> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 0, label: Text('App feedback')),
+              ButtonSegment(value: 1, label: Text('Help articles')),
+            ],
+            selected: {_tab},
+            onSelectionChanged: (s) => setState(() => _tab = s.first),
+          ),
+        ),
+      ),
+      Expanded(child: _tab == 0 ? const _AppFeedbackList() : const _HelpAdmin(ratingsOnly: true)),
+    ]);
+  }
+}
+
+class _AppFeedbackList extends StatefulWidget {
+  const _AppFeedbackList();
+
+  @override
+  State<_AppFeedbackList> createState() => _AppFeedbackListState();
+}
+
+class _AppFeedbackListState extends State<_AppFeedbackList> {
+  int _days = 30;
+  late Future<AppFeedbackReport> _future = context.read<AppState>().repo.ownerAppFeedback(_days);
+
+  void _reload(int days) => setState(() {
+        _days = days;
+        _future = context.read<AppState>().repo.ownerAppFeedback(days);
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'App feedback',
+      subtitle: 'What people say about Zumi. Low ratings and comments first — that is what to fix.',
+      trailing: SegmentedButton<int>(
+        segments: const [
+          ButtonSegment(value: 7, label: Text('7 days')),
+          ButtonSegment(value: 30, label: Text('30 days')),
+          ButtonSegment(value: 90, label: Text('90 days')),
+        ],
+        selected: {_days},
+        onSelectionChanged: (s) => _reload(s.first),
+      ),
+      child: _Loader<AppFeedbackReport>(
+        future: _future,
+        builder: (r) {
+          if (r.count == 0) return _emptyDone('No feedback in this period yet.');
+          final issues = r.issues.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+          final items = [...r.items]..sort((a, b) {
+              final c = a.rating.compareTo(b.rating);
+              return c != 0 ? c : b.at.compareTo(a.at);
+            });
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _Card(
+              child: Row(children: [
+                Text(r.average?.toStringAsFixed(1) ?? '—',
+                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: Zc.orange)),
+                const SizedBox(width: 6),
+                const Icon(ZI.star, color: Zc.orange),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${r.count} ${r.count == 1 ? 'answer' : 'answers'}',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text([for (var s = 5; s >= 1; s--) '$s★ ${r.byRating[s] ?? 0}'].join('  ·  '),
+                        style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  ]),
+                ),
+              ]),
+            ),
+            if (issues.isNotEmpty)
+              _Card(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('What does not work', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  for (final e in issues)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(children: [
+                        Expanded(child: Text(kFeedbackIssues[e.key] ?? e.key)),
+                        Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                ]),
+              ),
+            for (final f in items)
+              _Card(
+                highlight: f.rating <= 2,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    for (var i = 1; i <= 5; i++)
+                      Icon(i <= f.rating ? ZI.star : ZI.starLine, size: 16, color: Zc.orange),
+                    const Spacer(),
+                    Text('${f.who} · ${f.platform ?? ''} ${f.version ?? ''} · ${timeAgo(f.at)}',
+                        style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  ]),
+                  if (f.issues.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(f.issues.map((i) => kFeedbackIssues[i] ?? i).join(' · '),
+                        style: const TextStyle(fontSize: 13, color: Zc.green)),
+                  ],
+                  if ((f.comment ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(f.comment!, style: const TextStyle(fontSize: 14, height: 1.4)),
+                  ],
+                ]),
+              ),
+          ]);
+        },
+      ),
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../features.dart';
+
 // Модели данных Zumi. Поля совпадают с колонками view `property_feed` в Supabase.
 
 double? _d(dynamic v) => v == null ? null : (v as num).toDouble();
@@ -105,7 +107,8 @@ class Property {
   final double lat;
   final double lng;
   final String status;
-  final bool isPromoted;
+  final bool promoted; // продвигается (видно, только если продвижение включено — Features.promotion)
+  bool get isPromoted => promoted && Features.promotion;
   final List<String> images;
   final String? listedBy; // 'agent' | 'owner'
   final String? contactName;
@@ -162,7 +165,7 @@ class Property {
     required this.lat,
     required this.lng,
     this.status = 'active',
-    this.isPromoted = false,
+    bool isPromoted = false,
     this.images = const [],
     this.listedBy,
     this.contactName,
@@ -195,7 +198,8 @@ class Property {
     this.hiddenBy,
     this.hiddenReason,
     this.approvedAt,
-  }) : hasPhone = hasPhone ?? (contactPhone != null && contactPhone != '');
+  }) : promoted = isPromoted,
+       hasPhone = hasPhone ?? (contactPhone != null && contactPhone != '');
 
   factory Property.fromMap(Map<String, dynamic> m) => Property(
         id: m['id'] as String,
@@ -285,7 +289,7 @@ class Property {
         rentPeriod: rentPeriod, bedrooms: bedrooms, bathrooms: bathrooms, areaSqm: areaSqm,
         plotSqm: plotSqm, amenities: amenities, areaId: areaId, areaName: areaName, city: city,
         address: address, lat: lat, lng: lng, status: status ?? this.status,
-        isPromoted: isPromoted ?? this.isPromoted, images: images, listedBy: listedBy,
+        isPromoted: isPromoted ?? promoted, images: images, listedBy: listedBy,
         contactName: contactName ?? this.contactName, contactPhone: contactPhone, renovation: renovation,
         kidsAllowed: kidsAllowed, petsAllowed: petsAllowed, leaseTerm: leaseTerm,
         viewsCount: viewsCount, createdAt: createdAt, isDemo: isDemo,
@@ -1547,8 +1551,9 @@ const helpCategories = <String, String>{
   'account': 'Account and sign-in',
   'listings': 'Listings',
   'contact': 'Contacts and chats',
-  'verification': 'Verification (Verified)',
-  'promotion': 'Promotion and payment',
+  'verification': 'Number checked and licences',
+  'promotion': 'Promotion',
+  'payments': 'Payments and refunds',
   'safety': 'Safety and scams',
   'technical': 'Technical problems',
 };
@@ -2012,4 +2017,84 @@ class ListingStats {
       ],
     );
   }
+}
+
+// ======================================================================
+// Отзывы о приложении (кабинет разработчика)
+// ======================================================================
+
+/// Что не работает — варианты в окне отзыва (коды совпадают с сервером)
+const kFeedbackIssues = <String, String>{
+  'slow': 'Slow or freezes',
+  'photos': 'Photos don\'t load',
+  'login': 'Sign-in or codes',
+  'search': 'Hard to find homes',
+  'post': 'Posting a listing',
+  'chat': 'Chats and contacts',
+  'confusing': 'Confusing to use',
+  'crash': 'Errors or crashes',
+  'other': 'Something else',
+};
+
+class AppFeedbackItem {
+  final int rating;
+  final List<String> issues;
+  final String? comment;
+  final String? platform;
+  final String? version;
+  final DateTime at;
+  final String who;
+
+  const AppFeedbackItem({
+    required this.rating,
+    this.issues = const [],
+    this.comment,
+    this.platform,
+    this.version,
+    required this.at,
+    this.who = 'Guest',
+  });
+
+  factory AppFeedbackItem.fromMap(Map<String, dynamic> m) => AppFeedbackItem(
+        rating: ((m['rating'] as num?) ?? 0).toInt(),
+        issues: _sl(m['issues']),
+        comment: m['comment'] as String?,
+        platform: m['platform'] as String?,
+        version: m['version'] as String?,
+        at: DateTime.tryParse('${m['at']}') ?? DateTime.now(),
+        who: (m['who'] as String?) ?? 'Guest',
+      );
+}
+
+class AppFeedbackReport {
+  final int count;
+  final double? average;
+  final Map<int, int> byRating;
+  final Map<String, int> issues;
+  final List<AppFeedbackItem> items;
+
+  const AppFeedbackReport({
+    this.count = 0,
+    this.average,
+    this.byRating = const {},
+    this.issues = const {},
+    this.items = const [],
+  });
+
+  factory AppFeedbackReport.fromMap(Map<String, dynamic> m) => AppFeedbackReport(
+        count: ((m['count'] as num?) ?? 0).toInt(),
+        average: (m['average'] as num?)?.toDouble(),
+        byRating: {
+          for (final e in Map<String, dynamic>.from((m['by_rating'] as Map?) ?? const {}).entries)
+            int.tryParse(e.key) ?? 0: ((e.value as num?) ?? 0).toInt(),
+        },
+        issues: {
+          for (final e in Map<String, dynamic>.from((m['issues'] as Map?) ?? const {}).entries)
+            e.key: ((e.value as num?) ?? 0).toInt(),
+        },
+        items: [
+          for (final i in (m['items'] as List? ?? const []))
+            AppFeedbackItem.fromMap(Map<String, dynamic>.from(i as Map)),
+        ],
+      );
 }

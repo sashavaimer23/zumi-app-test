@@ -30,14 +30,16 @@ part 'admin_owner.dart';
 
 enum _Section {
   inbox, accounts, listings, ids, licences, reports, phones, support, reviews, help, // модератор
-  ads, adStats, stats, dev, team, log, // владелец
+  ads, adStats, stats, dev, feedback, team, log, // владелец
 }
 
 /// Выключенные разделы: документы (NRC/паспорт, собственность) Zumi больше не проверяет
 const _hidden = {_Section.ids};
 
 /// Только для владельца Zumi (сервер тоже проверяет)
-const _ownerOnly = {_Section.ads, _Section.adStats, _Section.stats, _Section.dev, _Section.team, _Section.log};
+const _ownerOnly = {
+  _Section.ads, _Section.adStats, _Section.stats, _Section.dev, _Section.feedback, _Section.team, _Section.log,
+};
 
 extension on _Section {
   String get label => switch (this) {
@@ -45,6 +47,7 @@ extension on _Section {
         _Section.stats => 'Statistics',
         _Section.adStats => 'Ad statistics',
         _Section.dev => 'Developer',
+        _Section.feedback => 'Feedback',
         _Section.help => 'Help articles',
         _Section.team => 'Team & roles',
         _Section.accounts => 'New accounts',
@@ -63,6 +66,7 @@ extension on _Section {
         _Section.stats => ZI.sort,
         _Section.adStats => ZI.eye,
         _Section.dev => ZI.settings,
+        _Section.feedback => ZI.star,
         _Section.help => ZI.info,
         _Section.team => ZI.lock,
         _Section.accounts => ZI.userCircle,
@@ -127,6 +131,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.support => _stats.tickets,
         _Section.reviews => _stats.reviews,
         _Section.log => 0,
+        _Section.feedback => 0,
       };
 
   Widget _body() => switch (_section) {
@@ -134,6 +139,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.stats => const _Stats(),
         _Section.adStats => const _AdStats(),
         _Section.dev => const _DevStats(),
+        _Section.feedback => const _Feedback(),
         _Section.help => const _HelpAdmin(),
         _Section.team => const _Team(),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),

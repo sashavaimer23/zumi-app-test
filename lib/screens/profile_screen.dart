@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 
 import '../config.dart';
+import '../features.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -165,8 +166,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         id: 'hint_agent',
                         icon: ZI.badge,
                         title: 'Your agent cabinet',
-                        text: 'Here are your catalogue, your public agent page, Promotion and the Verified check. '
-                            '${user.licenceVerified ? 'Your ZIEA licence is checked — promotion is open.' : 'Add your ZIEA registration number: until it is checked, your listings show "licence not verified" and promotion is locked.'}',
+                        text: 'Here are your catalogue, your public agent page and your badges. '
+                            '${user.licenceVerified ? 'Your ZIEA licence is checked — your listings show "Licensed agent".' : 'Add your ZIEA registration number: until it is checked, your listings show "licence not verified".'}',
                         actionLabel: user.licenceVerified || (user.licenceNo ?? '').isNotEmpty ? null : 'Add ZIEA number',
                         onAction: () => Navigator.push(
                           context,
@@ -261,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   highlight: true,
                   onTap: () => openAdminScreen(context),
                 ),
-              if (user.isAgent)
+              if (user.isAgent && app.promotionOn)
                 _MenuTile(
                   icon: ZI.bolt,
                   title: 'Promotion',
@@ -339,15 +340,15 @@ class _QuotaCard extends StatelessWidget {
           Expanded(
             child: Text(
               quota.reached
-                  ? (kIsWeb
+                  ? (kIsWeb && Features.promotion
                       ? 'Limit reached — buy an extra slot to post more.'
-                      : 'Limit reached — archive a listing to post a new one.')
+                      : 'Limit reached — hide a listing or mark it as rented / sold to post a new one.')
                   : '${quota.left} free left',
               style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
           ),
           // покупка — только на сайте: в приложениях Apple и Google это запрещают
-          if (kIsWeb)
+          if (kIsWeb && Features.promotion) // платные функции — пока выключены владельцем
             TextButton(
               style: TextButton.styleFrom(backgroundColor: Zc.orange, foregroundColor: Colors.white),
               onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
@@ -637,7 +638,7 @@ class _MyListingTile extends StatelessWidget {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               if (active) const PopupMenuItem(value: 'share', child: Text('Share')),
-              if (active) const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
+              if (active && app.promotionOn) const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
               if (active) const PopupMenuItem(value: 'confirm', child: Text('Confirm still available')),
               if (active) const PopupMenuItem(value: 'hide', child: Text('Hide from search')),
               if (active)

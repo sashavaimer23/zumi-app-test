@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart' hide SortBy;
 
 import '../config.dart';
+import '../features.dart';
 import '../models/models.dart';
 import 'device_id.dart';
 import 'images.dart';
@@ -131,6 +132,10 @@ class SupabaseRepository implements Repository {
         throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
       }
       if (e.message.contains('FEATURE_OFF')) throw AppException('This feature is not available');
+      if (e.message.contains('PROMOTION_OFF')) {
+        throw AppException('Promotion is turned off for now. The Zumi owner can turn it on in the team panel → Ads.',
+            code: 'PROMOTION_OFF');
+      }
       if (e.message.contains('TEAM_ACCOUNT')) {
         throw AppException('Team accounts do not post listings — use your personal Zumi account.', code: 'TEAM');
       }
@@ -849,6 +854,45 @@ class SupabaseRepository implements Repository {
       });
 
   @override
+  Future<Map<String, dynamic>> appFlags() async {
+    try {
+      return Map<String, dynamic>.from(await _db.rpc('app_flags') as Map);
+    } catch (_) {
+      return const {}; // нет связи — остаётся как было (всё лишнее выключено)
+    }
+  }
+
+  @override
+  Future<void> sendAppFeedback({required int rating, required List<String> issues, String? comment}) => _guard(() async {
+        await _db.rpc('send_app_feedback', params: {
+          'p_rating': rating,
+          'p_issues': issues,
+          'p_comment': comment,
+          'p_platform': AppConfig.platform,
+          'p_version': AppConfig.appVersion,
+          'p_device': await DeviceId.get(),
+        });
+      });
+
+  @override
+  Future<AppFeedbackReport> ownerAppFeedback(int days) => _guard(() async {
+        final res = await _db.rpc('owner_app_feedback', params: {'p_days': days});
+        return AppFeedbackReport.fromMap(Map<String, dynamic>.from(res as Map));
+      });
+
+  @override
+  Future<(bool, int)> promotionStatus() => _guard(() async {
+        final m = Map<String, dynamic>.from(await _db.rpc('admin_promotion_status') as Map);
+        return ((m['enabled'] as bool?) ?? false, ((m['live_campaigns'] as num?) ?? 0).toInt());
+      });
+
+  @override
+  Future<void> setPromotionEnabled(bool on) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'promotion_enabled', 'p_value': '$on'});
+        Features.promotion = on;
+      });
+
+  @override
   Future<int> listingsToConfirm() async {
     if (_db.auth.currentUser == null) return 0;
     try {
@@ -1267,6 +1311,7 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<List<(Campaign, Property)>> liveCampaigns(String placement, {SearchFilters? filters}) async {
+    if (!Features.promotion) return const []; // продвижение выключено владельцем
     try {
       final today = isoDay(DateTime.now());
       final rows = await _db

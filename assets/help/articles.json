@@ -118,5 +118,93 @@
   "sort": 40,
   "web_only": false,
   "body": "In Profile → My listings, under each active listing you see the numbers for the last 7 days:\n- Views — each person is counted once a day. Your own views are not counted.\n- Contacts — people who opened your phone number or started a chat.\n- Saved — people who tapped the heart.\n\nTap \"Details\" to see views and contacts by day for the last 14 days, and tips for this listing.\n\n## Where the tips come from\nZumi looks at your listing's numbers and at similar listings in the same area. For example:\n- many views but no contacts — check the price and add details people ask about;\n- the price is far from similar homes in the area;\n- fewer than 5 photos or a very short description;\n- the listing needs a \"still available\" confirmation soon.\n\nTips are suggestions — you decide what to change."
+ },
+ {
+  "id": "e705fbca-c1e3-5593-aec7-2ae5fa371d05",
+  "category": "payments",
+  "title": "Payments: my payment did not go through",
+  "body": "Right now Zumi is free: posting listings, chats and calls cost nothing. Zumi never asks you to pay by mobile money to a private number.\n\n## If a payment on Zumi fails (when paid features open)\n- Check that you have enough money on your mobile money account, including the operator fee.\n- Make sure you typed the PIN on your phone within 2 minutes — the request expires after that.\n- Check that your phone has signal. Weak network is the most common reason.\n- Don't pay twice. If money left your account but nothing changed in Zumi, wait 15 minutes — operators sometimes confirm late.\n- Still nothing? Open Help & support → \"Payment\" and send the transaction ID from the SMS. We will check it and return the money or turn on what you paid for.\n\n## Someone asks you to pay \"Zumi\"\nZumi staff never ask for money in chat, by phone or WhatsApp. Agents may not charge a viewing fee. If someone does, don't pay and report them.",
+  "sort": 10,
+  "web_only": true
+ },
+ {
+  "id": "fb83561c-31fb-5032-b97a-6a70818079b5",
+  "category": "payments",
+  "title": "Refunds and money taken by mistake",
+  "body": "If money was taken by mistake or a paid feature did not work, write to Help & support → \"Payment\" with:\n- the phone number you paid from;\n- the date and amount;\n- the transaction ID from the operator SMS.\n\nWe answer within 1 working day. If the payment really failed on our side, we return the money to the same mobile money account.\n\nZumi cannot return money you paid directly to an agent or owner — Zumi is not part of deals between users. In that case contact the person, and if you think it is fraud, report the listing and go to the police.",
+  "sort": 20,
+  "web_only": true
+ },
+ {
+  "id": "575a4dfc-2025-58ad-ad03-f9da9f7f955d",
+  "category": "listings",
+  "title": "I can't publish my listing",
+  "body": "Check these things one by one:\n- Phone number: you need to confirm your phone with a code once. Zumi asks for it when you tap Publish.\n- Pin on the map: put the pin where the property is. Without it you can't publish.\n- Price and neighbourhood: both are required.\n- Listing limit: free accounts have a limit of active listings. Hide or delete an old listing, or mark it as rented or sold.\n- Team accounts (Zumi staff) can't post listings — use a personal account.\n- Your account is blocked: you will see a message. Write to Help & support.\n\nYour first listings are checked by the Zumi team — usually about 15 minutes. You will see \"Under review\" in My listings.",
+  "sort": 15,
+  "web_only": false
+ },
+ {
+  "id": "4505a935-defa-5738-ad1b-e0adfb76823d",
+  "category": "listings",
+  "title": "How to hide or show my listing",
+  "body": "You don't have to delete a listing when it is not available for a while.\n- Profile → My listings → tap … on the listing → \"Hide from search\". People won't see it, nothing is deleted.\n- To show it again: My listings → Hidden → tap … → \"Show in search again\".\n- Rented or sold? Choose \"Mark as rented\" / \"Mark as sold\". The listing moves to Hidden too.\n\nEvery 30 days Zumi asks \"Is it still available?\" — answer in one tap. If you don't answer within 7 days, the listing is hidden until you confirm.",
+  "sort": 25,
+  "web_only": false
+ },
+ {
+  "id": "e006954a-f026-5b32-8601-362ddb8a456e",
+  "category": "listings",
+  "title": "Map pin, address and what is nearby",
+  "body": "When you post a listing:\n- Pin on the map (required): zoom in and put the pin where the property is, as close as you can. People use it to plan a visit.\n- Address (optional): street, plot number or a landmark. It is shown on the listing — leave it empty if you prefer to share it in chat.\n- What's nearby (optional): shops, school, hospital or clinic, main road — choose the distance. People see it on the listing and decide faster.\n\nYou can change all of this later: My listings → … → Edit.",
+  "sort": 35,
+  "web_only": false
+ },
+ {
+  "id": "ad2ff5a7-e5ff-57ed-a447-10272eaca2c1",
+  "category": "technical",
+  "title": "The site does not open or shows an old version",
+  "body": "- Check your internet: open any other website.\n- Refresh the page: on a computer press Ctrl+Shift+R (Windows) or Cmd+Shift+R in Chrome / Cmd+Option+R in Safari (Mac). On a phone close the tab and open zumi again.\n- If Zumi is added to your home screen: close the app completely (swipe it away) and open it again.\n- The first visit on a slow network can take up to a minute — you will see \"Zumi is still loading\". The next visits are much faster.\n- Still not working? Try another browser (Chrome works best) and write to Help & support with your phone model.",
+  "sort": 20,
+  "web_only": false
+ },
+ {
+  "id": "11f8fbeb-739a-5f9e-813e-ae9308c7766c",
+  "category": "technical",
+  "title": "I am not getting emails from Zumi",
+  "body": "Zumi sends emails to confirm your account and to reset your password.\n- Check the Spam, Junk and Promotions folders. Mark the email as \"Not spam\" so the next ones arrive in your inbox.\n- Wait 2–3 minutes — sometimes emails come late.\n- Check that the email address is correct: Profile → Settings.\n- Tap \"Resend\" no more than once a minute — too many requests are blocked for a while.\n\nStill nothing after 10 minutes? Write to Help & support.",
+  "sort": 30,
+  "web_only": false
+ },
+ {
+  "id": "61ba9a12-4b69-527d-a705-bf24aa6de808",
+  "category": "contact",
+  "title": "The WhatsApp button does not open",
+  "body": "- WhatsApp must be installed on your phone. On a computer, WhatsApp Web or the WhatsApp app opens.\n- Zumi shows a number only after you confirm your own phone — it protects owners and agents from spam.\n- Some owners choose \"Chat only\" — then there is no WhatsApp button. Use Message instead.\n- When WhatsApp opens, a ready message with the listing name, price and area is already typed. You can change it before sending.",
+  "sort": 30,
+  "web_only": false
+ },
+ {
+  "id": "fa939f25-45f1-516b-a16c-42bdc0c33492",
+  "category": "contact",
+  "title": "New messages and the number on Chats",
+  "body": "The number on the Chats icon shows how many conversations have new messages. Inside Chats, each conversation shows how many messages are new. Open the conversation — the number disappears.\n\nThe number on the Profile icon means your listings need an answer: \"Is it still available?\".",
+  "sort": 40,
+  "web_only": false
+ },
+ {
+  "id": "10397b75-c9d2-5833-8786-5b63e16e9dd8",
+  "category": "account",
+  "title": "Where my data is stored",
+  "body": "Your account data, listings, photos and messages are stored on secure Supabase servers in the European Union (Ireland), which means outside Zambia. You agree to this when you create an account.\n- Data is encrypted on the way and on the servers.\n- Your phone number is never public. People see it only after they confirm their own number, or not at all if you choose \"Chat only\".\n- We never sell your data.\n- You can delete your account any time: Settings → Delete my account. Ask for a copy of your data in Help & support.\n\nFull details: Settings → Privacy Policy.",
+  "sort": 40,
+  "web_only": false
+ },
+ {
+  "id": "c1693f27-4d95-539e-9e8e-be6bad8c9d33",
+  "category": "technical",
+  "title": "How to send feedback about the app",
+  "body": "We want Zumi to be simple and fast for you. After a few minutes of use, Zumi may ask \"How is Zumi working for you?\" — choose a rating and tell us what is not working. It takes 20 seconds.\n\nYou can also send feedback any time: Profile → Settings → \"Send feedback about the app\". The Zumi team reads every message.",
+  "sort": 50,
+  "web_only": false
  }
 ]

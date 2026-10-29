@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/common.dart';
 import '../widgets/data_notice.dart';
 import '../widgets/trust.dart';
@@ -347,6 +348,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: ZI.chat,
                 title: 'Help & support',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen())),
+              ),
+              _Row(
+                icon: ZI.star,
+                title: 'Send feedback about the app',
+                subtitle: 'Tell us what works and what doesn\'t',
+                onTap: () => showAppFeedbackSheet(context),
               ),
               _Row(
                 icon: ZI.fileText,

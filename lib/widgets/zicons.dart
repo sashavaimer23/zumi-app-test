@@ -94,4 +94,5 @@ class ZI {
   static const IconData school = IconData(0xe62c, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData hospital = IconData(0xe844, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData road = IconData(0xe838, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+  static const IconData starLine = IconData(0xe46a, fontFamily: 'PhosphorRegular', matchTextDirection: true);
 }

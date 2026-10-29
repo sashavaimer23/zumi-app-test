@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../features.dart';
 import '../../models/models.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
@@ -22,6 +23,7 @@ IconData helpIcon(String category) => switch (category) {
       'contact' => ZI.chat,
       'verification' => ZI.verified,
       'promotion' => ZI.bolt,
+      'payments' => ZI.storefront,
       'safety' => ZI.shield,
       _ => ZI.settings,
     };
@@ -74,7 +76,11 @@ class _HelpScreenState extends State<HelpScreen> {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator(color: Zc.orange));
           }
-          final all = snap.data ?? const <HelpArticle>[];
+          // пока продвижение выключено, статьи о нём не показываем
+          final all = [
+            for (final a in snap.data ?? const <HelpArticle>[])
+              if (a.category != 'promotion' || Features.promotion) a,
+          ];
           // сначала статьи, где слова есть в заголовке
           final found = _query.trim().length < 2
               ? null

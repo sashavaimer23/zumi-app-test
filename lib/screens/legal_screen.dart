@@ -78,7 +78,7 @@ const _terms = <(String, String)>[
         'the Estate Agents Act No. 21 of 2000.\n'
         '• Price, photos, location and details must be true and current. Use your own photos.\n'
         '• Do not post the same property twice. Mark a property as sold or rented when it is no longer available.\n'
-        '• Free listings: owners — 2 active listings, agents — 5. More listings and promotion may be paid.\n'
+        '• Free listings: owners — 2 active listings, agents — 5.\n'
         '• To publish a listing you must confirm your phone number with a code (once).\n'
         '• Put the pin on the map where the property really is. The address and "what\'s nearby" are optional, '
         'but must be true if you add them.\n'
@@ -117,8 +117,10 @@ const _terms = <(String, String)>[
   ),
   (
     '7. Paid features',
-    'Some features (promotion to the top, extra listings) may be paid. The price is always shown before you '
-        'pay. Payments are processed by payment providers such as mobile money operators.'
+    'Right now Zumi is free and has no paid features. In the future some features (for example promotion '
+        'or extra listings) may become paid — we will tell you in the app before that happens, and the price will '
+        'always be shown before you pay. Payments will be processed by payment providers such as mobile money '
+        'operators. Zumi never asks for payment in chat, by phone or by WhatsApp.'
   ),
   (
     '8. Moderation',
@@ -190,7 +192,8 @@ const _privacy = <(String, String)>[
         'account or device for up to 35 days. No names are stored with these numbers.\n'
         '• Error reports: when the app breaks, the text of the error (numbers and emails are removed), the platform '
         'and the app version.\n'
-        '• Help articles: whether an article was helpful and your optional comment.\n'
+        '• Help articles: whether an article was helpful and your optional comment.\n'        '• App feedback (only if you send it): your rating, what did not work, your comment, the platform and '
+        'app version, and your account (or a scrambled device code for guests). Kept for up to 1 year.\n'
         '• Technical data: device type, app version and error logs, to keep the app working.\n'
         '• On your device only: your saved (favourite) listings, recently viewed listings and the random '
         'device code. You can remove them by clearing the app or browser data.'

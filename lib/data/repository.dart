@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../features.dart';
 import '../models/models.dart';
 
 /// Единый интерфейс данных. Две реализации:
@@ -158,6 +159,19 @@ abstract class Repository {
 
   /// Сколько моих объявлений ждут ответа «ещё доступно?»
   Future<int> listingsToConfirm();
+
+  /// Что включено сейчас (продвижение и т.п.) — {'promotion': bool}
+  Future<Map<String, dynamic>> appFlags();
+
+  /// Отзыв о приложении: оценка 1–5, что не работает, комментарий
+  Future<void> sendAppFeedback({required int rating, required List<String> issues, String? comment});
+
+  /// Кабинет разработчика (только владелец): отзывы о приложении за N дней
+  Future<AppFeedbackReport> ownerAppFeedback(int days);
+
+  /// Продвижение: включено ли и сколько кампаний сейчас идёт; включить / выключить (только владелец)
+  Future<(bool, int)> promotionStatus();
+  Future<void> setPromotionEnabled(bool on);
 
   // --- поддержка (пользователь)
   Future<List<SupportTicket>> myTickets();
