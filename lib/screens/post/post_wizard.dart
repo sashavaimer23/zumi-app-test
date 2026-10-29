@@ -1225,6 +1225,8 @@ class _LimitReached extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final u = context.watch<AppState>().user;
+    final unlicensed = isAgent && !(u?.licenceVerified ?? false);
     return ListView(
       padding: const EdgeInsets.fromLTRB(26, 50, 26, 30),
       children: [
@@ -1234,15 +1236,21 @@ class _LimitReached extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
-          kIsWeb && Features.promotion
-              ? '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
-                  'To add more, buy an extra listing slot.'
-              : '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
-                  'Hide a listing or mark it as rented or sold to post a new one.',
+          '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
+          '${kIsWeb && Features.promotion ? 'To add more, buy an extra listing slot.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
+          '${unlicensed ? '\n\nLicensed agents can post up to 10 listings — add your ZIEA registration number.' : ''}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),
         const SizedBox(height: 36),
+        if (unlicensed)
+          Center(
+            child: PrimaryButton(
+              label: 'Add ZIEA number',
+              width: double.infinity,
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen())),
+            ),
+          ),
         if (kIsWeb && Features.promotion)
           Center(
             child: PrimaryButton(

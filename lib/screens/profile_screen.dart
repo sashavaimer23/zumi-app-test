@@ -355,8 +355,30 @@ class _QuotaCard extends StatelessWidget {
               child: const Text('Buy more'),
             ),
         ]),
+        // агент без проверенной лицензии: с лицензией можно 10 объявлений
+        if (_unlicensedAgent(context)) ...[
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen())),
+            child: const Row(children: [
+              Icon(ZI.badge, size: 16, color: Colors.white),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Licensed agents can post up to 10 listings. Add your ZIEA number →',
+                  style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline),
+                ),
+              ),
+            ]),
+          ),
+        ],
       ]),
     );
+  }
+
+  static bool _unlicensedAgent(BuildContext context) {
+    final u = context.watch<AppState>().user;
+    return u != null && u.isAgent && !u.licenceVerified;
   }
 }
 

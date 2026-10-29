@@ -173,4 +173,13 @@ set role authenticated;
 select zt.err('app users cannot run the cleanup', 'permission denied', 'select cleanup_retention()');
 reset role;
 
+-- ---------- лимиты объявлений ----------
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-000000000011', 'agent2@x.zm', '{"full_name":"Agent Two","role":"agent"}');
+select zt.ok('owner: 2 free listings', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 2);
+select zt.ok('agent without a checked licence: 5', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 5);
+select zt.ok('agent with a checked licence: 10', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 10);
+update profiles set extra_listing_slots = 3 where id = 'a0000000-0000-0000-0000-000000000002';
+select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 13);
+
 select zt.ok('ALL CHECKS PASSED', true);

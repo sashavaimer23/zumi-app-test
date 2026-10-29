@@ -78,7 +78,7 @@ const _terms = <(String, String)>[
         'the Estate Agents Act No. 21 of 2000.\n'
         '• Price, photos, location and details must be true and current. Use your own photos.\n'
         '• Do not post the same property twice. Mark a property as sold or rented when it is no longer available.\n'
-        '• Free listings: owners — 2 active listings, agents — 5.\n'
+        '• Free listings: owners — 2 active listings; agents — 5, or 10 with a checked ZIEA licence.\n'
         '• To publish a listing you must confirm your phone number with a code (once).\n'
         '• Put the pin on the map where the property really is. The address and "what\'s nearby" are optional, '
         'but must be true if you add them.\n'
