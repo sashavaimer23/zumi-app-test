@@ -17,7 +17,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Проверки базы на настоящем PostgreSQL + PostGIS: если что-то сломалось — сайт не обновляется
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the database from all_in_one.sql and run the checks
+        run: |
+          set -o pipefail
+          psql -q -v ON_ERROR_STOP=1 -f supabase/tests/00_supabase_stubs.sql
+          psql -q -v ON_ERROR_STOP=1 -f supabase/all_in_one.sql > build.txt 2>&1 || {
+            grep -B2 -A3 "ERROR" build.txt | sed 's/^/::error::/' ; exit 1; }
+          psql -q -v ON_ERROR_STOP=1 -f supabase/tests/regression.sql 2> out.txt || {
+            grep -E "FAILED|ERROR" out.txt | sed 's/^.*\(FAILED\|ERROR\)/::error::\1/' ; exit 1; }
+          grep -c "ok  " out.txt | sed 's/^/Checks passed: /'
+
   build:
+    needs: database
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
