@@ -150,6 +150,10 @@ abstract class Repository {
   Future<(bool, int)> promotionStatus();
   Future<void> setPromotionEnabled(bool on);
 
+  /// Рекламные баннеры: включены ли и сколько баннеров сейчас идёт; включить / выключить (только владелец)
+  Future<(bool, int)> adsStatus();
+  Future<void> setAdsEnabled(bool on);
+
   // --- поддержка (пользователь)
   Future<List<SupportTicket>> myTickets();
   Future<String> openTicket({

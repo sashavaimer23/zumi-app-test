@@ -755,8 +755,19 @@ class DemoRepository implements Repository {
   bool _promotionOn = false;
   final _feedback = <AppFeedbackItem>[];
 
+  bool _adsOn = false;
+
   @override
-  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn};
+  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn, 'ads': _adsOn};
+
+  @override
+  Future<(bool, int)> adsStatus() async => (_adsOn, 0);
+
+  @override
+  Future<void> setAdsEnabled(bool on) async {
+    _adsOn = on;
+    Features.ads = on;
+  }
 
   @override
   Future<void> sendAppFeedback({required int rating, required List<String> issues, String? comment}) async {
@@ -1275,7 +1286,7 @@ class DemoRepository implements Repository {
   final Map<String, Map<String, (int, int)>> _adStats = {};
 
   @override
-  Future<List<Ad>> liveAds(String placement) async =>
+  Future<List<Ad>> liveAds(String placement) async => !Features.ads ? const [] :
       _ads.where((a) => a.placement == placement && a.isLive).toList()..shuffle();
 
   @override

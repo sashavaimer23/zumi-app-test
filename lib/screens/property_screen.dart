@@ -218,7 +218,8 @@ class _PropertyScreenState extends State<PropertyScreen> {
               Text(p.description!, style: const TextStyle(fontSize: 15, height: 1.45)),
             ],
             // реклама: блок под описанием
-            const Padding(padding: EdgeInsets.only(top: 22), child: ListingAdBlock()),
+            if (context.watch<AppState>().adsOn)
+              const Padding(padding: EdgeInsets.only(top: 22), child: ListingAdBlock()),
             if (p.amenities.isNotEmpty) ...[
               _h('Amenities'),
               Wrap(spacing: 10, runSpacing: 10, children: [

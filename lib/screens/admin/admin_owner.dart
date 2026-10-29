@@ -721,7 +721,8 @@ class _AdsHubState extends State<_AdsHub> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      const _PromotionSwitch(),
+      const _FeatureSwitch.ads(),
+      const _FeatureSwitch.promotion(),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Align(
@@ -1088,30 +1089,46 @@ class _Funnel extends StatelessWidget {
 
 
 // ======================================================================
-// ВЫКЛЮЧАТЕЛЬ ПРОДВИЖЕНИЯ (только владелец). Пока выключено: агенты не видят «Promote»,
-// кампании не запускаются и не показываются, платных мест нет. Включается здесь — без обновления приложения.
+// ВЫКЛЮЧАТЕЛИ (только владелец): продвижение агентов и рекламные баннеры.
+// Пока выключено — в приложении этого нет совсем; сервер тоже не показывает. Без обновления приложения.
 // ======================================================================
-class _PromotionSwitch extends StatefulWidget {
-  const _PromotionSwitch();
+class _FeatureSwitch extends StatefulWidget {
+  const _FeatureSwitch.promotion() : ads = false;
+  const _FeatureSwitch.ads() : ads = true;
+  final bool ads;
 
   @override
-  State<_PromotionSwitch> createState() => _PromotionSwitchState();
+  State<_FeatureSwitch> createState() => _FeatureSwitchState();
 }
 
-class _PromotionSwitchState extends State<_PromotionSwitch> {
-  late Future<(bool, int)> _status = context.read<AppState>().repo.promotionStatus();
+class _FeatureSwitchState extends State<_FeatureSwitch> {
+  late Future<(bool, int)> _status = _load();
   bool _busy = false;
 
+  Future<(bool, int)> _load() {
+    final repo = context.read<AppState>().repo;
+    return widget.ads ? repo.adsStatus() : repo.promotionStatus();
+  }
+
   Future<void> _set(bool on) async {
+    final ads = widget.ads;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(on ? 'Turn on promotion?' : 'Turn off promotion?'),
-        content: Text(on
-            ? 'Agents with a checked licence will see "Promote", campaigns can start and will be shown in search '
-                'and on the home page. Test it first with one agent you trust.'
-            : 'All agent campaigns stop being shown at once. Agents keep their campaigns — they come back when you '
-                'turn promotion on again.'),
+        title: Text(on
+            ? (ads ? 'Turn on ad banners?' : 'Turn on promotion?')
+            : (ads ? 'Turn off ad banners?' : 'Turn off promotion?')),
+        content: Text(ads
+            ? (on
+                ? 'Banners from the Banners tab will be shown on the home page, in search and on listings. '
+                    'Where no banner is booked, people see "Your ad here — Contact Zumi".'
+                : 'All banners and the "Your ad here" placeholder disappear at once. Your banners are kept — '
+                    'they come back when you turn ads on again.')
+            : (on
+                ? 'Agents with a checked licence will see "Promote", campaigns can start and will be shown in search '
+                    'and on the home page. Test it first with one agent you trust.'
+                : 'All agent campaigns stop being shown at once. Agents keep their campaigns — they come back when you '
+                    'turn promotion on again.')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(on ? 'Turn on' : 'Turn off')),
@@ -1121,8 +1138,10 @@ class _PromotionSwitchState extends State<_PromotionSwitch> {
     if (ok != true || !mounted) return;
     setState(() => _busy = true);
     try {
-      await context.read<AppState>().setPromotion(on);
-      if (mounted) setState(() => _status = context.read<AppState>().repo.promotionStatus());
+      final app = context.read<AppState>();
+      ads ? await app.setAds(on) : await app.setPromotion(on);
+      AdCache.clear();
+      if (mounted) setState(() => _status = _load());
     } catch (e) {
       if (mounted) showSnack(context, '$e');
     } finally {
@@ -1132,12 +1151,14 @@ class _PromotionSwitchState extends State<_PromotionSwitch> {
 
   @override
   Widget build(BuildContext context) {
+    final ads = widget.ads;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: FutureBuilder<(bool, int)>(
         future: _status,
         builder: (context, snap) {
           final (on, live) = snap.data ?? (false, 0);
+          final what = ads ? 'Ad banners' : 'Agent promotion';
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1145,17 +1166,19 @@ class _PromotionSwitchState extends State<_PromotionSwitch> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(children: [
-              Icon(ZI.bolt, color: on ? Zc.green : Zc.orange),
+              Icon(ads ? ZI.storefront : ZI.bolt, color: on ? Zc.green : Zc.orange),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(on ? 'Agent promotion is ON' : 'Agent promotion is OFF',
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text('$what ${on ? 'ON' : 'OFF'}', style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(
-                    on
-                        ? '$live ${live == 1 ? 'campaign is' : 'campaigns are'} running now.'
-                        : 'Agents don\'t see "Promote", no campaigns are shown, no paid listing slots. '
-                            'Your own banners (Banners tab) still work.',
+                    ads
+                        ? (on
+                            ? '$live ${live == 1 ? 'banner is' : 'banners are'} running now.'
+                            : 'No banners and no "Your ad here" in the app. You can still prepare banners below.')
+                        : (on
+                            ? '$live ${live == 1 ? 'campaign is' : 'campaigns are'} running now.'
+                            : 'Agents don\'t see "Promote", no campaigns are shown, no paid listing slots.'),
                     style: const TextStyle(fontSize: 12, color: Zc.text),
                   ),
                 ]),

@@ -232,6 +232,7 @@ class HomeHeroAds extends StatefulWidget {
 }
 
 class _HomeHeroAdsState extends State<HomeHeroAds> {
+  // (если баннеры выключены — главная вообще не вставляет этот блок)
   late final Future<List<Ad>> _future = AdCache.of(context, 'home_hero');
   final _page = PageController();
   Timer? _timer;
@@ -316,6 +317,7 @@ class FeedStripAd extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!context.watch<AppState>().adsOn) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: FutureBuilder<List<Ad>>(
@@ -337,6 +339,7 @@ class ListingAdBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!context.watch<AppState>().adsOn) return const SizedBox.shrink();
     return FutureBuilder<List<Ad>>(
       future: AdCache.of(context, 'listing_block'),
       builder: (context, snap) {

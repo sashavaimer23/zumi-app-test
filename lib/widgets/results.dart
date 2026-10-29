@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../features.dart';
 import '../models/models.dart';
 import '../screens/filters_sheet.dart';
 import '../screens/map_screen.dart';
@@ -186,7 +187,8 @@ class _ResultsSliverState extends State<ResultsSliver> {
       for (final pr in _promo) pr,
       for (var k = 0; k < items.length; k++) ...[
         items[k],
-        if ((k + 1) % 8 == 0 && k != items.length - 1) (k + 1) ~/ 8 - 1,
+        // полоска рекламы — каждые 8 карточек, только если баннеры включены
+        if (Features.ads && (k + 1) % 8 == 0 && k != items.length - 1) (k + 1) ~/ 8 - 1,
       ],
     ];
     return SliverPadding(

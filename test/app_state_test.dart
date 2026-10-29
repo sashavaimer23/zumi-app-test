@@ -28,6 +28,15 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     Features.promotion = false;
+    Features.ads = false;
+  });
+
+  test('ad banners OFF: no banners at all', () async {
+    final repo = DemoRepository();
+    expect(await repo.liveAds('home_hero'), isEmpty);
+    expect(await repo.liveAds('listing_block'), isEmpty);
+    await repo.setAdsEnabled(true);
+    expect((await repo.appFlags())['ads'], isTrue);
   });
 
   test('promotion OFF hides promoted badges and campaigns', () async {

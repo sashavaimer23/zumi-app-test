@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             // реклама: большой баннер вверху главной
-            if (_isPlainHome)
+            if (_isPlainHome && context.watch<AppState>().adsOn)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,

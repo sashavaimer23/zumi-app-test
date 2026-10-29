@@ -149,6 +149,7 @@ select zt.ok('when off nobody else sees campaigns', (select count(*) from campai
 reset role;
 
 -- ---------- отзывы о приложении ----------
+select set_config('request.jwt.claim.sub', '', false);
 set role anon;
 select send_app_feedback(2, array['slow','not-a-code'], 'Slow on 3G', 'web', '1.0', 'device-1');
 select zt.err('one feedback per device per day', 'TOO_MANY_REQUESTS',
@@ -181,5 +182,25 @@ select zt.ok('agent without a checked licence: 5', (select allowed from listing_
 select zt.ok('agent with a checked licence: 10', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 10);
 update profiles set extra_listing_slots = 3 where id = 'a0000000-0000-0000-0000-000000000002';
 select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 13);
+
+-- ---------- рекламные баннеры: выключатель ----------
+insert into ads(id, advertiser, title, placement, image_url, target_type, target, starts_on, ends_on, status)
+values ('d0000000-0000-0000-0000-000000000001', 'Shop', 'Test ad', 'home_hero', 'https://x/a.jpg', 'link', 'x.zm',
+        current_date, current_date + 5, 'active');
+select set_config('request.jwt.claim.sub', '', false);   -- гость: без входа
+set role anon;
+select zt.ok('banners are off by default', (app_flags()->>'ads')::boolean = false and (select count(*) from ads) = 0);
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000005', false);
+select zt.err('moderator cannot switch banners', 'OWNER_ONLY', $$select admin_set_setting('ads_enabled','true')$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select zt.ok('owner still sees prepared banners', (select count(*) from ads) = 1);
+select admin_set_setting('ads_enabled', 'true');
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+set role anon;
+select zt.ok('banners shown after the owner switch', (app_flags()->>'ads')::boolean and (select count(*) from ads) = 1);
+reset role;
 
 select zt.ok('ALL CHECKS PASSED', true);

@@ -29,13 +29,22 @@ class AppState extends ChangeNotifier {
 
   // ---------- что включено (с сервера) ----------
   bool get promotionOn => Features.promotion;
+  bool get adsOn => Features.ads;
 
   Future<void> loadFlags() async {
     final f = await repo.appFlags();
     final promo = (f['promotion'] as bool?) ?? false;
-    if (promo == Features.promotion) return;
+    final ads = (f['ads'] as bool?) ?? false;
+    if (promo == Features.promotion && ads == Features.ads) return;
     Features.promotion = promo;
+    Features.ads = ads;
     notifyListeners();
+  }
+
+  Future<void> setAds(bool on) async {
+    await repo.setAdsEnabled(on);
+    Features.ads = on;
+    dataChanged();
   }
 
   Future<void> setPromotion(bool on) async {

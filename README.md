@@ -84,6 +84,7 @@ flutter run
    - `supabase/021_help_update.sql` — старые статьи помощи под новые правила.
    - `supabase/022_retention.sql` — автоудаление старых данных по срокам из Privacy Policy (нужен pg_cron).
    - `supabase/023_agent_limits.sql` — лимит объявлений: агент с проверенной лицензией — 10, без — 5, собственник — 2.
+   - `supabase/024_ads_switch.sql` — выключатель рекламных баннеров (по умолчанию выключено, кабинет → Ads).
 4. Скопируйте Project URL и anon key в Settings → API.
 5. Запустите приложение с ключами:
 

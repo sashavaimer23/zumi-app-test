@@ -815,6 +815,18 @@ class SupabaseRepository implements Repository {
       });
 
   @override
+  Future<(bool, int)> adsStatus() => _guard(() async {
+        final m = Map<String, dynamic>.from(await _db.rpc('admin_promotion_status') as Map);
+        return ((m['ads_enabled'] as bool?) ?? false, ((m['live_ads'] as num?) ?? 0).toInt());
+      });
+
+  @override
+  Future<void> setAdsEnabled(bool on) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'ads_enabled', 'p_value': '$on'});
+        Features.ads = on;
+      });
+
+  @override
   Future<void> setPromotionEnabled(bool on) => _guard(() async {
         await _db.rpc('admin_set_setting', params: {'p_key': 'promotion_enabled', 'p_value': '$on'});
         Features.promotion = on;
@@ -1248,6 +1260,7 @@ class SupabaseRepository implements Repository {
   // ---------------- реклама ----------------
   @override
   Future<List<Ad>> liveAds(String placement) async {
+    if (!Features.ads) return const []; // баннеры выключены владельцем
     try {
       final today = isoDay(DateTime.now());
       final rows = await _db
