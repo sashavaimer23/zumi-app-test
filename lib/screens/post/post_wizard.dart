@@ -869,13 +869,13 @@ class _PostWizardState extends State<PostWizard> {
                     onPressed: () async {
                       await Navigator.push(
                           context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen()));
-                      if (mounted) Shell.of(this.context)?.resetPost(goTo: 4);
+                      if (mounted) Shell.of(context)?.resetPost(goTo: 4);
                     },
                   ),
                 ),
                 const SizedBox(width: 10),
                 TextButton(
-                  onPressed: () => Shell.of(this.context)?.resetPost(goTo: 4),
+                  onPressed: () => Shell.of(context)?.resetPost(goTo: 4),
                   child: const Text('Maybe later', style: TextStyle(color: Zc.grey)),
                 ),
               ]),

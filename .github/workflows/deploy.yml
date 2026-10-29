@@ -28,6 +28,8 @@ jobs:
       - run: flutter pub get
       - name: Show code errors (if any) as annotations
         run: flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | grep -E '^ *error' | head -40 | sed 's/^ */::error::/' || true
+      - name: Tests (if a test fails, the site is not updated)
+        run: flutter test -r github
       - name: Build web
         env:
           # ключи хранятся в Settings → Secrets → Actions; пока их нет — демо-режим

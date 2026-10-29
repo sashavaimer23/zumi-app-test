@@ -342,7 +342,8 @@ class DemoRepository implements Repository {
   @override
   Future<Quota> myQuota() async {
     final u = _requireUser();
-    final used = _props.where((p) => p.ownerId == u.id && (p.status == 'active' || p.status == 'draft')).length;
+    // как на сервере: объявления на проверке тоже занимают место
+    final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
     return Quota(used, _limits[u.role] ?? 999);
   }
 
