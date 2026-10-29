@@ -353,17 +353,27 @@ class _AuthScreenState extends State<AuthScreen> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
-                        const Text('I agree to the ', style: TextStyle(fontSize: 13, color: Zc.text)),
-                        _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
-                        const Text(' and ', style: TextStyle(fontSize: 13, color: Zc.text)),
-                        _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
-                        const Text(
-                            ', and to Zumi processing my data to run my account and storing it on servers outside '
-                            'Zambia (European Union).',
-                            style: TextStyle(fontSize: 13, color: Zc.text)),
-                        const Text(' *', style: TextStyle(fontSize: 13, color: Zc.orange, fontWeight: FontWeight.w700)),
-                      ]),
+                      // одним абзацем, чтобы строки переносились естественно
+                      child: Text.rich(
+                        TextSpan(style: const TextStyle(fontSize: 13, color: Zc.text, height: 1.4), children: [
+                          const TextSpan(text: 'I agree to the '),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.baseline,
+                            baseline: TextBaseline.alphabetic,
+                            child: _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
+                          ),
+                          const TextSpan(text: ' and '),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.baseline,
+                            baseline: TextBaseline.alphabetic,
+                            child: _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
+                          ),
+                          const TextSpan(
+                              text: ', and to Zumi processing my data to run my account and storing it on servers '
+                                  'outside Zambia (European Union).'),
+                          const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
                     ),
                   ),
                 ]),
