@@ -899,8 +899,12 @@ class SupabaseRepository implements Repository {
       });
 
   // ---------------- отзывы ----------------
+  static final _uuidRe = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+  static bool _isUuid(String s) => _uuidRe.hasMatch(s);
+
   @override
   Future<List<Review>> reviewsAbout(String userId) => _guard(() async {
+        if (!_isUuid(userId)) return const <Review>[]; // демо-автор без аккаунта
         final rows = await _db
             .from('review_feed')
             .select()
@@ -913,6 +917,7 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<Rating> ratingOf(String userId) => _guard(() async {
+        if (!_isUuid(userId)) return const Rating(0, 0);
         final res = await _db.rpc('rating_of', params: {'uid': userId}) as List;
         if (res.isEmpty) return const Rating(0, 0);
         final r = res.first as Map<String, dynamic>;
