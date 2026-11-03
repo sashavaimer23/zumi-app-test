@@ -9,6 +9,7 @@ import 'config.dart';
 import 'data/demo_repository.dart';
 import 'data/repository.dart';
 import 'data/supabase_repository.dart';
+import 'screens/finish_signup_screen.dart';
 import 'screens/shell.dart';
 import 'screens/splash.dart';
 import 'state/app_state.dart';
@@ -65,7 +66,8 @@ class ZumiApp extends StatelessWidget {
       theme: buildTheme(),
       // заставка поверх всего приложения — главная грузится под ней
       builder: (context, child) => SplashGate(child: child ?? const SizedBox.shrink()),
-      home: const Shell(),
+      // вошёл через Google, но ещё не выбрал роль и не дал согласие → сначала «Finish setting up»
+      home: const OnboardingGate(child: Shell()),
     );
   }
 }

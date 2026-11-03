@@ -85,4 +85,24 @@ void main() {
     expect(find.text('10+'), findsOneWidget);
     expect(find.text('0'), findsNothing);
   });
+
+  test('Google sign-in: new account must finish setting up, only once', () async {
+    final repo = DemoRepository();
+    repo.debugSignInAsNewGoogleUser(name: 'Gina');
+    expect(repo.currentUser!.needsOnboarding, isTrue);
+    expect(
+      () => repo.completeSignup(role: 'agent', fullName: 'Gina', phone: '+260971234567', termsAccepted: false),
+      throwsA(isA<AppException>()),
+    );
+    await repo.completeSignup(
+        role: 'agent', fullName: 'Gina Z', phone: '+260971234567', licenceNo: 'ZIEA-1', termsAccepted: true);
+    final u = repo.currentUser!;
+    expect(u.needsOnboarding, isFalse);
+    expect(u.isAgent, isTrue);
+    expect(u.licenceNo, 'ZIEA-1');
+    expect(
+      () => repo.completeSignup(role: 'owner', fullName: 'X', phone: '+260971234567', termsAccepted: true),
+      throwsA(isA<AppException>()),
+    );
+  });
 }

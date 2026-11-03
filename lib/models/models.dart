@@ -575,6 +575,8 @@ class AppUser {
   final bool emailVerified;   // почта подтверждена кодом
   final bool marketingEmail;    // новости и предложения Zumi на почту
   final bool marketingWhatsapp; // новости и предложения Zumi в WhatsApp
+  /// Вошёл через Google/Facebook и ещё не выбрал роль и не дал согласие → экран «Finish setting up»
+  final bool needsOnboarding;
 
   const AppUser({
     required this.id,
@@ -600,6 +602,7 @@ class AppUser {
     this.emailVerified = false,
     this.marketingEmail = false,
     this.marketingWhatsapp = false,
+    this.needsOnboarding = false,
   });
 
   bool get profileComplete => (fullName ?? '').trim().length > 1;
@@ -664,6 +667,7 @@ class AppUser {
         emailVerified: emailVerified ?? this.emailVerified,
         marketingEmail: marketingEmail ?? this.marketingEmail,
         marketingWhatsapp: marketingWhatsapp ?? this.marketingWhatsapp,
+        needsOnboarding: needsOnboarding,
       );
 
   bool get isAgent => role == 'agent';

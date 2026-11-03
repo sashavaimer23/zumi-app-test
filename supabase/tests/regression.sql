@@ -203,4 +203,25 @@ set role anon;
 select zt.ok('banners shown after the owner switch', (app_flags()->>'ads')::boolean and (select count(*) from ads) = 1);
 reset role;
 
+-- ---------- вход через Google: завершить регистрацию ----------
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-000000000021', 'g@gmail.com', '{"full_name":"Gina"}');
+insert into auth.identities(user_id, provider) values ('a0000000-0000-0000-0000-000000000021', 'google');
+update profiles set phone_verified_at = now() where id = 'a0000000-0000-0000-0000-000000000021';
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000021', false);
+select zt.ok('google account must finish sign-up', (my_verification()->>'needs_onboarding')::boolean);
+select zt.err('google account cannot post before consent', 'FINISH_SIGNUP', $$
+  insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id)
+  values (auth.uid(),'House','rent','house',5000,'SRID=4326;POINT(28.3 -15.4)','active',(select min(id) from areas))$$);
+select zt.err('consent is required', 'TERMS_REQUIRED', $$select complete_signup('agent','Gina','+260971234567',null,false,false)$$);
+select complete_signup('agent', 'Gina Z', '+260971234567', 'ZIEA-1', true, false);
+select zt.ok('sign-up finished', not (my_verification()->>'needs_onboarding')::boolean);
+select zt.err('finish sign-up only once', 'ALREADY_DONE', $$select complete_signup('owner','X','+260971234567',null,true,false)$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select zt.ok('email accounts never see the extra step', not (my_verification()->>'needs_onboarding')::boolean);
+reset role;
+select zt.ok('google account saved as agent with consent',
+  (select role = 'agent' and terms_accepted_at is not null from profiles where id = 'a0000000-0000-0000-0000-000000000021'));
+
 select zt.ok('ALL CHECKS PASSED', true);

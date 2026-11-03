@@ -24,6 +24,19 @@ abstract class Repository {
   });
   Future<void> signOut();
 
+  /// Вход через Google (на сайте — переход на страницу Google и обратно)
+  Future<void> signInWithGoogle();
+
+  /// После первого входа через Google: роль, имя, телефон, лицензия, согласие (один раз)
+  Future<void> completeSignup({
+    required String role,
+    required String fullName,
+    required String phone,
+    String? licenceNo,
+    required bool termsAccepted,
+    bool marketing = false,
+  });
+
   /// Ещё раз отправить письмо «подтвердите почту»
   Future<void> resendConfirmation(String email);
 

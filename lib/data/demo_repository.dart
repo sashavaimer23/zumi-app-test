@@ -146,6 +146,51 @@ class DemoRepository implements Repository {
   }
 
   @override
+  Future<void> signInWithGoogle() async {
+    await _lag();
+    throw AppException('Google sign-in works on the live site. In demo mode use email and password.');
+  }
+
+  @override
+  Future<void> completeSignup({
+    required String role,
+    required String fullName,
+    required String phone,
+    String? licenceNo,
+    required bool termsAccepted,
+    bool marketing = false,
+  }) async {
+    await _lag();
+    final u = _user;
+    if (u == null) throw AppException('Please sign in');
+    if (!u.needsOnboarding) throw AppException('Your account is already set up', code: 'ALREADY_DONE');
+    if (!termsAccepted) throw AppException('Please accept the Terms of Service and Privacy Policy', code: 'TERMS_REQUIRED');
+    final lic = role == 'agent' && (licenceNo ?? '').trim().isNotEmpty ? licenceNo!.trim() : null;
+    final done = AppUser(
+      id: u.id,
+      email: u.email,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      role: role,
+      licenceNo: lic,
+      marketingEmail: marketing,
+      marketingWhatsapp: marketing,
+      createdAt: u.createdAt,
+    );
+    _known[u.id] = done;
+    if (lic != null) _licences.add(LicenceItem(userId: u.id, userName: done.fullName, licenceNo: lic));
+    _user = done;
+    _userCtrl.add(_user);
+  }
+
+  /// Для тестов: как будто человек только что вошёл через Google
+  void debugSignInAsNewGoogleUser({String email = 'new.user@gmail.com', String name = 'New User'}) {
+    _user = AppUser(id: 'demo-g-${email.hashCode}', email: email, fullName: name, needsOnboarding: true,
+        createdAt: DateTime.now());
+    _userCtrl.add(_user);
+  }
+
+  @override
   Future<void> sendPasswordReset(String email) async {
     await _lag(); // демо: письмо не отправляется, код — 123456
   }

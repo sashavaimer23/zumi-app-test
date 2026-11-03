@@ -91,6 +91,7 @@ class SupabaseRepository implements Repository {
         emailVerified: (ver?['email_verified'] as bool?) ?? false,
         marketingEmail: (ver?['marketing_email'] as bool?) ?? false,
         marketingWhatsapp: (ver?['marketing_whatsapp'] as bool?) ?? false,
+        needsOnboarding: (ver?['needs_onboarding'] as bool?) ?? false,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
@@ -131,6 +132,13 @@ class SupabaseRepository implements Repository {
       if (e.message.contains('PHONE_REQUIRED')) {
         throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
       }
+      if (e.message.contains('FINISH_SIGNUP')) {
+        throw AppException('Please finish setting up your account first.', code: 'FINISH_SIGNUP');
+      }
+      if (e.message.contains('TERMS_REQUIRED')) {
+        throw AppException('Please accept the Terms of Service and Privacy Policy', code: 'TERMS_REQUIRED');
+      }
+      if (e.message.contains('ALREADY_DONE')) throw AppException('Your account is already set up', code: 'ALREADY_DONE');
       if (e.message.contains('FEATURE_OFF')) throw AppException('This feature is not available');
       if (e.message.contains('PROMOTION_OFF')) {
         throw AppException('Promotion is turned off for now. The Zumi owner can turn it on in the team panel → Ads.',
@@ -227,6 +235,38 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<void> signOut() => _db.auth.signOut();
+
+  /// Адрес этой страницы без ?code=… — сюда Google и письма возвращают человека
+  static String? get _returnUrl =>
+      kIsWeb ? Uri.base.replace(query: '', fragment: '').toString().replaceAll(RegExp(r'[?#]+$'), '') : null;
+
+  @override
+  Future<void> signInWithGoogle() => _guard(() async {
+        // на сайте страница уходит на Google; после входа Supabase сам подхватит сессию из ссылки
+        await _db.auth.signInWithOAuth(OAuthProvider.google, redirectTo: _returnUrl);
+      });
+
+  @override
+  Future<void> completeSignup({
+    required String role,
+    required String fullName,
+    required String phone,
+    String? licenceNo,
+    required bool termsAccepted,
+    bool marketing = false,
+  }) =>
+      _guard(() async {
+        _requireUserId();
+        await _db.rpc('complete_signup', params: {
+          'p_role': role,
+          'p_full_name': fullName.trim(),
+          'p_phone': phone.trim(),
+          'p_licence': role == 'agent' ? licenceNo?.trim() : null,
+          'p_terms': termsAccepted,
+          'p_marketing': marketing,
+        });
+        await _reloadUser();
+      });
 
   @override
   Future<void> setMarketing(String channel, bool on) => _guard(() async {

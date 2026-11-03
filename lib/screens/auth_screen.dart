@@ -8,8 +8,8 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/data_notice.dart';
+import '../widgets/signup_parts.dart';
 import 'forgot_password_screen.dart';
-import 'legal_screen.dart';
 import 'help/help_screen.dart';
 import 'verify/phone_verify_screen.dart';
 import '../widgets/zicons.dart';
@@ -30,6 +30,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool _signUp = false;
   bool _loading = false;
+  bool _googleLoading = false;
   String _role = 'owner';
   bool _consent = false;
   bool _marketing = false; // новости и предложения — по желанию, по умолчанию выключено
@@ -101,6 +102,21 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) showSnack(context, '$e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Вход через Google: страница уходит на Google и возвращается уже со входом.
+  /// Новым людям после этого покажется экран «Finish setting up» (роль и согласие).
+  Future<void> _google() async {
+    setState(() => _googleLoading = true);
+    try {
+      await context.read<AppState>().repo.signInWithGoogle();
+    } on AppException catch (e) {
+      if (mounted) showSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
     }
   }
 
@@ -265,6 +281,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ],
               const SizedBox(height: 26),
+              // самый быстрый путь: аккаунт Google (роль и согласие — на следующем экране)
+              GoogleButton(loading: _googleLoading, onPressed: _google),
+              const OrDivider(),
               if (_signUp) ...[
                 const Text.rich(
                   TextSpan(children: [
@@ -274,14 +293,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   style: TextStyle(fontSize: 13, color: Zc.grey),
                 ),
                 const SizedBox(height: 14),
-                _label('I am', req: true),
-                Row(children: [
-                  Expanded(child: _roleCard('owner', 'Owner', 'I list my own property', ZI.house)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _roleCard('agent', 'Agent', 'I list for clients', ZI.badge)),
-                ]),
+                const FieldLabel('I am', required: true),
+                RolePicker(value: _role, onChanged: (r) => setState(() => _role = r)),
                 const SizedBox(height: 18),
-                _label('Full name', req: true),
+                const FieldLabel('Full name', required: true),
                 TextFormField(
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
@@ -289,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) => (v ?? '').trim().length < 2 ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 18),
-                _label('Phone', req: true),
+                const FieldLabel('Phone', required: true),
                 TextFormField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
@@ -298,7 +313,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 18),
                 if (_role == 'agent') ...[
-                  _label('ZIEA registration number', optional: true),
+                  const FieldLabel('ZIEA registration number', optional: true),
                   TextFormField(
                     controller: _licence,
                     textCapitalization: TextCapitalization.characters,
@@ -306,15 +321,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     validator: (v) => (v ?? '').trim().length > 40 ? 'Too long' : null,
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Not required to sign up — you can add it later in Profile. Agents with a checked ZIEA licence '
-                    'get a "Licence verified" mark and can promote their listings.',
-                    style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35),
-                  ),
+                  const Text(kLicenceHint, style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35)),
                   const SizedBox(height: 18),
                 ],
               ],
-              _label('Email', req: _signUp),
+              FieldLabel('Email', required: _signUp),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
@@ -323,7 +334,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 validator: (v) => RegExp(r'^\S+@\S+\.\S+$').hasMatch((v ?? '').trim()) ? null : 'Enter a valid email',
               ),
               const SizedBox(height: 18),
-              _label('Password', req: _signUp),
+              FieldLabel('Password', required: _signUp),
               TextFormField(
                 controller: _password,
                 obscureText: true,
@@ -348,59 +359,10 @@ class _AuthScreenState extends State<AuthScreen> {
               if (_signUp) ...[
                 const SizedBox(height: 16),
                 // отдельная галочка согласия — дата согласия сохраняется на сервере
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Checkbox(
-                    value: _consent,
-                    activeColor: Zc.orange,
-                    onChanged: (v) => setState(() => _consent = v ?? false),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      // одним абзацем, чтобы строки переносились естественно
-                      child: Text.rich(
-                        TextSpan(style: const TextStyle(fontSize: 13, color: Zc.text, height: 1.4), children: [
-                          const TextSpan(text: 'I agree to the '),
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.baseline,
-                            baseline: TextBaseline.alphabetic,
-                            child: _link('Terms of Service', () => openLegal(context, LegalDoc.terms)),
-                          ),
-                          const TextSpan(text: ' and '),
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.baseline,
-                            baseline: TextBaseline.alphabetic,
-                            child: _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
-                          ),
-                          const TextSpan(
-                              text: ', and to Zumi processing my data to run my account and storing it on servers '
-                                  'outside Zambia (European Union).'),
-                          const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ]),
+                ConsentCheck(value: _consent, onChanged: (v) => setState(() => _consent = v)),
                 // где хранятся данные — до согласия, простыми словами
                 const Padding(padding: EdgeInsets.only(top: 6, bottom: 6), child: DataNotice(compact: true)),
-                // отдельная галочка — не обязательна, по умолчанию не отмечена
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Checkbox(
-                    value: _marketing,
-                    activeColor: Zc.orange,
-                    onChanged: (v) => setState(() => _marketing = v ?? false),
-                  ),
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Text(
-                        'Send me Zumi news and offers by WhatsApp or email (optional). '
-                        'You can turn this off any time in Settings.',
-                        style: TextStyle(fontSize: 13, color: Zc.text),
-                      ),
-                    ),
-                  ),
-                ]),
+                MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
               ],
               const SizedBox(height: 30),
               Center(
@@ -432,52 +394,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _link(String text, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Text(text,
-            style: const TextStyle(fontSize: 13, color: Zc.green, decoration: TextDecoration.underline)),
-      );
-
-  /// Подпись поля: «*» — обязательно, «(optional)» — можно пропустить
-  Widget _label(String t, {bool req = false, bool optional = false}) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text.rich(
-          TextSpan(children: [
-            TextSpan(text: t),
-            if (req) const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
-            if (optional)
-              const TextSpan(text: '  (optional)', style: TextStyle(color: Zc.grey, fontSize: 14, fontWeight: FontWeight.w400)),
-          ]),
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.text),
-        ),
-      );
-
-  Widget _roleCard(String role, String title, String sub, IconData icon) {
-    final on = _role == role;
-    return GestureDetector(
-      onTap: () => setState(() => _role = role),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: on ? Zc.orangeSoft : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: on ? Zc.orange : Zc.green, width: on ? 1.6 : 0.8),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, color: Zc.green),
-            const Spacer(),
-            RadioDot(selected: on, size: 20),
-          ]),
-          const SizedBox(height: 10),
-          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green)),
-          Text(sub, style: const TextStyle(fontSize: 12, color: Zc.grey)),
-        ]),
       ),
     );
   }
