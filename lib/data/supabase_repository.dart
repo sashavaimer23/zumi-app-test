@@ -247,6 +247,11 @@ class SupabaseRepository implements Repository {
       });
 
   @override
+  Future<void> signInWithFacebook() => _guard(() async {
+        await _db.auth.signInWithOAuth(OAuthProvider.facebook, redirectTo: _returnUrl, scopes: 'email');
+      });
+
+  @override
   Future<void> completeSignup({
     required String role,
     required String fullName,

@@ -10,4 +10,7 @@ class Features {
   /// Рекламные баннеры (главная, лента, страница объявления) и шаблон «Your ad here».
   /// Выключено, пока Zumi полностью бесплатный — включается в кабинете владельца → Ads.
   static bool ads = false;
+
+  /// Кнопка «Continue with Facebook» — включаем, когда Facebook включён в Supabase (Authentication → Providers)
+  static bool facebookLogin = false;
 }

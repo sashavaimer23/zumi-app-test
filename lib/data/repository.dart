@@ -27,6 +27,9 @@ abstract class Repository {
   /// Вход через Google (на сайте — переход на страницу Google и обратно)
   Future<void> signInWithGoogle();
 
+  /// Вход через Facebook (так же, как Google)
+  Future<void> signInWithFacebook();
+
   /// После первого входа через Google: роль, имя, телефон, лицензия, согласие (один раз)
   Future<void> completeSignup({
     required String role,

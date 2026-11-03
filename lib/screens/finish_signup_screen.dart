@@ -103,7 +103,7 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
               Text(
                 email == null
                     ? 'One last step — tell us who you are.'
-                    : 'You signed in with Google as $email. One last step — tell us who you are.',
+                    : 'You signed in as $email. One last step — tell us who you are.',
                 style: const TextStyle(color: Zc.grey, fontSize: 15, height: 1.35),
               ),
               const SizedBox(height: 24),

@@ -199,6 +199,43 @@ class _GoogleG extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Кнопка «Continue with Facebook» (фирменный синий, «f» нарисована шрифтом)
+class FacebookButton extends StatelessWidget {
+  const FacebookButton({super.key, required this.onPressed, this.loading = false});
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton(
+          onPressed: loading ? null : onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1877F2),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          child: loading
+              ? const SizedBox(
+                  width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    alignment: Alignment.bottomCenter,
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: const Text('f',
+                        style: TextStyle(
+                            color: Color(0xFF1877F2), fontSize: 19, fontWeight: FontWeight.w900, height: 1.05)),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Continue with Facebook', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ]),
+        ),
+      );
+}
+
 /// Разделитель «or»
 class OrDivider extends StatelessWidget {
   const OrDivider({super.key});

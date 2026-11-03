@@ -152,6 +152,12 @@ class DemoRepository implements Repository {
   }
 
   @override
+  Future<void> signInWithFacebook() async {
+    await _lag();
+    throw AppException('Facebook sign-in works on the live site. In demo mode use email and password.');
+  }
+
+  @override
   Future<void> completeSignup({
     required String role,
     required String fullName,

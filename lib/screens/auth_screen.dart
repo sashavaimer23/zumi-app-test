@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../features.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -31,6 +32,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _signUp = false;
   bool _loading = false;
   bool _googleLoading = false;
+  bool _facebookLoading = false;
   String _role = 'owner';
   bool _consent = false;
   bool _marketing = false; // новости и предложения — по желанию, по умолчанию выключено
@@ -117,6 +119,19 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) showSnack(context, '$e');
     } finally {
       if (mounted) setState(() => _googleLoading = false);
+    }
+  }
+
+  Future<void> _facebook() async {
+    setState(() => _facebookLoading = true);
+    try {
+      await context.read<AppState>().repo.signInWithFacebook();
+    } on AppException catch (e) {
+      if (mounted) showSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _facebookLoading = false);
     }
   }
 
@@ -283,6 +298,10 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 26),
               // самый быстрый путь: аккаунт Google (роль и согласие — на следующем экране)
               GoogleButton(loading: _googleLoading, onPressed: _google),
+              if (Features.facebookLogin) ...[
+                const SizedBox(height: 12),
+                FacebookButton(loading: _facebookLoading, onPressed: _facebook),
+              ],
               const OrDivider(),
               if (_signUp) ...[
                 const Text.rich(
