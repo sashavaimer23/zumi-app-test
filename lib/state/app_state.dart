@@ -35,9 +35,12 @@ class AppState extends ChangeNotifier {
     final f = await repo.appFlags();
     final promo = (f['promotion'] as bool?) ?? false;
     final ads = (f['ads'] as bool?) ?? false;
-    if (promo == Features.promotion && ads == Features.ads) return;
+    final wa = (f['wa_verify'] as String?)?.trim();
+    final waNum = (wa == null || wa.isEmpty) ? null : wa;
+    if (promo == Features.promotion && ads == Features.ads && waNum == Features.waVerifyNumber) return;
     Features.promotion = promo;
     Features.ads = ads;
+    Features.waVerifyNumber = waNum;
     notifyListeners();
   }
 

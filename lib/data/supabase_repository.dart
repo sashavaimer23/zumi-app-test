@@ -827,6 +827,13 @@ class SupabaseRepository implements Repository {
       });
 
   @override
+  Future<({String code, String number})> startWhatsAppVerification() => _guard(() async {
+        _requireUserId();
+        final r = Map<String, dynamic>.from(await _db.rpc('start_whatsapp_verification') as Map);
+        return (code: r['code'] as String, number: r['number'] as String);
+      });
+
+  @override
   Future<Map<String, dynamic>> appFlags() async {
     try {
       return Map<String, dynamic>.from(await _db.rpc('app_flags') as Map);

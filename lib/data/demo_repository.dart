@@ -809,7 +809,13 @@ class DemoRepository implements Repository {
   bool _adsOn = false;
 
   @override
-  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn, 'ads': _adsOn};
+  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn, 'ads': _adsOn, 'wa_verify': null};
+
+  @override
+  Future<({String code, String number})> startWhatsAppVerification() async {
+    await _lag();
+    throw AppException('WhatsApp confirmation works on the live site. In demo mode use the code 123456.');
+  }
 
   @override
   Future<(bool, int)> adsStatus() async => (_adsOn, 0);

@@ -24,8 +24,8 @@ begin
   end;
   raise exception 'FAILED: % — expected error %, but it succeeded', label, expected;
 end $$;
-grant usage on schema zt to anon, authenticated;
-grant execute on all functions in schema zt to anon, authenticated;
+grant usage on schema zt to anon, authenticated, service_role;
+grant execute on all functions in schema zt to anon, authenticated, service_role;
 
 -- ---------- люди ----------
 insert into auth.users(id, email, raw_user_meta_data) values
@@ -223,5 +223,36 @@ select zt.ok('email accounts never see the extra step', not (my_verification()->
 reset role;
 select zt.ok('google account saved as agent with consent',
   (select role = 'agent' and terms_accepted_at is not null from profiles where id = 'a0000000-0000-0000-0000-000000000021'));
+
+-- ---------- подтверждение номера через WhatsApp ----------
+select set_config('request.jwt.claim.sub', '', false);
+select zt.ok('WhatsApp check is off until a number is set', app_flags()->>'wa_verify' is null);
+update app_settings set value = '+1 555 163 7510' where key = 'whatsapp_verify_number';
+select zt.ok('number shown to the app', app_flags()->>'wa_verify' = '15551637510');
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-000000000031', 'wa@x.zm', '{"full_name":"Wa User","terms_accepted":"true"}');
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000031', false);
+create temp table wa_t as select start_whatsapp_verification()->>'code' as code;
+grant select on wa_t to service_role;
+select zt.ok('code has 6 digits', (select code ~ '^[0-9]{6}$' from wa_t));
+select zt.err('app cannot confirm codes itself', 'permission denied',
+  $$select confirm_whatsapp_code('Zumi code 000000', '260971110000')$$);
+reset role;
+set role service_role;
+select zt.ok('wrong code is rejected', confirm_whatsapp_code('Zumi code 999999x', '260971110000') in ('expired','unknown'));
+select zt.ok('message from WhatsApp confirms the number',
+  confirm_whatsapp_code('Zumi code ' || (select code from wa_t), '260971110000') = 'ok');
+select zt.ok('a code works only once', confirm_whatsapp_code('Zumi code ' || (select code from wa_t), '260971110000') = 'expired');
+reset role;
+select zt.ok('sender number is saved as confirmed',
+  (select phone = '+260971110000' and phone_verified_at is not null and phone_verify_channel = 'whatsapp'
+     from profiles where id = 'a0000000-0000-0000-0000-000000000031'));
+update wa_verify_codes set used_at = null, expires_at = now() + interval '5 minutes', user_id = 'a0000000-0000-0000-0000-000000000011'
+ where code = (select code from wa_t);
+set role service_role;
+select zt.ok('one number — one account', confirm_whatsapp_code('Zumi code ' || (select code from wa_t), '+260 97 111 0000') = 'taken');
+reset role;
+drop table wa_t;
 
 select zt.ok('ALL CHECKS PASSED', true);

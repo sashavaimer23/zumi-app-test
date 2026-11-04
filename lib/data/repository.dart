@@ -156,6 +156,9 @@ abstract class Repository {
   /// Что включено сейчас (продвижение и т.п.) — {'promotion': bool}
   Future<Map<String, dynamic>> appFlags();
 
+  /// Подтверждение через WhatsApp: одноразовый код и номер Zumi, куда его отправить
+  Future<({String code, String number})> startWhatsAppVerification();
+
   /// Отзыв о приложении: оценка 1–5, что не работает, комментарий
   Future<void> sendAppFeedback({required int rating, required List<String> issues, String? comment});
 

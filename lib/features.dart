@@ -13,4 +13,8 @@ class Features {
 
   /// Кнопка «Continue with Facebook» — включаем, когда Facebook включён в Supabase (Authentication → Providers)
   static bool facebookLogin = false;
+
+  /// Номер WhatsApp Zumi для подтверждения телефона (цифры с кодом страны).
+  /// null — подтверждение через WhatsApp ещё не подключено (используется старый экран с кодом).
+  static String? waVerifyNumber;
 }
