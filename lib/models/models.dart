@@ -596,6 +596,7 @@ class AppUser {
   final bool emailVerified;   // почта подтверждена кодом
   final bool marketingEmail;    // новости и предложения Zumi на почту
   final bool marketingWhatsapp; // новости и предложения Zumi в WhatsApp
+  final bool emailAlerts;       // письма о сообщениях и объявлениях (по умолчанию да)
   /// Вошёл через Google/Facebook и ещё не выбрал роль и не дал согласие → экран «Finish setting up»
   final bool needsOnboarding;
 
@@ -623,6 +624,7 @@ class AppUser {
     this.emailVerified = false,
     this.marketingEmail = false,
     this.marketingWhatsapp = false,
+    this.emailAlerts = true,
     this.needsOnboarding = false,
   });
 
@@ -663,6 +665,7 @@ class AppUser {
     bool? emailVerified,
     bool? marketingEmail,
     bool? marketingWhatsapp,
+    bool? emailAlerts,
   }) =>
       AppUser(
         id: id,
@@ -688,6 +691,7 @@ class AppUser {
         emailVerified: emailVerified ?? this.emailVerified,
         marketingEmail: marketingEmail ?? this.marketingEmail,
         marketingWhatsapp: marketingWhatsapp ?? this.marketingWhatsapp,
+        emailAlerts: emailAlerts ?? this.emailAlerts,
         needsOnboarding: needsOnboarding,
       );
 

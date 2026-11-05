@@ -123,7 +123,11 @@ class DemoRepository implements Repository {
   @override
   Future<void> setMarketing(String channel, bool on) async {
     final u = _requireUser();
-    _setUser(channel == 'whatsapp' ? u.copyWith(marketingWhatsapp: on) : u.copyWith(marketingEmail: on));
+    _setUser(switch (channel) {
+      'whatsapp' => u.copyWith(marketingWhatsapp: on),
+      'alerts' => u.copyWith(emailAlerts: on),
+      _ => u.copyWith(marketingEmail: on),
+    });
   }
 
   @override

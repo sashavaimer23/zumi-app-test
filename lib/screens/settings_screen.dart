@@ -276,6 +276,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               ],
 
+              // ---------- письма-уведомления ----------
+              const _Section('Email alerts'),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeThumbColor: Zc.orange,
+                value: u.emailAlerts,
+                title: const Text('Email me about messages and my listings', style: TextStyle(fontSize: 15)),
+                subtitle: Text(
+                  'New messages you have not read, replies from support, and when a listing is approved '
+                  'or needs your answer.${(u.email ?? '').isEmpty ? '' : ' Sent to ${u.email}.'}',
+                  style: const TextStyle(fontSize: 12, color: Zc.grey),
+                ),
+                onChanged: (v) async {
+                  try {
+                    await app.repo.setMarketing('alerts', v);
+                    if (context.mounted) showSnack(context, v ? 'Email alerts are on' : 'Email alerts are off');
+                  } catch (e) {
+                    if (context.mounted) showSnack(context, '$e');
+                  }
+                },
+              ),
+
               // ---------- рассылка ----------
               const _Section('News and offers'),
               for (final (channel, on, title) in [

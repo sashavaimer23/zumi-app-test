@@ -399,4 +399,91 @@ select zt.ok('rooms are not counted in area prices',
        and p.property_type <> 'room' and (p.is_demo or coalesce(p.confirmed_at, p.created_at) > now() - interval '60 days')));
 delete from properties where id = 'b0000000-0000-0000-0000-0000000000f1';
 
+-- ---------- письма-уведомления ----------
+update auth.users set email_confirmed_at = now() where email like '%@x.zm';
+select set_config('request.jwt.claim.sub', '', false);
+insert into conversations(id, property_id, buyer_id, seller_id, last_message_at)
+values ('c0000000-0000-0000-0000-0000000000e1', null, 'a0000000-0000-0000-0000-000000000003',
+        'a0000000-0000-0000-0000-000000000001', now());
+insert into messages(conversation_id, sender_id, body, created_at) values
+ ('c0000000-0000-0000-0000-0000000000e1', 'a0000000-0000-0000-0000-000000000003', 'Hi, is it still free?', now() - interval '3 minutes');
+set role anon;
+select zt.err('guests cannot read the email queue', 'permission denied', $$select email_due(10)$$);
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('people cannot read the email queue', 'permission denied', $$select email_due(10)$$);
+select zt.err('people cannot mark emails', 'permission denied',
+  $$select email_mark(auth.uid(), 'chat', gen_random_uuid(), true)$$);
+select zt.ok('email alerts are on by default', my_email_alerts());
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+set role service_role;
+select zt.ok('fresh message waits 10 minutes before an email',
+  not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'kind' = 'chat'));
+reset role;
+update messages set created_at = now() - interval '15 minutes' where conversation_id = 'c0000000-0000-0000-0000-0000000000e1';
+set role service_role;
+select zt.ok('unread message older than 10 minutes → email to the seller',
+  exists (select 1 from jsonb_array_elements(email_due(50)) e
+           where e->>'kind' = 'chat' and e->>'email' = 'owner@x.zm' and e->'data'->>'from' = 'Buyer'
+             and (e->'data'->>'count')::int = 1 and length(e->>'token') = 32));
+select zt.ok('the writer does not get an email about own message',
+  not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'kind' = 'chat' and e->>'email' = 'buyer@x.zm'));
+select email_mark('a0000000-0000-0000-0000-000000000001', 'chat', 'c0000000-0000-0000-0000-0000000000e1', true);
+select zt.ok('only one email per unread chat',
+  not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'kind' = 'chat'));
+select zt.ok('unsubscribe link needs the right token',
+  not email_unsubscribe('a0000000-0000-0000-0000-000000000001', 'wrong'));
+reset role;
+-- прочитал, потом новое сообщение → снова письмо
+insert into chat_reads(conversation_id, user_id, read_at)
+values ('c0000000-0000-0000-0000-0000000000e1', 'a0000000-0000-0000-0000-000000000001', now() - interval '14 minutes');
+insert into messages(conversation_id, sender_id, body, created_at) values
+ ('c0000000-0000-0000-0000-0000000000e1', 'a0000000-0000-0000-0000-000000000003', 'Can I view on Saturday?', now() - interval '12 minutes');
+update email_log set sent_at = now() - interval '20 minutes' where kind = 'chat';
+set role service_role;
+select zt.ok('after reading, a new message gets a new email',
+  exists (select 1 from jsonb_array_elements(email_due(50)) e
+           where e->>'kind' = 'chat' and e->'data'->>'snippet' = 'Can I view on Saturday?'));
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select set_marketing('alerts', false);
+select zt.ok('people can turn email alerts off', not my_email_alerts());
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+set role service_role;
+select zt.ok('no emails after turning off',
+  not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'email' = 'owner@x.zm'));
+reset role;
+update profiles set email_alerts_off_at = null where id = 'a0000000-0000-0000-0000-000000000001';
+set role service_role;
+select zt.ok('unsubscribe link works',
+  email_unsubscribe('a0000000-0000-0000-0000-000000000001', _email_token('a0000000-0000-0000-0000-000000000001')));
+reset role;
+select zt.ok('unsubscribed → alerts off',
+  (select email_alerts_off_at is not null from profiles where id = 'a0000000-0000-0000-0000-000000000001'));
+update profiles set email_alerts_off_at = null where id = 'a0000000-0000-0000-0000-000000000001';
+-- «Still available?»
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,created_at)
+values ('b0000000-0000-0000-0000-0000000000e2','a0000000-0000-0000-0000-000000000002','Old house','rent','house',5000,
+        'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas), now() - interval '40 days');
+update properties set status = 'active' where id = 'b0000000-0000-0000-0000-0000000000e2';
+update properties set confirmed_at = now() - interval '32 days', approved_at = now() - interval '40 days'
+ where id = 'b0000000-0000-0000-0000-0000000000e2';
+set role service_role;
+select zt.ok('owner is asked by email to confirm an old listing',
+  exists (select 1 from jsonb_array_elements(email_due(50)) e
+           where e->>'kind' = 'confirm' and e->>'email' = 'agent@x.zm' and (e->'data'->>'hide_in')::int = 5));
+reset role;
+delete from properties where id = 'b0000000-0000-0000-0000-0000000000e2';
+delete from conversations where id = 'c0000000-0000-0000-0000-0000000000e1';
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select zt.ok('owner sees email status', admin_email_status() ? 'sent_24h');
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.ok('others do not see email status', admin_email_status() is null);
+reset role;
+
 select zt.ok('ALL CHECKS PASSED', true);

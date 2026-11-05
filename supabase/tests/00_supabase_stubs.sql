@@ -43,3 +43,6 @@ do $$ begin
     create publication supabase_realtime;
   end if;
 end $$;
+
+alter table auth.users add column if not exists email_confirmed_at timestamptz;
+alter table auth.users add column if not exists phone text;

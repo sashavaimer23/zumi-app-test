@@ -66,6 +66,10 @@ class SupabaseRepository implements Repository {
       try {
         ver = Map<String, dynamic>.from(await _db.rpc('my_verification') as Map);
       } catch (_) {/* не критично */}
+      bool alerts = true;
+      try {
+        alerts = (await _db.rpc('my_email_alerts') as bool?) ?? true;
+      } catch (_) {/* база ещё без 031 */}
       return AppUser(
         id: u.id,
         email: u.email,
@@ -92,6 +96,7 @@ class SupabaseRepository implements Repository {
         marketingEmail: (ver?['marketing_email'] as bool?) ?? false,
         marketingWhatsapp: (ver?['marketing_whatsapp'] as bool?) ?? false,
         needsOnboarding: (ver?['needs_onboarding'] as bool?) ?? false,
+        emailAlerts: alerts,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);

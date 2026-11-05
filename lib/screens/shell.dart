@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
@@ -19,6 +20,7 @@ import 'post/post_wizard.dart';
 import 'profile_screen.dart';
 import 'public_profile_screen.dart';
 import 'saved_screen.dart';
+import 'support/support_screen.dart';
 
 /// Вкладки: 0 Search · 1 Saved · 2 Post (без кнопки в меню) · 3 Chats · 4 Profile
 class Shell extends StatefulWidget {
@@ -128,7 +130,17 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     final q = Uri.base.queryParameters;
     final listing = q['listing'];
     final person = q['agent'] ?? q['profile'];
+    final open = q['open']; // из писем: chats | listings | support
     try {
+      if (open == 'chats' || open == 'listings') {
+        go(open == 'chats' ? 3 : 4);
+        return;
+      }
+      if (open == 'support') {
+        go(4);
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen()));
+        return;
+      }
       if (listing != null && listing.isNotEmpty) {
         final p = await context.read<AppState>().repo.getProperty(listing);
         if (p != null && mounted) openProperty(context, p);
