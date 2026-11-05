@@ -86,6 +86,14 @@
 - Перед включением: зарегистрировать компанию, указать реквизиты, предупредить агентов за 30 дней, подготовить «special offers» для ранних агентов (обещаны в плашке мягко — например, скидка на первые месяцы).
 - Автоматическая оплата: заготовка supabase/functions/payment-webhook; подключить у провайдера (MTN MoMo / Airtel / агрегатор), payment_mode = auto.
 
+## Домен (05.11)
+- ✅ zumihome.com куплен в Cloudflare ($11.17/год, автопродление, владелец — Саша лично; после регистрации компании сменить в Contacts).
+- ✅ DNS: 4 записи A на GitHub Pages + CNAME www, всё «DNS only». Сайт на https://zumihome.com, старый адрес github.io перекидывает сам.
+- ✅ Supabase Auth: Site URL и Redirect URLs на zumihome.com; app_settings.site_url обновлён.
+- ✅ Превью ссылки (og-image.jpg), robots.txt, sitemap.xml. Google Search Console подтверждён (TXT-запись google-site-verification — не удалять), sitemap отправлен.
+- Осталось: почта hello@ / support@ (Cloudflare Email Routing), письма уведомлений с hello@zumihome.com (Resend), Google Branding + Publish, вход через Facebook, убрать старый github.io из Redirect URLs.
+- Позже (после настоящих объявлений): текстовые страницы объявлений и районов для Google.
+
 ## Раздел «Rooms & budget» (готов 05.11, выключен)
 - Комнаты, boys' quarters, bedsitter, хостелы — только аренда, отдельная лента и компактные карточки (не портят главную).
 - Точный адрес не показывается: на карте круг ~700 м, владелец сообщает место в разговоре.
