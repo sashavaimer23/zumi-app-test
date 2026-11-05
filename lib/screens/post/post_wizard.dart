@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/images.dart';
-import '../../features.dart';
 import '../../models/models.dart';
+import '../billing/billing_screen.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
 import '../../widgets/success_hero.dart';
@@ -1237,8 +1236,8 @@ class _LimitReached extends StatelessWidget {
         Text(
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
           '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
-          '${kIsWeb && Features.promotion ? 'To add more, buy an extra listing slot.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
-          '${unlicensed ? '\n\nLicensed agents can post up to 10 listings — add your ZIEA registration number.' : ''}',
+          '${context.watch<AppState>().canBuy ? 'To add more, get extra listings${isAgent ? ' or a Pro plan' : ''}.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
+          '${unlicensed ? '\n\nLicensed agents can post up to 25 listings — add your ZIEA registration number.' : ''}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),
@@ -1251,14 +1250,16 @@ class _LimitReached extends StatelessWidget {
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GetVerifiedScreen())),
             ),
           ),
-        if (kIsWeb && Features.promotion)
+        if (context.watch<AppState>().canBuy) ...[
+          if (unlicensed) const SizedBox(height: 12),
           Center(
             child: PrimaryButton(
-              label: 'Buy extra listing',
+              label: isAgent ? 'See plans and extra listings' : 'Get extra listings',
               width: double.infinity,
-              onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
+              onPressed: () => openPlans(context),
             ),
           ),
+        ],
         const SizedBox(height: 12),
         Center(
           child: TextButton(

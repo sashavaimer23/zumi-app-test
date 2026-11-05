@@ -178,10 +178,10 @@ reset role;
 insert into auth.users(id, email, raw_user_meta_data) values
  ('a0000000-0000-0000-0000-000000000011', 'agent2@x.zm', '{"full_name":"Agent Two","role":"agent"}');
 select zt.ok('owner: 2 free listings', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 2);
-select zt.ok('agent without a checked licence: 5', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 5);
-select zt.ok('agent with a checked licence: 10', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 10);
+select zt.ok('agent without a checked licence: 15', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 15);
+select zt.ok('agent with a checked licence: 25', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 25);
 update profiles set extra_listing_slots = 3 where id = 'a0000000-0000-0000-0000-000000000002';
-select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 13);
+select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 28);
 
 -- ---------- рекламные баннеры: выключатель ----------
 insert into ads(id, advertiser, title, placement, image_url, target_type, target, starts_on, ends_on, status)
@@ -254,5 +254,88 @@ set role service_role;
 select zt.ok('one number — one account', confirm_whatsapp_code('Zumi code ' || (select code from wa_t), '+260 97 111 0000') = 'taken');
 reset role;
 drop table wa_t;
+
+-- ---------- платные функции ----------
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id)
+values ('b0000000-0000-0000-0000-000000000099','a0000000-0000-0000-0000-000000000002','Agent house','rent','house',9000,
+        'SRID=4326;POINT(28.3 -15.4)','active',(select min(id) from areas));
+update properties set status = 'active' where id = 'b0000000-0000-0000-0000-000000000099';
+select set_config('request.jwt.claim.sub', '', false);
+select zt.ok('paid features are off by default', not (app_flags()->>'billing')::boolean);
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select zt.err('nothing can be bought while OFF', 'BILLING_OFF', $$select create_order('boost_7d','b0000000-0000-0000-0000-000000000099')$$);
+select zt.ok('price list is public', (select count(*) from price_list where active) >= 10);
+select zt.err('app cannot give itself a plan', 'permission denied', $$select mark_order_paid('Z-X','manual','x')$$);
+update profiles set plan = 'agency', plan_until = now() + interval '1 year', boost_credits = 99 where id = auth.uid();
+reset role;
+select zt.ok('plan fields cannot be changed from the app',
+  (select plan is null and boost_credits = 0 from profiles where id = 'a0000000-0000-0000-0000-000000000002'));
+-- владелец включает
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000005', false);
+select zt.err('only the owner switches paid features', 'OWNER_ONLY', $$select admin_set_setting('billing_enabled','true')$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_set_setting('billing_enabled', 'true');
+select admin_set_setting('manual_payment_info', 'Airtel Money 097 000 0000 (Zumi). Reference: your order code.');
+select zt.ok('switch ON also shows promotion', (app_flags()->>'billing')::boolean and (app_flags()->>'promotion')::boolean);
+-- агент покупает буст, ждёт ручного подтверждения
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+create temp table bo as select create_order('boost_7d', 'b0000000-0000-0000-0000-000000000099', '0971234567') as r;
+grant select on bo to service_role;
+select zt.ok('order waits for payment with payment info',
+  (select r->>'status' = 'pending' and r->>'mode' = 'manual' and r->>'payment_info' like 'Airtel%' and r->>'ref' like 'Z-%' from bo));
+select zt.err('cannot boost someone else''s listing', 'NOT_YOUR_LISTING',
+  $$select create_order('boost_7d', 'b0000000-0000-0000-0000-000000000001')$$);
+select zt.ok('not boosted before payment',
+  (select promoted_until is null from properties where id = 'b0000000-0000-0000-0000-000000000099'));
+-- владелец подтверждает перевод
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_mark_order((select (r->>'id')::uuid from bo), 'paid', 'Airtel ref 123');
+select zt.ok('paid order switches the boost on',
+  (select promoted_until > now() + interval '6 days' from properties where id = 'b0000000-0000-0000-0000-000000000099'));
+select zt.ok('order marked done', (select status = 'paid' and fulfilled_at is not null from orders where id = (select (r->>'id')::uuid from bo)));
+select zt.ok('owner sees revenue', (admin_billing_status()->>'revenue_30d')::numeric = 60);
+-- тариф Pro через «провайдера» (автоматическая оплата)
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+create temp table po as select create_order('plan_pro_m', null, '+260971234567') as r;
+grant select on po to service_role;
+reset role;
+set role service_role;
+select zt.ok('provider confirms payment', mark_order_paid((select r->>'ref' from po), 'airtel_money', 'AT-1') = 'ok');
+select zt.ok('second confirmation is ignored', mark_order_paid((select r->>'ref' from po), 'airtel_money', 'AT-1') = 'already');
+reset role;
+select zt.ok('Pro gives 50 listings and 2 boosts',
+  (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) >= 50
+  and (select boost_credits = 2 and plan = 'pro' from profiles where id = 'a0000000-0000-0000-0000-000000000002'));
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select use_boost_credit('b0000000-0000-0000-0000-000000000099');
+select zt.err('free campaigns are off while paid features are on', 'USE_BOOST', $$
+  insert into campaigns(owner_id, property_id, advertiser, placement, starts_on, ends_on)
+  values (auth.uid(), 'b0000000-0000-0000-0000-000000000099', 'Agent', 'home_featured', current_date, current_date + 3)$$);
+create temp table fo as select create_order('featured_7d', 'b0000000-0000-0000-0000-000000000099') as r;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_mark_order((select (r->>'id')::uuid from fo), 'paid', null);
+select zt.ok('paid Featured starts a home campaign',
+  (select fulfilled_at is not null from orders where id = (select (r->>'id')::uuid from fo))
+  and exists (select 1 from campaigns where property_id = 'b0000000-0000-0000-0000-000000000099' and placement = 'home_featured'));
+drop table fo;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select zt.ok('boost credit used', (my_billing()->>'boost_credits')::int = 1 and my_billing()->>'plan' = 'pro');
+-- собственник: Featured только агентам; доп. место — можно
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('featured is for agents', 'AGENTS_ONLY', $$select create_order('featured_7d','b0000000-0000-0000-0000-000000000001')$$);
+create temp table so as select create_order('slot_1') as r;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_mark_order((select (r->>'id')::uuid from so), 'paid', null);
+reset role;
+select zt.ok('extra listing slot added for 30 days',
+  (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 3);
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_set_setting('billing_enabled', 'false');
+reset role;
+drop table bo; drop table po; drop table so;
 
 select zt.ok('ALL CHECKS PASSED', true);

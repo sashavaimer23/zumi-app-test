@@ -156,6 +156,32 @@ abstract class Repository {
   /// Что включено сейчас (продвижение и т.п.) — {'promotion': bool}
   Future<Map<String, dynamic>> appFlags();
 
+  // ---------- платные функции ----------
+  /// Прайс-лист (all — вместе с выключенными позициями, для кабинета владельца)
+  Future<List<PriceItem>> priceList({bool all = false});
+
+  /// Мой тариф, бусты в запасе, доп. места
+  Future<BillingInfo> myBilling();
+
+  /// Оформить заказ (буст и Featured — для своего объявления). Возвращает заказ с кодом для оплаты.
+  Future<OrderInfo> createOrder(String itemCode, {String? propertyId, String? phone});
+
+  Future<List<OrderInfo>> myOrders();
+  Future<void> cancelOrder(String orderId);
+
+  /// Поднять объявление бустом из запаса (пакет или тариф)
+  Future<void> useBoostCredit(String propertyId);
+
+  // кабинет владельца
+  Future<BillingStatus> billingStatus();
+  Future<void> setBillingEnabled(bool on);
+  Future<void> setPaymentInfo(String text);
+  Future<void> setPrice(String code, double amount, bool active);
+  Future<List<OrderInfo>> adminOrders({String? status});
+
+  /// status: paid (оплата получена) | cancelled | refunded | retry (повторить включение услуги)
+  Future<void> adminMarkOrder(String orderId, String status, {String? note});
+
   /// Подтверждение через WhatsApp: одноразовый код и номер Zumi, куда его отправить
   Future<({String code, String number})> startWhatsAppVerification();
 

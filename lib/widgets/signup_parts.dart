@@ -73,7 +73,7 @@ class RolePicker extends StatelessWidget {
 
 /// Подсказка под полем лицензии ZIEA
 const kLicenceHint = 'Not required to sign up — you can add it later in Profile. Agents with a checked ZIEA licence '
-    'get the "Licensed agent" badge and can post up to 10 listings.';
+    'get the "Licensed agent" badge and can post up to 25 listings.';
 
 /// Обязательная галочка: условия, политика и хранение данных вне Замбии (дата согласия хранится на сервере)
 class ConsentCheck extends StatelessWidget {

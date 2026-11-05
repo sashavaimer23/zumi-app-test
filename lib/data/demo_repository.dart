@@ -44,7 +44,7 @@ class DemoRepository implements Repository {
   final Map<String, List<ChatMessage>> _msgs = {};
   final Map<String, StreamController<List<ChatMessage>>> _msgCtrls = {};
 
-  static const _limits = {'agent': 5, 'owner': 2};
+  static const _limits = {'agent': 15, 'owner': 2};
 
   Future<void> _lag() => Future.delayed(const Duration(milliseconds: 250));
 
@@ -395,8 +395,11 @@ class DemoRepository implements Repository {
     final u = _requireUser();
     // как на сервере: объявления на проверке тоже занимают место
     final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
-    // как на сервере: агент с проверенной лицензией — 10, без — 5, собственник — 2
-    final allowed = u.isAgent && u.licenceVerified ? 10 : (_limits[u.role] ?? 999);
+    // как на сервере: агент с проверенной лицензией — 25, без — 15, собственник — 2; тариф — если больше
+    final base = u.isAgent && u.licenceVerified ? 25 : (_limits[u.role] ?? 999);
+    final planActive = _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now());
+    final planLimit = !planActive ? 0 : (_billing.plan == 'agency' ? 150 : 50);
+    final allowed = (planLimit > base ? planLimit : base) + _billing.extraSlots;
     return Quota(used, allowed);
   }
 
@@ -809,7 +812,195 @@ class DemoRepository implements Repository {
   bool _adsOn = false;
 
   @override
-  Future<Map<String, dynamic>> appFlags() async => {'promotion': _promotionOn, 'ads': _adsOn, 'wa_verify': null};
+  Future<Map<String, dynamic>> appFlags() async =>
+      {'promotion': _promotionOn || _billingOn, 'ads': _adsOn, 'wa_verify': null, 'billing': _billingOn};
+
+  // ---------------- платные функции (демо: всё в памяти) ----------------
+  bool _billingOn = false;
+  String _payInfo = 'Airtel Money 097 000 0000 (Zumi). Reference: your order code.';
+  BillingInfo _billing = const BillingInfo();
+  final List<OrderInfo> _orders = [];
+  List<PriceItem> _prices = const [
+    PriceItem(code: 'bump_3d', kind: 'boost', title: 'Bump to top — 3 days',
+        description: 'Your listing goes to the top of search results for 3 days.', amount: 25, days: 3),
+    PriceItem(code: 'boost_7d', kind: 'boost', title: 'Boost — 7 days',
+        description: 'Top of search results for 7 days with a "Promoted" mark.', amount: 60, days: 7),
+    PriceItem(code: 'featured_7d', kind: 'featured', title: 'Featured on home — 7 days',
+        description: 'Shown in the Featured row on the home page for 7 days.', amount: 120, days: 7, agentsOnly: true),
+    PriceItem(code: 'boost_pack5', kind: 'boost_pack', title: '5 boosts pack',
+        description: 'Five 7-day boosts to use any time. Save K50.', amount: 250, quantity: 5),
+    PriceItem(code: 'slot_1', kind: 'slots', title: '1 extra listing — 30 days',
+        description: 'Post one more listing above your free limit for 30 days.', amount: 30, days: 30),
+    PriceItem(code: 'slot_pack5', kind: 'slots', title: '5 extra listings — 30 days',
+        description: 'Post five more listings for 30 days. Save K30.', amount: 120, days: 30, quantity: 5),
+    PriceItem(code: 'plan_pro_m', kind: 'plan', title: 'Pro — 1 month',
+        description: '50 listings, 2 boosts every month, Pro badge, full statistics.', amount: 250, days: 30,
+        quantity: 2, plan: 'pro', agentsOnly: true),
+    PriceItem(code: 'plan_pro_y', kind: 'plan', title: 'Pro — 12 months',
+        description: 'Pro for a year — 2 months free. 24 boosts included.', amount: 2500, days: 365,
+        quantity: 24, plan: 'pro', agentsOnly: true),
+    PriceItem(code: 'plan_agency_m', kind: 'plan', title: 'Agency — 1 month',
+        description: '150 listings, 8 boosts every month, agency page.', amount: 750, days: 30, quantity: 8,
+        plan: 'agency', agentsOnly: true),
+    PriceItem(code: 'plan_agency_y', kind: 'plan', title: 'Agency — 12 months',
+        description: 'Agency for a year — 2 months free. 96 boosts included.', amount: 7500, days: 365,
+        quantity: 96, plan: 'agency', agentsOnly: true),
+  ];
+
+  @override
+  Future<List<PriceItem>> priceList({bool all = false}) async =>
+      all ? [..._prices] : _prices.where((p) => p.active).toList();
+
+  @override
+  Future<BillingInfo> myBilling() async {
+    _requireUser();
+    final b = _billing;
+    final planOn = b.planUntil != null && b.planUntil!.isAfter(DateTime.now());
+    return BillingInfo(
+      plan: planOn ? b.plan : null,
+      planUntil: planOn ? b.planUntil : null,
+      boostCredits: b.boostCredits,
+      extraSlots: b.extraSlots,
+      billingOn: _billingOn,
+      paymentInfo: _payInfo,
+    );
+  }
+
+  @override
+  Future<OrderInfo> createOrder(String itemCode, {String? propertyId, String? phone}) async {
+    await _lag();
+    final u = _requireUser();
+    if (!_billingOn && !u.isOwner) throw AppException('Paid features are not available yet.', code: 'BILLING_OFF');
+    final it = _prices.where((p) => p.code == itemCode && p.active).firstOrNull;
+    if (it == null) throw AppException('This option is not available now', code: 'BAD_ITEM');
+    if (it.agentsOnly && !(u.isAgent || u.isAdmin)) throw AppException('This is for agents', code: 'AGENTS_ONLY');
+    if ((it.kind == 'boost' || it.kind == 'featured') &&
+        !_props.any((p) => p.id == propertyId && p.ownerId == u.id && p.status == 'active')) {
+      throw AppException('You can boost only your own active listing', code: 'NOT_YOUR_LISTING');
+    }
+    final o = OrderInfo(
+      id: 'order-${_orders.length + 1}',
+      ref: 'Z-${(100000 + _orders.length * 7919) % 999999}'.toUpperCase(),
+      itemCode: it.code,
+      itemTitle: it.title,
+      propertyTitle: _props.where((p) => p.id == propertyId).firstOrNull?.title,
+      amount: it.amount,
+      currency: it.currency,
+      mode: 'manual',
+      payPhone: phone,
+      paymentInfo: _payInfo,
+      createdAt: DateTime.now(),
+      userName: u.fullName,
+      userEmail: u.email,
+    );
+    _orders.insert(0, o);
+    return o;
+  }
+
+  @override
+  Future<List<OrderInfo>> myOrders() async {
+    final u = _requireUser();
+    return _orders.where((o) => o.userEmail == u.email).toList();
+  }
+
+  @override
+  Future<void> cancelOrder(String orderId) async {
+    final i = _orders.indexWhere((o) => o.id == orderId && o.pending);
+    if (i >= 0) _orders[i] = _withStatus(_orders[i], 'cancelled');
+  }
+
+  OrderInfo _withStatus(OrderInfo o, String status, {bool fulfilled = false, String? note}) => OrderInfo(
+        id: o.id, ref: o.ref, itemCode: o.itemCode, itemTitle: o.itemTitle, propertyTitle: o.propertyTitle,
+        amount: o.amount, currency: o.currency, status: status, mode: o.mode, payPhone: o.payPhone,
+        paymentInfo: o.paymentInfo, createdAt: o.createdAt,
+        paidAt: status == 'paid' ? DateTime.now() : o.paidAt,
+        fulfilledAt: fulfilled ? DateTime.now() : o.fulfilledAt,
+        note: note ?? o.note, userName: o.userName, userEmail: o.userEmail,
+      );
+
+  void _boost(String propertyId) {
+    final i = _props.indexWhere((p) => p.id == propertyId);
+    if (i >= 0) _props[i] = _props[i].copyWith(isPromoted: true);
+  }
+
+  @override
+  Future<void> useBoostCredit(String propertyId) async {
+    final u = _requireUser();
+    if (!_props.any((p) => p.id == propertyId && p.ownerId == u.id && p.status == 'active')) {
+      throw AppException('You can boost only your own active listing', code: 'NOT_YOUR_LISTING');
+    }
+    if (_billing.boostCredits <= 0) throw AppException('You have no boosts left', code: 'NO_CREDITS');
+    _billing = BillingInfo(plan: _billing.plan, planUntil: _billing.planUntil,
+        boostCredits: _billing.boostCredits - 1, extraSlots: _billing.extraSlots);
+    _boost(propertyId);
+  }
+
+  @override
+  Future<BillingStatus> billingStatus() async {
+    final paid = _orders.where((o) => o.status == 'paid');
+    return BillingStatus(
+      enabled: _billingOn,
+      paymentInfo: _payInfo,
+      pending: _orders.where((o) => o.pending).length,
+      revenue30d: paid.fold(0, (a, o) => a + o.amount),
+      paid30d: paid.length,
+      activePlans: _billing.plan != null ? 1 : 0,
+    );
+  }
+
+  @override
+  Future<void> setBillingEnabled(bool on) async {
+    _billingOn = on;
+    Features.billing = on;
+    if (on) {
+      _promotionOn = true;
+      Features.promotion = true;
+    }
+  }
+
+  @override
+  Future<void> setPaymentInfo(String text) async => _payInfo = text.trim();
+
+  @override
+  Future<void> setPrice(String code, double amount, bool active) async {
+    _prices = [for (final p in _prices) p.code == code ? p.copyWith(amount: amount, active: active) : p];
+  }
+
+  @override
+  Future<List<OrderInfo>> adminOrders({String? status}) async =>
+      _orders.where((o) => status == null || o.status == status).toList();
+
+  @override
+  Future<void> adminMarkOrder(String orderId, String status, {String? note}) async {
+    final i = _orders.indexWhere((o) => o.id == orderId);
+    if (i < 0) throw AppException('Order not found');
+    final o = _orders[i];
+    if (status == 'paid') {
+      if (!o.pending) throw AppException('This order is not waiting for payment');
+      final it = _prices.firstWhere((p) => p.code == o.itemCode);
+      final b = _billing;
+      switch (it.kind) {
+        case 'boost' || 'featured':
+          final p = _props.where((p) => p.title == o.propertyTitle).firstOrNull;
+          if (p != null) _boost(p.id);
+        case 'boost_pack':
+          _billing = BillingInfo(plan: b.plan, planUntil: b.planUntil, boostCredits: b.boostCredits + it.quantity,
+              extraSlots: b.extraSlots);
+        case 'slots':
+          _billing = BillingInfo(plan: b.plan, planUntil: b.planUntil, boostCredits: b.boostCredits,
+              extraSlots: b.extraSlots + it.quantity);
+        case 'plan':
+          final from = b.plan == it.plan && b.planUntil != null && b.planUntil!.isAfter(DateTime.now())
+              ? b.planUntil!
+              : DateTime.now();
+          _billing = BillingInfo(plan: it.plan, planUntil: from.add(Duration(days: it.days)),
+              boostCredits: b.boostCredits + it.quantity, extraSlots: b.extraSlots);
+      }
+      _orders[i] = _withStatus(o, 'paid', fulfilled: true, note: note);
+    } else if (status == 'cancelled' || status == 'refunded') {
+      _orders[i] = _withStatus(o, status, note: note);
+    }
+  }
 
   @override
   Future<({String code, String number})> startWhatsAppVerification() async {

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../features.dart';
 import '../models/models.dart';
+import 'billing/billing_screen.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/app_feedback.dart';
@@ -303,6 +305,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
 
+              if (Features.billing) ...[
+                const _Section('Plans & payments'),
+                _Row(
+                  icon: ZI.crown,
+                  title: 'Plans & payments',
+                  subtitle: 'Your plan, boosts, extra listings and orders',
+                  trailing: 'Open',
+                  onTap: () => openPlans(context),
+                ),
+              ],
               // ---------- проверка ----------
               const _Section('Phone & verification'),
               _Row(

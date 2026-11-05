@@ -37,11 +37,28 @@ class AppState extends ChangeNotifier {
     final ads = (f['ads'] as bool?) ?? false;
     final wa = (f['wa_verify'] as String?)?.trim();
     final waNum = (wa == null || wa.isEmpty) ? null : wa;
-    if (promo == Features.promotion && ads == Features.ads && waNum == Features.waVerifyNumber) return;
+    final billing = (f['billing'] as bool?) ?? false;
+    if (promo == Features.promotion && ads == Features.ads && waNum == Features.waVerifyNumber &&
+        billing == Features.billing) {
+      return;
+    }
+    Features.billing = billing;
     Features.promotion = promo;
     Features.ads = ads;
     Features.waVerifyNumber = waNum;
     notifyListeners();
+  }
+
+  /// Можно ли покупать сейчас: платные функции включены и это сайт (не приложение из магазина)
+  bool get canBuy => Features.billing && kIsWeb;
+
+  /// Владелец: платные функции ON/OFF (вместе с ними включается показ бустов и Featured)
+  Future<void> setBilling(bool on) async {
+    await repo.setBillingEnabled(on);
+    Features.billing = on;
+    if (on) Features.promotion = true;
+    await loadFlags();
+    dataChanged();
   }
 
   Future<void> setAds(bool on) async {

@@ -1331,3 +1331,310 @@ class _AppFeedbackListState extends State<_AppFeedbackList> {
     );
   }
 }
+
+// ======================================================================
+// PAYMENTS — платные функции: выключатель, реквизиты, цены, заказы (только владелец)
+// ======================================================================
+class _PaymentsAdmin extends StatefulWidget {
+  const _PaymentsAdmin();
+
+  @override
+  State<_PaymentsAdmin> createState() => _PaymentsAdminState();
+}
+
+class _PaymentsAdminState extends State<_PaymentsAdmin> {
+  late Future<(BillingStatus, List<PriceItem>, List<OrderInfo>)> _data = _load();
+  String? _filter = 'pending';
+  bool _busy = false;
+
+  Future<(BillingStatus, List<PriceItem>, List<OrderInfo>)> _load() async {
+    final repo = context.read<AppState>().repo;
+    final r = await Future.wait([repo.billingStatus(), repo.priceList(all: true), repo.adminOrders(status: _filter)]);
+    return (r[0] as BillingStatus, r[1] as List<PriceItem>, r[2] as List<OrderInfo>);
+  }
+
+  void _reload() => setState(() => _data = _load());
+
+  Future<void> _run(Future<void> Function() fn, {String? done}) async {
+    setState(() => _busy = true);
+    try {
+      await fn();
+      if (done != null && mounted) showSnack(context, done);
+      _reload();
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggle(bool on, BillingStatus st) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(on ? 'Turn on paid features?' : 'Turn off paid features?'),
+        content: Text(on
+            ? 'People will see "Boost", "Plans & payments" and extra listings on the Zumi website. '
+                'Boosts and Featured listings will be shown in search and on the home page.\n\n'
+                '${st.paymentInfo.trim().isEmpty ? '⚠️ Add payment details below first — otherwise buyers will not know where to send money.\n\n' : ''}'
+                'Before turning on: tell agents 30 days in advance, and keep the free plan.'
+            : 'Nobody can buy anything new. Everything already paid keeps working until it ends.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(on ? 'Turn on' : 'Turn off')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _run(() => context.read<AppState>().setBilling(on), done: on ? 'Paid features are ON' : 'Paid features are OFF');
+  }
+
+  Future<void> _editInfo(String current) async {
+    final ctrl = TextEditingController(text: current);
+    final text = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Where people pay'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Shown to the buyer after the order. Example: "Airtel Money 097 123 4567 (Zumi Ltd) or '
+              'MTN MoMo 096 123 4567. Write the order code in the payment message."',
+              style: TextStyle(fontSize: 13, color: Zc.grey)),
+          const SizedBox(height: 10),
+          TextField(controller: ctrl, maxLines: 4, maxLength: 500),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (text == null || !mounted) return;
+    await _run(() => context.read<AppState>().repo.setPaymentInfo(text), done: 'Saved');
+  }
+
+  Future<void> _editPrice(PriceItem p) async {
+    final ctrl = TextEditingController(text: p.amount == p.amount.roundToDouble() ? '${p.amount.toInt()}' : '${p.amount}');
+    var active = p.active;
+    final res = await showDialog<(double, bool)>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: Text(p.title),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: ctrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(prefixText: 'K ', labelText: 'Price'),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Show to people'),
+              value: active,
+              onChanged: (v) => set(() => active = v),
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                final v = double.tryParse(ctrl.text.replaceAll(',', '').trim());
+                if (v == null || v < 0) return;
+                Navigator.pop(ctx, (v, active));
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (res == null || !mounted) return;
+    await _run(() => context.read<AppState>().repo.setPrice(p.code, res.$1, res.$2), done: 'Price saved');
+  }
+
+  Future<void> _mark(OrderInfo o, String status) async {
+    final note = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(switch (status) {
+          'paid' => 'Payment received — ${money(o.amount, o.currency)}?',
+          'refunded' => 'Mark as refunded?',
+          'retry' => 'Try to switch it on again?',
+          _ => 'Cancel this order?',
+        }),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${o.ref} · ${o.itemTitle ?? o.itemCode}\n${o.userName ?? ''} ${o.userEmail ?? ''}'
+              '${o.payPhone != null ? '\nPays from: ${o.payPhone}' : ''}'),
+          if (status == 'paid') ...[
+            const SizedBox(height: 8),
+            const Text('Check in your Mobile Money statement that this amount arrived with this code. '
+                'The purchase switches on at once.', style: TextStyle(fontSize: 12, color: Zc.grey)),
+          ],
+          if (status != 'retry')
+            TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (e.g. transaction ID)')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _run(() => context.read<AppState>().repo.adminMarkOrder(o.id, status, note: note.text.trim()),
+        done: 'Done');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<(BillingStatus, List<PriceItem>, List<OrderInfo>)>(
+      future: _data,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: Text('${snap.error}'));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final (st, prices, orders) = snap.data!;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 60),
+          children: [
+            // выключатель
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                  color: st.enabled ? Zc.greenTint : Zc.orangeSoft, borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+                Icon(ZI.crown, color: st.enabled ? Zc.green : Zc.orange),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Paid features ${st.enabled ? 'ON' : 'OFF'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      st.enabled
+                          ? 'People can buy boosts, Featured, extra listings and Pro / Agency on the website.'
+                          : 'Zumi is free. Nothing can be bought. Prices and payment details can be prepared below.',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ]),
+                ),
+                Switch(value: st.enabled, activeTrackColor: Zc.green, onChanged: _busy ? null : (v) => _toggle(v, st)),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            Wrap(spacing: 10, runSpacing: 10, children: [
+              _stat('Paid, 30 days', money(st.revenue30d)),
+              _stat('Orders paid', '${st.paid30d}'),
+              _stat('Waiting for payment', '${st.pending}'),
+              _stat('Active plans', '${st.activePlans}'),
+              if (st.problems > 0) _stat('Paid, not switched on', '${st.problems}', warn: true),
+            ]),
+            const SizedBox(height: 20),
+            // реквизиты
+            const Text('Payment details', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+              st.mode == 'auto'
+                  ? 'Automatic Mobile Money payments are connected.'
+                  : 'Manual payments: people send Mobile Money with the order code, you press "Paid". '
+                      'When the company is registered, we connect automatic payments — nothing else changes.',
+              style: const TextStyle(fontSize: 12, color: Zc.grey),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _busy ? null : () => _editInfo(st.paymentInfo),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(border: Border.all(color: Zc.lightGrey), borderRadius: BorderRadius.circular(12)),
+                child: Text(st.paymentInfo.trim().isEmpty ? 'Not set — tap to add' : st.paymentInfo,
+                    style: TextStyle(color: st.paymentInfo.trim().isEmpty ? Zc.orange : Zc.text)),
+              ),
+            ),
+            const SizedBox(height: 22),
+            // цены
+            const Text('Prices', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            const Text('Tap a line to change the price or hide it.', style: TextStyle(fontSize: 12, color: Zc.grey)),
+            const SizedBox(height: 6),
+            for (final p in prices)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                onTap: _busy ? null : () => _editPrice(p),
+                title: Text(p.title, style: TextStyle(color: p.active ? Zc.text : Zc.grey)),
+                subtitle: Text(p.active ? (p.agentsOnly ? 'Agents only' : 'Everyone') : 'Hidden'),
+                trailing: Text(p.priceLabel,
+                    style: TextStyle(fontWeight: FontWeight.w700, color: p.active ? Zc.green : Zc.grey)),
+              ),
+            const SizedBox(height: 22),
+            // заказы
+            const Text('Orders', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, children: [
+              for (final (k, l) in const [('pending', 'Waiting'), ('paid', 'Paid'), (null, 'All')])
+                ZChip(label: l, selected: _filter == k, onTap: () {
+                  _filter = k;
+                  _reload();
+                }),
+            ]),
+            const SizedBox(height: 10),
+            if (orders.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('No orders here yet.', style: TextStyle(color: Zc.grey)),
+              ),
+            for (final o in orders)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: o.problem ? Zc.orange : Zc.lightGrey),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text('${o.ref} · ${o.itemTitle ?? o.itemCode}',
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+                    Text(money(o.amount, o.currency), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ]),
+                  Text('${o.userName ?? '—'} · ${o.userEmail ?? ''}${o.payPhone != null ? ' · ${o.payPhone}' : ''}',
+                      style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  if (o.propertyTitle != null) Text(o.propertyTitle!, style: const TextStyle(fontSize: 12, color: Zc.grey)),
+                  Text(
+                    '${o.statusLabel}${o.createdAt != null ? ' · ${o.createdAt!.day}.${o.createdAt!.month} ${o.createdAt!.hour.toString().padLeft(2, '0')}:${o.createdAt!.minute.toString().padLeft(2, '0')}' : ''}'
+                    '${o.note != null ? ' · ${o.note}' : ''}',
+                    style: TextStyle(fontSize: 12, color: o.problem ? Zc.orange : Zc.text),
+                  ),
+                  if (o.fulfilError != null)
+                    Text('Problem: ${o.fulfilError}', style: const TextStyle(fontSize: 12, color: Zc.orange)),
+                  Wrap(spacing: 4, children: [
+                    if (o.pending) ...[
+                      TextButton(onPressed: _busy ? null : () => _mark(o, 'paid'), child: const Text('Paid')),
+                      TextButton(onPressed: _busy ? null : () => _mark(o, 'cancelled'),
+                          child: const Text('Cancel', style: TextStyle(color: Zc.grey))),
+                    ],
+                    if (o.problem)
+                      TextButton(onPressed: _busy ? null : () => _mark(o, 'retry'), child: const Text('Try again')),
+                    if (o.status == 'paid')
+                      TextButton(onPressed: _busy ? null : () => _mark(o, 'refunded'),
+                          child: const Text('Refunded', style: TextStyle(color: Zc.grey))),
+                  ]),
+                ]),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _stat(String label, String value, {bool warn = false}) => Container(
+        width: 150,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: warn ? Zc.orangeSoft : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Zc.lightGrey),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Zc.grey)),
+        ]),
+      );
+}

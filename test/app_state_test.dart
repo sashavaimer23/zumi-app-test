@@ -105,4 +105,30 @@ void main() {
       throwsA(isA<AppException>()),
     );
   });
+
+  test('paid features: off by default, then order → owner confirms → plan and boosts', () async {
+    final repo = DemoRepository();
+    await repo.signIn(email: 'agent@zumi.zm', password: 'secret1');
+    expect((await repo.appFlags())['billing'], isFalse);
+    expect(() => repo.createOrder('plan_pro_m'), throwsA(isA<AppException>()));
+    await repo.setBillingEnabled(true);
+    expect((await repo.appFlags())['billing'], isTrue);
+    expect((await repo.appFlags())['promotion'], isTrue);
+    final o = await repo.createOrder('plan_pro_m', phone: '0971234567');
+    expect(o.pending, isTrue);
+    expect(o.ref, startsWith('Z-'));
+    expect((await repo.myBilling()).plan, isNull); // до оплаты ничего не включено
+    await repo.adminMarkOrder(o.id, 'paid', note: 'Airtel 123');
+    final b = await repo.myBilling();
+    expect(b.plan, 'pro');
+    expect(b.boostCredits, 2);
+    expect((await repo.myQuota()).allowed, greaterThanOrEqualTo(50));
+    expect((await repo.billingStatus()).revenue30d, 250);
+  });
+
+  test('money format', () {
+    expect(money(60), 'K60');
+    expect(money(2500), 'K2,500');
+    expect(money(12.5), 'K12.50');
+  });
 }

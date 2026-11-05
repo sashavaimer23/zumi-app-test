@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/launch_banner.dart';
 import '../widgets/ads.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
@@ -116,6 +117,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            // «Zumi бесплатный на период запуска» — только вошедшим (тем, кто размещает)
+            if (_isPlainHome && context.watch<AppState>().user != null && LaunchBanner.shows(context))
+              SliverToBoxAdapter(
+                child: LaunchBanner(
+                  compact: true,
+                  margin: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,
+                      isDesktop(context) ? desktopSide(context) : 16, 10),
                 ),
               ),
             // реклама: большой баннер вверху главной

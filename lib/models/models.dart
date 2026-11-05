@@ -2095,3 +2095,213 @@ class AppFeedbackReport {
         ],
       );
 }
+
+// ======================================================================
+// ПЛАТНЫЕ ФУНКЦИИ (028): прайс-лист, заказы, тариф
+// ======================================================================
+
+/// Строка прайс-листа: буст, Featured, пакет бустов, доп. места, тариф
+class PriceItem {
+  final String code;
+  final String kind; // boost | featured | boost_pack | slots | plan
+  final String title;
+  final String description;
+  final double amount;
+  final String currency;
+  final int days;
+  final int quantity;
+  final String? plan; // pro | agency
+  final bool agentsOnly;
+  final bool active;
+
+  const PriceItem({
+    required this.code,
+    required this.kind,
+    required this.title,
+    this.description = '',
+    required this.amount,
+    this.currency = 'ZMW',
+    this.days = 0,
+    this.quantity = 1,
+    this.plan,
+    this.agentsOnly = false,
+    this.active = true,
+  });
+
+  factory PriceItem.fromMap(Map<String, dynamic> m) => PriceItem(
+        code: m['code'] as String,
+        kind: m['kind'] as String,
+        title: m['title'] as String,
+        description: (m['description'] as String?) ?? '',
+        amount: (m['amount'] as num).toDouble(),
+        currency: (m['currency'] as String?) ?? 'ZMW',
+        days: (m['days'] as num?)?.toInt() ?? 0,
+        quantity: (m['quantity'] as num?)?.toInt() ?? 1,
+        plan: m['plan'] as String?,
+        agentsOnly: (m['agents_only'] as bool?) ?? false,
+        active: (m['active'] as bool?) ?? true,
+      );
+
+  String get priceLabel => money(amount, currency);
+
+  PriceItem copyWith({double? amount, bool? active}) => PriceItem(
+        code: code, kind: kind, title: title, description: description, amount: amount ?? this.amount,
+        currency: currency, days: days, quantity: quantity, plan: plan, agentsOnly: agentsOnly,
+        active: active ?? this.active,
+      );
+}
+
+/// «K60», «K2,500», «K12.50»
+String money(double amount, [String currency = 'ZMW']) {
+  final whole = amount == amount.roundToDouble();
+  final s = whole ? amount.toInt().toString() : amount.toStringAsFixed(2);
+  final parts = s.split('.');
+  final grouped = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+  final prefix = currency == 'ZMW' ? 'K' : '$currency ';
+  return '$prefix$grouped${parts.length > 1 ? '.${parts[1]}' : ''}';
+}
+
+/// Заказ: ждёт оплаты → оплачен → услуга включена
+class OrderInfo {
+  final String id;
+  final String ref; // код для перевода: Z-4F7A2C
+  final String itemCode;
+  final String? itemTitle;
+  final String? propertyTitle;
+  final double amount;
+  final String currency;
+  final String status; // pending | paid | failed | cancelled | refunded
+  final String? mode; // manual | auto | провайдер
+  final String? payPhone;
+  final String? paymentInfo; // куда платить вручную
+  final DateTime? createdAt;
+  final DateTime? paidAt;
+  final DateTime? fulfilledAt;
+  final String? fulfilError;
+  final String? note;
+  final String? userName; // для кабинета
+  final String? userEmail;
+
+  const OrderInfo({
+    required this.id,
+    required this.ref,
+    required this.itemCode,
+    this.itemTitle,
+    this.propertyTitle,
+    required this.amount,
+    this.currency = 'ZMW',
+    this.status = 'pending',
+    this.mode,
+    this.payPhone,
+    this.paymentInfo,
+    this.createdAt,
+    this.paidAt,
+    this.fulfilledAt,
+    this.fulfilError,
+    this.note,
+    this.userName,
+    this.userEmail,
+  });
+
+  factory OrderInfo.fromMap(Map<String, dynamic> m) {
+    DateTime? d(String k) => DateTime.tryParse((m[k] as String?) ?? '');
+    final pl = m['price_list'];
+    return OrderInfo(
+      id: m['id'] as String,
+      ref: m['ref'] as String,
+      itemCode: (m['item_code'] as String?) ?? '',
+      itemTitle: (m['item_title'] as String?) ?? (pl is Map ? pl['title'] as String? : null),
+      propertyTitle: m['property_title'] as String?,
+      amount: (m['amount'] as num).toDouble(),
+      currency: (m['currency'] as String?) ?? 'ZMW',
+      status: (m['status'] as String?) ?? 'pending',
+      mode: (m['mode'] as String?) ?? m['provider'] as String?,
+      payPhone: m['pay_phone'] as String?,
+      paymentInfo: m['payment_info'] as String?,
+      createdAt: d('created_at'),
+      paidAt: d('paid_at'),
+      fulfilledAt: d('fulfilled_at'),
+      fulfilError: m['fulfil_error'] as String?,
+      note: m['note'] as String?,
+      userName: m['user_name'] as String?,
+      userEmail: m['user_email'] as String?,
+    );
+  }
+
+  bool get pending => status == 'pending';
+  bool get done => status == 'paid' && fulfilledAt != null;
+  bool get problem => status == 'paid' && fulfilledAt == null;
+
+  String get statusLabel => switch (status) {
+        'pending' => 'Waiting for payment',
+        'paid' => fulfilledAt != null ? 'Paid · active' : 'Paid · being switched on',
+        'failed' => 'Payment failed',
+        'cancelled' => 'Cancelled',
+        'refunded' => 'Refunded',
+        _ => status,
+      };
+}
+
+/// Что есть у человека: тариф, бусты в запасе, доп. места
+class BillingInfo {
+  final String? plan; // pro | agency (только действующий)
+  final DateTime? planUntil;
+  final int boostCredits;
+  final int extraSlots;
+  final bool billingOn;
+  final String paymentInfo;
+
+  const BillingInfo({
+    this.plan,
+    this.planUntil,
+    this.boostCredits = 0,
+    this.extraSlots = 0,
+    this.billingOn = false,
+    this.paymentInfo = '',
+  });
+
+  factory BillingInfo.fromMap(Map<String, dynamic> m) => BillingInfo(
+        plan: m['plan'] as String?,
+        planUntil: DateTime.tryParse((m['plan_until'] as String?) ?? ''),
+        boostCredits: (m['boost_credits'] as num?)?.toInt() ?? 0,
+        extraSlots: (m['extra_slots'] as num?)?.toInt() ?? 0,
+        billingOn: (m['billing'] as bool?) ?? false,
+        paymentInfo: (m['payment_info'] as String?) ?? '',
+      );
+
+  String get planLabel => switch (plan) { 'pro' => 'Pro', 'agency' => 'Agency', _ => 'Free' };
+}
+
+/// Кабинет владельца → Payments
+class BillingStatus {
+  final bool enabled;
+  final String mode;
+  final String paymentInfo;
+  final int pending;
+  final int problems;
+  final double revenue30d;
+  final int paid30d;
+  final int activePlans;
+
+  const BillingStatus({
+    this.enabled = false,
+    this.mode = 'manual',
+    this.paymentInfo = '',
+    this.pending = 0,
+    this.problems = 0,
+    this.revenue30d = 0,
+    this.paid30d = 0,
+    this.activePlans = 0,
+  });
+
+  factory BillingStatus.fromMap(Map<String, dynamic> m) => BillingStatus(
+        enabled: (m['enabled'] as bool?) ?? false,
+        mode: (m['mode'] as String?) ?? 'manual',
+        paymentInfo: (m['payment_info'] as String?) ?? '',
+        pending: (m['pending'] as num?)?.toInt() ?? 0,
+        problems: (m['problems'] as num?)?.toInt() ?? 0,
+        revenue30d: (m['revenue_30d'] as num?)?.toDouble() ?? 0,
+        paid30d: (m['paid_30d'] as num?)?.toInt() ?? 0,
+        activePlans: (m['active_plans'] as num?)?.toInt() ?? 0,
+      );
+}

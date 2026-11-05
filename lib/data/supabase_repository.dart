@@ -132,6 +132,21 @@ class SupabaseRepository implements Repository {
       if (e.message.contains('PHONE_REQUIRED')) {
         throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
       }
+      if (e.message.contains('BILLING_OFF')) {
+        throw AppException('Paid features are not available yet.', code: 'BILLING_OFF');
+      }
+      if (e.message.contains('USE_BOOST')) {
+        throw AppException('Use "Boost" on your listing to promote it.', code: 'USE_BOOST');
+      }
+      if (e.message.contains('NO_CREDITS')) throw AppException('You have no boosts left', code: 'NO_CREDITS');
+      if (e.message.contains('TOO_MANY_ORDERS')) {
+        throw AppException('You have 5 unpaid orders. Pay or cancel one first.', code: 'TOO_MANY_ORDERS');
+      }
+      if (e.message.contains('BAD_ITEM')) throw AppException('This option is not available now', code: 'BAD_ITEM');
+      if (e.message.contains('NOT_YOUR_LISTING')) {
+        throw AppException('You can boost only your own active listing', code: 'NOT_YOUR_LISTING');
+      }
+      if (e.message.contains('AGENTS_ONLY')) throw AppException('This is for agents', code: 'AGENTS_ONLY');
       if (e.message.contains('FINISH_SIGNUP')) {
         throw AppException('Please finish setting up your account first.', code: 'FINISH_SIGNUP');
       }
@@ -824,6 +839,86 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> answerStillAvailable(String propertyId, bool available) => _guard(() async {
         await _db.rpc('answer_still_available', params: {'pid': propertyId, 'p_available': available});
+      });
+
+  // ---------------- платные функции ----------------
+  @override
+  Future<List<PriceItem>> priceList({bool all = false}) => _guard(() async {
+        var q = _db.from('price_list').select();
+        if (!all) q = q.eq('active', true);
+        final rows = await q.order('sort');
+        return rows.map(PriceItem.fromMap).toList();
+      });
+
+  @override
+  Future<BillingInfo> myBilling() => _guard(() async {
+        _requireUserId();
+        final r = await _db.rpc('my_billing');
+        return r == null ? const BillingInfo() : BillingInfo.fromMap(Map<String, dynamic>.from(r as Map));
+      });
+
+  @override
+  Future<OrderInfo> createOrder(String itemCode, {String? propertyId, String? phone}) => _guard(() async {
+        _requireUserId();
+        final r = Map<String, dynamic>.from(await _db.rpc('create_order', params: {
+          'p_item': itemCode,
+          'p_property': propertyId,
+          'p_phone': (phone ?? '').trim().isEmpty ? null : phone!.trim(),
+        }) as Map);
+        return OrderInfo.fromMap({...r, 'item_code': itemCode});
+      });
+
+  @override
+  Future<List<OrderInfo>> myOrders() => _guard(() async {
+        final uid = _requireUserId();
+        final rows = await _db
+            .from('orders')
+            .select('*, price_list(title)')
+            .eq('user_id', uid)
+            .order('created_at', ascending: false)
+            .limit(50);
+        return rows.map(OrderInfo.fromMap).toList();
+      });
+
+  @override
+  Future<void> cancelOrder(String orderId) => _guard(() async {
+        await _db.rpc('cancel_order', params: {'p_order': orderId});
+      });
+
+  @override
+  Future<void> useBoostCredit(String propertyId) => _guard(() async {
+        await _db.rpc('use_boost_credit', params: {'p_property': propertyId});
+      });
+
+  @override
+  Future<BillingStatus> billingStatus() => _guard(() async {
+        return BillingStatus.fromMap(Map<String, dynamic>.from(await _db.rpc('admin_billing_status') as Map));
+      });
+
+  @override
+  Future<void> setBillingEnabled(bool on) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'billing_enabled', 'p_value': on ? 'true' : 'false'});
+      });
+
+  @override
+  Future<void> setPaymentInfo(String text) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'manual_payment_info', 'p_value': text.trim()});
+      });
+
+  @override
+  Future<void> setPrice(String code, double amount, bool active) => _guard(() async {
+        await _db.rpc('admin_set_price', params: {'p_code': code, 'p_amount': amount, 'p_active': active});
+      });
+
+  @override
+  Future<List<OrderInfo>> adminOrders({String? status}) => _guard(() async {
+        final rows = await _db.rpc('admin_orders', params: {'p_status': status, 'p_limit': 200}) as List;
+        return rows.map((r) => OrderInfo.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<void> adminMarkOrder(String orderId, String status, {String? note}) => _guard(() async {
+        await _db.rpc('admin_mark_order', params: {'p_order': orderId, 'p_status': status, 'p_note': note});
       });
 
   @override

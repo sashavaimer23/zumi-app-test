@@ -176,7 +176,7 @@ class _GetVerifiedScreenState extends State<GetVerifiedScreen> {
                         ? 'The badges are shown on all your listings.'
                         : u.isAgent
                             ? 'Confirm your phone (needed to publish) and add your ZIEA number — licensed agents '
-                                'can post up to 10 listings instead of 5. No documents to upload.'
+                                'can post up to 25 listings instead of 15. No documents to upload.'
                             : 'Confirm your phone once with a code — about 1 minute. '
                                 'You need it to publish a listing, and your listings show "Number checked".',
                     style: const TextStyle(fontSize: 14, color: Zc.grey, height: 1.4),

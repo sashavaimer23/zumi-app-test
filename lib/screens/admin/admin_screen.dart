@@ -30,12 +30,12 @@ part 'admin_owner.dart';
 
 enum _Section {
   inbox, accounts, listings, licences, reports, phones, support, reviews, help, // модератор
-  ads, adStats, stats, dev, feedback, team, log, // владелец
+  ads, payments, adStats, stats, dev, feedback, team, log, // владелец
 }
 
 /// Только для владельца Zumi (сервер тоже проверяет)
 const _ownerOnly = {
-  _Section.ads, _Section.adStats, _Section.stats, _Section.dev, _Section.feedback, _Section.team, _Section.log,
+  _Section.ads, _Section.payments, _Section.adStats, _Section.stats, _Section.dev, _Section.feedback, _Section.team, _Section.log,
 };
 
 extension on _Section {
@@ -51,6 +51,7 @@ extension on _Section {
         _Section.listings => 'Listings to check',
         _Section.phones => 'Phone views',
         _Section.ads => 'Ads',
+        _Section.payments => 'Payments',
         _Section.licences => 'Licences',
         _Section.reports => 'Reports',
         _Section.support => 'Support',
@@ -69,6 +70,7 @@ extension on _Section {
         _Section.listings => ZI.house,
         _Section.phones => ZI.phone,
         _Section.ads => ZI.bolt,
+        _Section.payments => ZI.crown,
         _Section.licences => ZI.badge,
         _Section.reports => ZI.flag,
         _Section.support => ZI.chat,
@@ -126,6 +128,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.reviews => _stats.reviews,
         _Section.log => 0,
         _Section.feedback => 0,
+        _Section.payments => 0,
       };
 
   Widget _body() => switch (_section) {
@@ -134,6 +137,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _Section.adStats => const _AdStats(),
         _Section.dev => const _DevStats(),
         _Section.feedback => const _Feedback(),
+        _Section.payments => const _PaymentsAdmin(),
         _Section.help => const _HelpAdmin(),
         _Section.team => const _Team(),
         _Section.accounts => _Accounts(onChanged: _refreshStats, onOpen: _go),

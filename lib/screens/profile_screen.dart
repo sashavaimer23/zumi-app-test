@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 
 import '../config.dart';
@@ -8,6 +7,8 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/availability.dart';
+import '../widgets/launch_banner.dart';
+import 'billing/billing_screen.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
@@ -178,9 +179,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _AgentPageCard(user: user, listings: listings, rating: rating),
                       const SizedBox(height: 14),
                     ],
+                    // «Zumi бесплатный на период запуска» (пока платные функции выключены)
+                    const LaunchBanner(margin: EdgeInsets.only(bottom: 14)),
                     _IdentityCard(isAgent: user.isAgent),
                     const SizedBox(height: 14),
                     _QuotaCard(quota: quota),
+                    if (Features.billing) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => openPlans(context),
+                        icon: const Icon(ZI.crown, color: Zc.green),
+                        label: const Text('Plans & payments', style: TextStyle(color: Zc.green)),
+                      ),
+                    ],
                     if (toAnswer > 0) ...[
                       const SizedBox(height: 14),
                       Container(
@@ -340,22 +351,22 @@ class _QuotaCard extends StatelessWidget {
           Expanded(
             child: Text(
               quota.reached
-                  ? (kIsWeb && Features.promotion
-                      ? 'Limit reached — buy an extra slot to post more.'
+                  ? (context.watch<AppState>().canBuy
+                      ? 'Limit reached — get extra listings or a plan to post more.'
                       : 'Limit reached — hide a listing or mark it as rented / sold to post a new one.')
                   : '${quota.left} free left',
               style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
           ),
           // покупка — только на сайте: в приложениях Apple и Google это запрещают
-          if (kIsWeb && Features.promotion) // платные функции — пока выключены владельцем
+          if (context.watch<AppState>().canBuy) // платные функции включены владельцем
             TextButton(
               style: TextButton.styleFrom(backgroundColor: Zc.orange, foregroundColor: Colors.white),
-              onPressed: () => showSnack(context, 'Payments are coming soon (Mobile Money and cards).'),
-              child: const Text('Buy more'),
+              onPressed: () => openPlans(context),
+              child: const Text('Get more'),
             ),
         ]),
-        // агент без проверенной лицензии: с лицензией можно 10 объявлений
+        // агент без проверенной лицензии: с лицензией можно 25 объявлений
         if (_unlicensedAgent(context)) ...[
           const SizedBox(height: 12),
           InkWell(
@@ -365,7 +376,7 @@ class _QuotaCard extends StatelessWidget {
               SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Licensed agents can post up to 10 listings. Add your ZIEA number →',
+                  'Licensed agents can post up to 25 listings. Add your ZIEA number →',
                   style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline),
                 ),
               ),
@@ -620,6 +631,9 @@ class _MyListingTile extends StatelessWidget {
                       link: AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/?listing=${p.id}',
                     );
                     return;
+                  case 'boost':
+                    await showBoostSheet(context, p);
+                    return;
                   case 'promote':
                     if (app.user?.isAgent ?? false) {
                       await openPromotionScreen(context);
@@ -660,7 +674,9 @@ class _MyListingTile extends StatelessWidget {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               if (active) const PopupMenuItem(value: 'share', child: Text('Share')),
-              if (active && app.promotionOn) const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
+              if (active && Features.billing) const PopupMenuItem(value: 'boost', child: Text('Boost — get more views')),
+              if (active && app.promotionOn && !Features.billing)
+                const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
               if (active) const PopupMenuItem(value: 'confirm', child: Text('Confirm still available')),
               if (active) const PopupMenuItem(value: 'hide', child: Text('Hide from search')),
               if (active)
