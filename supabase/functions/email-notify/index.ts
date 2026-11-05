@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       p_user: url.searchParams.get("u"), p_token: url.searchParams.get("t") ?? "",
     });
     // Supabase не показывает HTML-страницы из функций — отправляем человека на сайт, там сообщение
-    const site = (await setting("site_url")) || "https://sashavaimer23.github.io/zumi-app-test";
+    const site = (await setting("site_url")) || "https://zumihome.com";
     return Response.redirect(`${site}/?email_alerts=${data === true ? "off" : "bad"}`, 302);
   }
 
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
   }
   const items = (data ?? []) as Item[];
   if (items.length === 0) return new Response("nothing to send");
-  const site = (await setting("site_url")) || "https://sashavaimer23.github.io/zumi-app-test";
+  const site = (await setting("site_url")) || "https://zumihome.com";
   const res = await sendAll(items, site);
   console.log("email-notify", res);
   return new Response(JSON.stringify(res), { headers: { "Content-Type": "application/json" } });
