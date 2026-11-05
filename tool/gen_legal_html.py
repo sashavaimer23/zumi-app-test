@@ -100,7 +100,7 @@ print('legal pages:', len(sections('_terms')), 'terms sections,', len(sections('
 
 # страница для Facebook / Google: как удалить аккаунт и данные
 (web / 'delete-account.html').write_text(page('delete-account', 'Delete your account and data', [
-    ('In the app', '• Open Zumi and sign in.\n• Go to Profile → Settings → Delete account.\n'
+    ('In the app', '• Open Zumi and sign in.\n• Go to Profile → Settings → Delete my account.\n'
                    '• Confirm. Your profile, listings, photos and chats are deleted within 30 days.'),
     ('By email', 'If you cannot sign in, write to support@zumihome.com from the email of your account and ask us to '
                  'delete it. We answer within 7 days.'),
