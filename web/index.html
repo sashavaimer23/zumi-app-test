@@ -66,6 +66,8 @@
     #zumi-loading .slow { opacity: 0; font-weight: 400; font-size: 13px; text-align: center; max-width: 260px;
       transition: opacity .4s; }
     #zumi-loading.is-slow .slow { opacity: .8; }
+    #zumi-loading .legal { position: absolute; bottom: 18px; font-size: 12px; opacity: .55; }
+    #zumi-loading .legal a { color: inherit; }
     @keyframes zs { to { transform: rotate(360deg); } }
   </style>
   <link rel="manifest" href="manifest.json">
@@ -75,6 +77,7 @@
     <div class="logo">ZUMI</div>
     <div class="spin"></div>
     <div class="slow">Slow connection — Zumi is still loading. The next visit will be faster.</div>
+    <nav class="legal"><a href="terms.html">Terms of Service</a> · <a href="privacy.html">Privacy Policy</a></nav>
   </div>
   <script>
     setTimeout(function () { var l = document.getElementById('zumi-loading'); if (l) l.className = 'is-slow'; }, 6000);
