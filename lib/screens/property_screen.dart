@@ -40,7 +40,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
   @override
   void initState() {
     super.initState();
-    _profileId = p.ownerId ?? (context.read<AppState>().repo.isDemo ? reviewTargetFor(p) : null);
+    _profileId = reviewTargetFor(p);
     WidgetsBinding.instance.addPostFrameCallback((_) => context.read<AppState>().markViewed(p.id));
   }
 
@@ -317,15 +317,32 @@ class _PropertyScreenState extends State<PropertyScreen> {
                             : 'Property owner',
                         style: const TextStyle(color: Zc.grey),
                       ),
-                      if (_profileId != null)
-                        Text(p.listedBy == 'agent' ? 'See all listings and reviews' : 'View profile',
-                            style: const TextStyle(color: Zc.orange, fontSize: 13)),
+                      if (_profileId != null && p.listedBy != 'agent')
+                        const Text('View profile', style: TextStyle(color: Zc.orange, fontSize: 13)),
                     ]),
                   ),
                   if (_profileId != null) const Icon(ZI.caretRight, color: Zc.grey, size: 18),
                 ]),
               ),
             ),
+            if (_profileId != null && p.listedBy == 'agent') ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Zc.green,
+                    side: const BorderSide(color: Zc.green),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  onPressed: _openAuthor,
+                  icon: const Icon(ZI.house, size: 18),
+                  label: const Text("See the agent's full catalogue",
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
             if (reviewTargetFor(p) != null) ...[
               const SizedBox(height: 28),
               ReviewsSection(targetId: reviewTargetFor(p)!, name: p.contactName ?? 'the author', propertyId: p.id),

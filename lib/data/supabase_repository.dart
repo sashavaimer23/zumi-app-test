@@ -767,13 +767,47 @@ class SupabaseRepository implements Repository {
 
   @override
   Future<PublicProfile?> publicProfile(String userId) => _guard(() async {
+        if (userId.startsWith('demo:')) return _demoAuthor(userId);
         final res = await _db.rpc('public_profile', params: {'uid': userId}) as List;
         if (res.isEmpty) return null;
         return PublicProfile.fromMap(Map<String, dynamic>.from(res.first as Map));
       });
 
+  /// Демо-объявления без автора: «каталог» собираем по имени в объявлении
+  Future<PublicProfile?> _demoAuthor(String userId) async {
+    final name = userId.substring(5);
+    final rows = await _db
+        .from('property_feed')
+        .select('listed_by, created_at')
+        .eq('is_demo', true)
+        .eq('contact_name', name)
+        .eq('status', 'active');
+    if (rows.isEmpty) return null;
+    final agent = rows.any((r) => r['listed_by'] == 'agent');
+    return PublicProfile(
+      id: userId,
+      role: agent ? 'agent' : 'owner',
+      fullName: name,
+      agencyName: agent ? name : null,
+      phoneVerified: true,
+      memberSince: rows.map((r) => DateTime.parse(r['created_at'] as String)).reduce((a, b) => a.isBefore(b) ? a : b),
+      activeListings: rows.length,
+    );
+  }
+
   @override
   Future<List<Property>> listingsBy(String userId) => _guard(() async {
+        if (userId.startsWith('demo:')) {
+          final rows = await _db
+              .from('property_feed')
+              .select()
+              .eq('is_demo', true)
+              .eq('contact_name', userId.substring(5))
+              .eq('status', 'active')
+              .order('created_at', ascending: false)
+              .limit(60);
+          return rows.map(Property.fromMap).toList();
+        }
         final rows = await _db
             .from('property_feed')
             .select()
