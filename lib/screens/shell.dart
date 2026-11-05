@@ -131,7 +131,17 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     final listing = q['listing'];
     final person = q['agent'] ?? q['profile'];
     final open = q['open']; // из писем: chats | listings | support
+    final alerts = q['email_alerts']; // ссылка Unsubscribe из письма
     try {
+      if (alerts != null) {
+        showSnack(
+            context,
+            alerts == 'off'
+                ? 'Email alerts are off. You can turn them back on in Settings.'
+                : 'This link is not valid. You can turn email alerts off in Settings.');
+        if (alerts == 'off') await context.read<AppState>().repo.refreshUser();
+        return;
+      }
       if (open == 'chats' || open == 'listings') {
         go(open == 'chats' ? 3 : 4);
         return;

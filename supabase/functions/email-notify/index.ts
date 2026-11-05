@@ -147,13 +147,6 @@ async function sendAll(items: Item[], site: string) {
   return { sent, failed };
 }
 
-function page(title: string, msg: string) {
-  return new Response(
-    `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Arial;background:#F6F1EA;padding:40px 16px;text-align:center;color:#1F2A26"><h2 style="color:#2F5248">${title}</h2><p>${msg}</p></body>`,
-    { headers: { "Content-Type": "text/html; charset=utf-8" } },
-  );
-}
-
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
@@ -162,9 +155,9 @@ Deno.serve(async (req) => {
     const { data } = await db.rpc("email_unsubscribe", {
       p_user: url.searchParams.get("u"), p_token: url.searchParams.get("t") ?? "",
     });
-    return data === true
-      ? page("You are unsubscribed", "Zumi will not send you email alerts anymore. You can turn them back on in Settings.")
-      : page("Link is not valid", "Please turn email alerts off in Zumi → Settings.");
+    // Supabase не показывает HTML-страницы из функций — отправляем человека на сайт, там сообщение
+    const site = (await setting("site_url")) || "https://sashavaimer23.github.io/zumi-app-test";
+    return Response.redirect(`${site}/?email_alerts=${data === true ? "off" : "bad"}`, 302);
   }
 
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
