@@ -123,7 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isPlainHome && context.watch<AppState>().user != null && LaunchBanner.shows(context))
               SliverToBoxAdapter(
                 child: LaunchBanner(
-                  compact: true,
                   margin: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,
                       isDesktop(context) ? desktopSide(context) : 16, 10),
                 ),

@@ -9,9 +9,8 @@ import 'zicons.dart';
 /// «Zumi is free during launch» — пока платные функции выключены.
 /// Тон: не «скоро будет платно», а «вы рано — и это выгодно». Можно закрыть (запоминается).
 class LaunchBanner extends StatelessWidget {
-  const LaunchBanner({super.key, this.margin = EdgeInsets.zero, this.compact = false});
+  const LaunchBanner({super.key, this.margin = EdgeInsets.zero});
   final EdgeInsets margin;
-  final bool compact;
 
   static const _hint = 'launch_banner_v1';
 
@@ -29,11 +28,7 @@ class LaunchBanner extends StatelessWidget {
       padding: margin,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFFFF1E6), Color(0xFFEAF5EE)]),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF6D8BF)),
-        ),
+        decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(16)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 38,
@@ -45,23 +40,16 @@ class LaunchBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Zumi is free during launch',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Zc.text)),
+              Text(agent ? 'Free for agents during launch' : 'Zumi is free',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Zc.text)),
               const SizedBox(height: 4),
               Text(
                 agent
-                    ? 'Post up to 25 listings, chat and get calls — all free. You are early, and that pays off: '
-                        'agents who join now get founding-member perks when we add tools to grow your business — '
-                        'boosts, featured spots and Pro features.'
-                    : 'Post, search, chat and call — all free. We are just getting started: soon there will be '
-                        'more ways to get your listing seen. Tell your friends and agents you know!',
+                    ? 'Post up to 25 listings at no cost. Basic listings will always stay free, and agents who '
+                        'join early will get special offers when we add tools to promote listings.'
+                    : 'Posting listings, chats and calls cost nothing. Basic listings will always stay free.',
                 style: const TextStyle(fontSize: 13, color: Zc.text, height: 1.4),
               ),
-              if (!compact) ...[
-                const SizedBox(height: 6),
-                const Text('Basic listings stay free — always.',
-                    style: TextStyle(fontSize: 12, color: Zc.green, fontWeight: FontWeight.w600)),
-              ],
             ]),
           ),
           IconButton(
