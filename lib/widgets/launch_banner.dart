@@ -40,14 +40,17 @@ class LaunchBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(agent ? 'Free for agents during launch' : 'Zumi is free',
+              Text(agent ? 'Free for agents during launch' : 'Zumi is free for you',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Zc.text)),
               const SizedBox(height: 4),
               Text(
                 agent
-                    ? 'Post up to 25 listings at no cost. Basic listings will always stay free, and agents who '
-                        'join early will get special offers when we add tools to promote listings.'
-                    : 'Posting listings, chats and calls cost nothing. Basic listings will always stay free.',
+                    ? 'Post up to 25 listings at no cost. Later we will add optional tools to lift your listings '
+                        'to the top and win more clients — and agents who join early will get special offers. '
+                        'Basic listings will always stay free.'
+                    : 'Post your property, chat and take calls — all at no cost. Later we will add optional extras '
+                        'to help your listing reach the top and get seen faster. Your basic listings will always '
+                        'stay free.',
                 style: const TextStyle(fontSize: 13, color: Zc.text, height: 1.4),
               ),
             ]),
