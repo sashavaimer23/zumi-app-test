@@ -26,6 +26,7 @@ class ZI {
   static const IconData back = IconData(0xe058, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData forward = IconData(0xe06c, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData close = IconData(0xe4f6, fontFamily: 'PhosphorRegular', matchTextDirection: true);
+  static const IconData arrowUp = IconData(0xe08e, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData caretDown = IconData(0xe136, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData caretRight = IconData(0xe13a, fontFamily: 'PhosphorRegular', matchTextDirection: true);
   static const IconData more = IconData(0xe208, fontFamily: 'PhosphorRegular', matchTextDirection: true);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/back_to_top.dart';
 
 /// Условия использования и Политика конфиденциальности.
 ///
@@ -24,7 +25,7 @@ class LegalScreen extends StatelessWidget {
     final (title, sections) = doc == LegalDoc.terms ? ('Terms of Service', _terms) : ('Privacy Policy', _privacy);
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: Center(
+      body: BackToTop(bottom: 24, child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
           child: ListView(
@@ -49,7 +50,7 @@ class LegalScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

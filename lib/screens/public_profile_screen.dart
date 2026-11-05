@@ -13,6 +13,7 @@ import '../widgets/share.dart';
 import '../widgets/trust.dart';
 import '../widgets/wide_card.dart';
 import '../widgets/zicons.dart';
+import '../widgets/back_to_top.dart';
 
 /// Публичная страница человека.
 ///  • Агент — как витрина агентства: фото, агентство, проверки, рейтинг, «о себе»,
@@ -62,7 +63,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     final side = desk ? desktopSide(context) : 20.0;
 
     return Scaffold(
-      body: FutureBuilder<List<dynamic>>(
+      body: BackToTop(bottom: 24, child: FutureBuilder<List<dynamic>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -177,7 +178,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
             ]),
           );
         },
-      ),
+      )),
     );
   }
 }

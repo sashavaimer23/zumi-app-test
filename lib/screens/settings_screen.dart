@@ -16,6 +16,7 @@ import 'legal_screen.dart';
 import 'help/help_screen.dart';
 import 'verify/get_verified_screen.dart';
 import 'verify/phone_verify_screen.dart';
+import '../widgets/back_to_top.dart';
 
 /// Настройки профиля. У агента больше полей: агентство, «о себе», рабочий WhatsApp, лицензия ZIEA.
 class SettingsScreen extends StatefulWidget {
@@ -146,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: Center(
+      body: BackToTop(bottom: 24, child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
@@ -434,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 

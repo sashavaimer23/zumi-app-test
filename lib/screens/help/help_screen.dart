@@ -11,6 +11,7 @@ import '../auth_screen.dart';
 import '../shell.dart';
 import '../support/support_screen.dart';
 import '../support/ticket_chat_screen.dart';
+import '../../widgets/back_to_top.dart';
 
 // ======================================================================
 // Помощь: статьи из базы (команда правит их в кабинете без обновления приложения),
@@ -70,7 +71,7 @@ class _HelpScreenState extends State<HelpScreen> {
     final side = _side(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Help')),
-      body: FutureBuilder<List<HelpArticle>>(
+      body: BackToTop(bottom: 24, child: FutureBuilder<List<HelpArticle>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -162,7 +163,7 @@ class _HelpScreenState extends State<HelpScreen> {
             ),
           );
         },
-      ),
+      )),
     );
   }
 }
@@ -308,7 +309,7 @@ class _HelpArticleScreenState extends State<HelpArticleScreen> {
     final side = _side(context);
     return Scaffold(
       appBar: AppBar(title: Text(a.categoryLabel, style: const TextStyle(fontSize: 16))),
-      body: ListView(
+      body: BackToTop(bottom: 24, child: ListView(
         padding: EdgeInsets.fromLTRB(side, 6, side, 40),
         children: [
           ConstrainedBox(
@@ -324,7 +325,7 @@ class _HelpArticleScreenState extends State<HelpArticleScreen> {
             ]),
           ),
         ],
-      ),
+      )),
     );
   }
 

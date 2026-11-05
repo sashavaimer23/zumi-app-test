@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/results.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
+import '../widgets/back_to_top.dart';
 
 /// Все районы города с количеством объявлений
 class NeighborhoodsScreen extends StatelessWidget {
@@ -18,7 +19,7 @@ class NeighborhoodsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Neighbourhoods')),
       floatingActionButton: MapFab(filters: SearchFilters()),
-      body: FutureBuilder<List<dynamic>>(
+      body: BackToTop(bottom: 76, child: FutureBuilder<List<dynamic>>(
         future: Future.wait<dynamic>([app.areas(), app.repo.areaCounts()]),
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: Zc.orange));
@@ -50,7 +51,7 @@ class NeighborhoodsScreen extends StatelessWidget {
             ),
           );
         },
-      ),
+      )),
     );
   }
 }

@@ -21,6 +21,7 @@ import 'auth_screen.dart';
 import 'chat_screen.dart';
 import 'public_profile_screen.dart';
 import '../widgets/zicons.dart';
+import '../widgets/back_to_top.dart';
 
 /// Страница объявления: галерея, цена, характеристики, описание, удобства, карта, контакты.
 class PropertyScreen extends StatefulWidget {
@@ -89,7 +90,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
     final side = desk ? desktopSide(context) : 22.0;
 
     return Scaffold(
-      body: CustomScrollView(slivers: [
+      body: BackToTop(bottom: 16, child: CustomScrollView(slivers: [
         // ---------- галерея: компьютер — большое фото + 3 справа ----------
         if (desk)
           SliverPadding(
@@ -352,7 +353,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
             const SizedBox(height: 120),
           ]),
         ),
-      ]),
+      ])),
 
       // ---------- кнопки связи ----------
       bottomNavigationBar: SafeArea(

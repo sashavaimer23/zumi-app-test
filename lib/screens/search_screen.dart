@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/results.dart';
 import '../widgets/zicons.dart';
+import '../widgets/back_to_top.dart';
 
 /// Результаты поиска (макет search_houses): строка поиска, счётчик, Sort/Filter, список.
 class SearchScreen extends StatefulWidget {
@@ -51,7 +52,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     return Scaffold(
       floatingActionButton: MapFab(filters: _filters),
-      body: SafeArea(
+      body: BackToTop(bottom: 76, child: SafeArea(
         bottom: false,
         child: CustomScrollView(slivers: [
           // строка поиска с кнопкой «назад» появляется снова, как только листаешь чуть вверх
@@ -151,7 +152,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ResultsSliver(key: ValueKey('search$_token'), filters: _filters),
           const SliverToBoxAdapter(child: SizedBox(height: 90)),
         ]),
-      ),
+      )),
     );
   }
 }

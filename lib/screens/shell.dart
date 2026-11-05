@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/back_to_top.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
@@ -167,14 +168,16 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // кнопка «наверх»: на главной — над кнопкой Map, на телефоне — над меню-«островом»
+    final navGap = isDesktop(context) ? 24.0 : Shell.navSpace + 8;
     final pages = IndexedStack(
       index: _index,
       children: [
-        const HomeScreen(),
-        const SavedScreen(),
+        const BackToTop(bottom: Shell.navSpace + 60, child: HomeScreen()),
+        BackToTop(bottom: navGap, child: const SavedScreen()),
         PostWizard(key: _postKey),
-        const ChatsScreen(),
-        const ProfileScreen(),
+        BackToTop(bottom: navGap, child: const ChatsScreen()),
+        BackToTop(bottom: navGap, child: const ProfileScreen()),
       ],
     );
 
