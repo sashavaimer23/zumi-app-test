@@ -11,9 +11,9 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERIFY_TOKEN = Deno.env.get("WA_VERIFY_TOKEN") ?? "";
-const APP_SECRET = Deno.env.get("WA_APP_SECRET") ?? "";
-const WA_TOKEN = Deno.env.get("WA_TOKEN") ?? "";
+const VERIFY_TOKEN = (Deno.env.get("WA_VERIFY_TOKEN") ?? "").trim();
+const APP_SECRET = (Deno.env.get("WA_APP_SECRET") ?? "").trim();
+const WA_TOKEN = (Deno.env.get("WA_TOKEN") ?? "").trim();
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 const REPLIES: Record<string, string> = {
@@ -41,11 +41,12 @@ async function signatureOk(raw: string, header: string | null): Promise<boolean>
 async function reply(phoneNumberId: string, to: string, text: string) {
   if (!WA_TOKEN) return; // ответ — по желанию; номер подтверждается и без него
   try {
-    await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+    const r = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text } }),
     });
+    if (!r.ok) console.warn("whatsapp-webhook: reply failed", r.status, (await r.text()).slice(0, 300));
   } catch (_) { /* не мешаем подтверждению */ }
 }
 
@@ -64,6 +65,8 @@ Deno.serve(async (req) => {
 
   const raw = await req.text();
   if (!(await signatureOk(raw, req.headers.get("x-hub-signature-256")))) {
+    // чаще всего — в WA_APP_SECRET вставлен не «Секрет приложения» или он скопирован не полностью
+    console.warn("whatsapp-webhook: bad signature", { hasSecret: APP_SECRET.length > 0, secretLength: APP_SECRET.length });
     return new Response("Bad signature", { status: 401 });
   }
 
@@ -87,6 +90,7 @@ Deno.serve(async (req) => {
           console.error("confirm_whatsapp_code failed", error.message);
           continue;
         }
+        console.log("whatsapp-webhook: code message", { result: data });
         const msg = REPLIES[String(data)] ?? REPLIES.expired;
         if (phoneNumberId) await reply(phoneNumberId, m.from, msg);
       }
