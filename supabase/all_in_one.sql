@@ -5746,8 +5746,9 @@ create or replace view public.property_feed as
          p.rent_period, p.bedrooms, p.bathrooms, p.area_sqm, p.plot_sqm, p.furnished, p.amenities,
          p.area_id, p.address,
          -- комната: точное место видят только автор и команда, остальным — примерно (~1 км)
-         case when p.property_type = 'room' and not coalesce(p.owner_id = auth.uid(), false) and not public.is_admin()
-              then st_snaptogrid(p.location::geometry, 0.01)::geography else p.location end as location,
+         (case when p.property_type = 'room' and not coalesce(p.owner_id = auth.uid(), false) and not public.is_admin()
+              then st_snaptogrid(p.location::geometry, 0.01)::geography(point, 4326)
+              else p.location end)::geography(point, 4326) as location,
          p.status, p.promoted_until, p.views_count, p.is_demo,
          p.created_at, p.updated_at, p.listed_by, p.contact_name, p.renovation, p.kids_allowed,
          p.pets_allowed, p.lease_term, p.property_verified_at, p.property_verify_method,
