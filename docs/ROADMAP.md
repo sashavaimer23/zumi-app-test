@@ -91,7 +91,10 @@
 - ✅ DNS: 4 записи A на GitHub Pages + CNAME www, всё «DNS only». Сайт на https://zumihome.com, старый адрес github.io перекидывает сам.
 - ✅ Supabase Auth: Site URL и Redirect URLs на zumihome.com; app_settings.site_url обновлён.
 - ✅ Превью ссылки (og-image.jpg), robots.txt, sitemap.xml. Google Search Console подтверждён (TXT-запись google-site-verification — не удалять), sitemap отправлен.
-- Осталось: почта hello@ / support@ (Cloudflare Email Routing), письма уведомлений с hello@zumihome.com (Resend), Google Branding + Publish, вход через Facebook, убрать старый github.io из Redirect URLs.
+- ✅ Почта hello@ и support@zumihome.com → Gmail (Cloudflare Email Routing).
+- ✅ Resend (домен подтверждён, Ирландия): уведомления Zumi и письма Supabase Auth (SMTP) идут с hello@zumihome.com.
+- ✅ Страницы terms.html, privacy.html, delete-account.html, своя 404.
+- Осталось: Google Branding + Publish, вход через Facebook, убрать старый github.io из Redirect URLs; секреты SMTP_USER / SMTP_PASS и пароль приложения Gmail больше не нужны — удалить.
 - Позже (после настоящих объявлений): текстовые страницы объявлений и районов для Google.
 
 ## Раздел «Rooms & budget» (готов 05.11, выключен)
