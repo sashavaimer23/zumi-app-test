@@ -554,7 +554,6 @@ class DemoRepository implements Repository {
 
   // ---------------- ZumiCheck ----------------
   final Set<String> _reported = {};
-  final Map<String, String> _verification = {}; // ключ: propertyId или 'identity'
 
   @override
   Future<void> reportListing(String propertyId, String reason, String? details) async {

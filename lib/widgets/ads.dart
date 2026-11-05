@@ -187,7 +187,7 @@ Future<void> showAdvertiseInfo(BuildContext context) {
                   launchUrl(Uri(scheme: 'mailto', path: AppConfig.adsEmail, query: 'subject=Advertising on Zumi'));
                 },
                 icon: const Icon(ZI.envelope),
-                label: Text('Email ${AppConfig.adsEmail}'),
+                label: const Text('Email ${AppConfig.adsEmail}'),
               ),
             ),
             const SizedBox(height: 10),

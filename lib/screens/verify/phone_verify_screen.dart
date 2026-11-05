@@ -257,10 +257,10 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
             waButton,
             if (code != null) ...[
               const SizedBox(height: 18),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 10),
-                const Text('Waiting for your message…', style: TextStyle(color: Zc.grey)),
+              const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 10),
+                Text('Waiting for your message…', style: TextStyle(color: Zc.grey)),
               ]),
               const SizedBox(height: 8),
               Center(

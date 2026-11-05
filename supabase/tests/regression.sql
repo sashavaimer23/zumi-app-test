@@ -338,4 +338,11 @@ select admin_set_setting('billing_enabled', 'false');
 reset role;
 drop table bo; drop table po; drop table so;
 
+-- ---------- служебные функции закрыты ----------
+select set_config('request.jwt.claim.sub', '', false);
+set role anon;
+select zt.err('guests cannot run cleanups', 'permission denied', $$select cleanup_feedback()$$);
+select zt.err('guests cannot cancel orders in bulk', 'permission denied', $$select cleanup_orders()$$);
+reset role;
+
 select zt.ok('ALL CHECKS PASSED', true);

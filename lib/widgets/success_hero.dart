@@ -20,6 +20,7 @@ class ListingLiveHero extends StatefulWidget {
   State<ListingLiveHero> createState() => _ListingLiveHeroState();
 }
 
+// ignore: constant_identifier_names
 const double _W = 1291, _H = 966;
 // дом вшит в код (WebP), поэтому грузится мгновенно и без файлов
 // отдельным файлом, а не внутри кода: так основная часть сайта легче на ~200 КБ
@@ -128,7 +129,7 @@ class _ListingLiveHeroState extends State<ListingLiveHero> with SingleTickerProv
                           child: Transform.scale(
                             scale: 0.84 + 0.16 * pop,
                             alignment: Alignment.bottomCenter,
-                            child: Image(image: _house, fit: BoxFit.fill, gaplessPlayback: true),
+                            child: const Image(image: _house, fit: BoxFit.fill, gaplessPlayback: true),
                           ),
                         ),
                       ),

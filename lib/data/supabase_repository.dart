@@ -780,20 +780,6 @@ class SupabaseRepository implements Repository {
         await _reloadUser();
       });
 
-  Future<List<String>> _uploadPrivate(String uid, String folder, String prefix, List<PickedPhoto> files) async {
-    final paths = <String>[];
-    for (var i = 0; i < files.length; i++) {
-      final path = '$uid/$folder/${prefix}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
-      await _db.storage.from('verification-docs').uploadBinary(
-            path,
-            files[i].bytes,
-            fileOptions: const FileOptions(contentType: 'image/jpeg'),
-          );
-      paths.add(path);
-    }
-    return paths;
-  }
-
   @override
   Future<bool> sendCode(String channel, String destination) => _guard(() async {
         _requireUserId();

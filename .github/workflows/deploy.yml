@@ -34,7 +34,7 @@ jobs:
       PGPASSWORD: postgres
       PGDATABASE: zumi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build the database from all_in_one.sql and run the checks
         run: |
           set -o pipefail
@@ -51,7 +51,7 @@ jobs:
     needs: database
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

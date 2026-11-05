@@ -30,7 +30,7 @@ class LegalScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(22, 8, 22, 48),
             children: [
-              Text('Last updated: $kLegalUpdated', style: const TextStyle(color: Zc.grey, fontSize: 13)),
+              const Text('Last updated: $kLegalUpdated', style: TextStyle(color: Zc.grey, fontSize: 13)),
               if (kLegalDraft)
                 Container(
                   margin: const EdgeInsets.only(top: 12),

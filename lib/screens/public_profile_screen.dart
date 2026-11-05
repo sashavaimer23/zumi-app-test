@@ -70,10 +70,10 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
           }
           final pr = snap.hasError ? null : snap.data![0] as PublicProfile?;
           if (pr == null) {
-            return SafeArea(
+            return const SafeArea(
               child: Column(children: [
                 Align(alignment: Alignment.centerLeft, child: BackButton(color: Zc.green)),
-                const Expanded(
+                Expanded(
                   child: EmptyState(
                     icon: ZI.userCircle,
                     title: 'Profile not available',
