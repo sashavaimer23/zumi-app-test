@@ -370,7 +370,13 @@ class SupabaseRepository implements Repository {
         if (_areasCache != null) return _areasCache!;
         // центр района отдаём как lat/lng через area_stats
         final rows = await _db.from('area_stats').select('id, city, name, lat, lng');
-        final extra = await _db.from('areas').select('id, tagline, image_url, kind');
+        List<Map<String, dynamic>> extra;
+        try {
+          extra = await _db.from('areas').select('id, tagline, image_url, kind');
+        } on PostgrestException {
+          // база ещё без 030 (нет колонки kind) — работаем по-старому
+          extra = await _db.from('areas').select('id, tagline, image_url');
+        }
         final byId = {for (final r in extra) r['id']: r};
         _areasCache = rows.map((r) {
           final e = byId[r['id']];
