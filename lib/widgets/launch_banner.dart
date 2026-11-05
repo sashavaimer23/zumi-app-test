@@ -12,7 +12,7 @@ class LaunchBanner extends StatelessWidget {
   const LaunchBanner({super.key, this.margin = EdgeInsets.zero});
   final EdgeInsets margin;
 
-  static const _hint = 'launch_banner_v1';
+  static const _hint = 'launch_banner_v2'; // новая версия текста — показать снова тем, кто закрыл старую
 
   static bool shows(BuildContext context) {
     final app = context.watch<AppState>();
