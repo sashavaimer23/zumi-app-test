@@ -110,7 +110,7 @@ void main() {
     final repo = DemoRepository();
     await repo.signIn(email: 'agent@zumi.zm', password: 'secret1');
     expect((await repo.appFlags())['billing'], isFalse);
-    expect(() => repo.createOrder('plan_pro_m'), throwsA(isA<AppException>()));
+    await expectLater(repo.createOrder('plan_pro_m'), throwsA(isA<AppException>()));
     await repo.setBillingEnabled(true);
     expect((await repo.appFlags())['billing'], isTrue);
     expect((await repo.appFlags())['promotion'], isTrue);

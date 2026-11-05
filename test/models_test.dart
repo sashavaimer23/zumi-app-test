@@ -156,16 +156,16 @@ void main() {
     expect(r.items.single.comment, 'Slow on 3G');
   });
 
-  test('listing limits: owner 2, agent 5, licensed agent 10', () async {
+  test('launch limits: owner 2, agent 15, licensed agent 25', () async {
     final owner = await ownerWithPhone(email: 'q@x.zm', phone: '+260974444444');
     expect((await owner.myQuota()).allowed, 2);
 
     final agent = DemoRepository();
     await agent.signUp(email: 'new.agent@x.zm', password: 'secret1', fullName: 'A', phone: '+260975555555', role: 'agent');
-    expect((await agent.myQuota()).allowed, 5);
+    expect((await agent.myQuota()).allowed, 15);
 
     final licensed = DemoRepository();
     await licensed.signIn(email: 'agent@test.com', password: 'secret1'); // в демо — агент с проверенной лицензией
-    expect((await licensed.myQuota()).allowed, 10);
+    expect((await licensed.myQuota()).allowed, 25);
   });
 }
