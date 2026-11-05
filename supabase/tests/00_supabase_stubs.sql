@@ -10,6 +10,10 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 
+-- как в Supabase: схема расширений (PostGIS и др.) доступна всем ролям
+create schema if not exists extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+
 create schema if not exists auth;
 grant usage on schema auth to anon, authenticated;
 create table if not exists auth.users (
