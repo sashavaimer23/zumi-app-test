@@ -22,7 +22,7 @@ class NeighborhoodsScreen extends StatelessWidget {
         future: Future.wait<dynamic>([app.areas(), app.repo.areaCounts()]),
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: Zc.orange));
-          final areas = snap.data![0] as List<Area>;
+          final areas = (snap.data![0] as List<Area>).where((a) => !a.isCompound).toList();
           final counts = snap.data![1] as Map<int, int>;
           final sorted = [...areas]..sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0));
           return GridView.builder(

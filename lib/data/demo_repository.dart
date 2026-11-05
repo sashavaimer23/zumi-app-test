@@ -457,6 +457,7 @@ class DemoRepository implements Repository {
       address: d.address.trim().isEmpty ? null : d.address.trim(),
       nearby: Map.of(d.nearby),
       ownerLicensed: u.isAgent && u.licenceVerified,
+      roomInfo: d.propertyType == PropertyType.room ? d.roomInfo : null,
       images: images,
       listedBy: u.isAgent ? 'agent' : 'owner',
       contactName: u.fullName,
@@ -511,6 +512,7 @@ class DemoRepository implements Repository {
       address: d.address.trim().isEmpty ? null : d.address.trim(),
       nearby: Map.of(d.nearby),
       ownerLicensed: u.isAgent && u.licenceVerified,
+      roomInfo: d.propertyType == PropertyType.room ? d.roomInfo : null,
       status: old.status,
       images: images,
       listedBy: old.listedBy,
@@ -812,7 +814,7 @@ class DemoRepository implements Repository {
 
   @override
   Future<Map<String, dynamic>> appFlags() async =>
-      {'promotion': _promotionOn || _billingOn, 'ads': _adsOn, 'wa_verify': null, 'billing': _billingOn};
+      {'promotion': _promotionOn || _billingOn, 'ads': _adsOn, 'wa_verify': null, 'billing': _billingOn, 'rooms': _roomsOn};
 
   // ---------------- платные функции (демо: всё в памяти) ----------------
   bool _billingOn = false;
@@ -1009,6 +1011,18 @@ class DemoRepository implements Repository {
 
   @override
   Future<(bool, int)> adsStatus() async => (_adsOn, 0);
+
+  bool _roomsOn = false;
+
+  @override
+  Future<(bool, int)> roomsStatus() async =>
+      (_roomsOn, _props.where((p) => p.isRoom && p.status == 'active').length);
+
+  @override
+  Future<void> setRoomsEnabled(bool on) async {
+    _roomsOn = on;
+    Features.rooms = on;
+  }
 
   @override
   Future<void> setAdsEnabled(bool on) async {

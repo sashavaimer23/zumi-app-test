@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/images.dart';
+import '../../features.dart';
 import '../../models/models.dart';
 import '../billing/billing_screen.dart';
 import '../../state/app_state.dart';
@@ -345,7 +346,9 @@ class _PostWizardState extends State<PostWizard> {
               title: 'For sale',
               subtitle: 'Reach serious buyers.',
               selected: _d.dealType == DealType.sale,
-              onTap: () => setState(() => _d.dealType = DealType.sale),
+              onTap: () => _d.propertyType == PropertyType.room
+                  ? showSnack(context, 'Rooms are for rent only')
+                  : setState(() => _d.dealType = DealType.sale),
             ),
           ),
         ]),
@@ -367,12 +370,17 @@ class _PostWizardState extends State<PostWizard> {
               (PropertyType.apartment, ZI.apartment),
               (PropertyType.commercial, ZI.commercial),
               (PropertyType.land, ZI.land),
+              // Rooms & budget — когда раздел включён владельцем
+              if (Features.rooms || _d.propertyType == PropertyType.room) (PropertyType.room, ZI.bed),
             ])
               _TypeTile(
                 icon: icon,
-                label: t.label,
+                label: t == PropertyType.room ? 'Room / budget' : t.label,
                 selected: _d.propertyType == t,
-                onTap: () => setState(() => _d.propertyType = t),
+                onTap: () => setState(() {
+                  _d.propertyType = t;
+                  if (t == PropertyType.room) _d.dealType = DealType.rent; // комнаты — только аренда
+                }),
               ),
           ],
         ),
@@ -384,6 +392,7 @@ class _PostWizardState extends State<PostWizard> {
   // ------------------------------ ШАГ 2 ------------------------------
   Widget _step2() {
     final isLand = _d.propertyType == PropertyType.land;
+    final isRoom = _d.propertyType == PropertyType.room;
     return _page(
       title: 'Property details',
       subtitle: 'Help people know more about your property.',
@@ -394,24 +403,29 @@ class _PostWizardState extends State<PostWizard> {
           controller: _title,
           textCapitalization: TextCapitalization.sentences,
           maxLength: 80,
-          decoration: const InputDecoration(
-            hintText: 'e.g. 3-bedroom house with borehole in Kabulonga',
+          decoration: InputDecoration(
+            hintText: isRoom
+                ? 'e.g. Self-contained room with own toilet in Kalingalinga'
+                : 'e.g. 3-bedroom house with borehole in Kabulonga',
             counterText: '',
           ),
         ),
-        if (!isLand) ...[
+        if (isRoom) ..._roomFields(),
+        if (!isLand && !isRoom) ...[
           _label('Bedrooms'),
           _NumberDropdown(value: _d.bedrooms, max: 10, onChanged: (v) => setState(() => _d.bedrooms = v)),
           _label('Bathrooms'),
           _NumberDropdown(value: _d.bathrooms, max: 8, onChanged: (v) => setState(() => _d.bathrooms = v)),
         ],
-        _label(isLand ? 'Plot size (m²)' : 'Property size (m²)'),
-        TextField(
-          controller: _size,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-          decoration: const InputDecoration(hintText: '0'),
-        ),
+        if (!isRoom) ...[
+          _label(isLand ? 'Plot size (m²)' : 'Property size (m²)'),
+          TextField(
+            controller: _size,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+            decoration: const InputDecoration(hintText: '0'),
+          ),
+        ],
         _label('Description'),
         TextField(
           controller: _desc,
@@ -423,7 +437,7 @@ class _PostWizardState extends State<PostWizard> {
           ),
         ),
         DescriptionHints(controller: _desc),
-        if (!isLand) ...[
+        if (!isLand && !isRoom) ...[
           const SizedBox(height: 36),
           Text('Amenities', style: zHeadline(context, size: 36)),
           const SizedBox(height: 8),
@@ -463,6 +477,34 @@ class _PostWizardState extends State<PostWizard> {
         },
       ),
     );
+  }
+
+  /// Комната: вид жилья, ванная, кухня, вода, свет, забор
+  List<Widget> _roomFields() {
+    final r = _d.roomInfo;
+    Widget choice(String title, Map<String, String> options, String? value, void Function(String) set) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _label(title),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final e in options.entries)
+              ZChip(label: e.value, selected: value == e.key, onTap: () => setState(() => set(e.key))),
+          ]),
+        ]);
+    return [
+      choice('What is it?', kRoomKinds, r.kind, (v) => _d.roomInfo = _d.roomInfo.copyWith(kind: v)),
+      choice('Bathroom', kRoomBathroom, r.bathroom, (v) => _d.roomInfo = _d.roomInfo.copyWith(bathroom: v)),
+      choice('Kitchen', kRoomKitchen, r.kitchen, (v) => _d.roomInfo = _d.roomInfo.copyWith(kitchen: v)),
+      choice('Water', kRoomWater, r.water, (v) => _d.roomInfo = _d.roomInfo.copyWith(water: v)),
+      choice('Electricity', kRoomPower, r.power, (v) => _d.roomInfo = _d.roomInfo.copyWith(power: v)),
+      const SizedBox(height: 8),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        activeTrackColor: Zc.green,
+        title: const Text('Walled yard', style: TextStyle(fontSize: 16)),
+        value: r.wall ?? false,
+        onChanged: (v) => setState(() => _d.roomInfo = _d.roomInfo.copyWith(wall: v)),
+      ),
+    ];
   }
 
   // ------------------------------ ШАГ 3 ------------------------------
@@ -559,6 +601,10 @@ class _PostWizardState extends State<PostWizard> {
       button: PrimaryButton(
         label: 'Continue',
         onPressed: () {
+          if (_d.propertyType == PropertyType.room && _d.photos.length < 2) {
+            showSnack(context, 'Add at least 2 photos of the room — inside and the yard or entrance');
+            return;
+          }
           if (_d.photos.isEmpty) {
             showSnack(context, 'Add at least one photo');
             return;

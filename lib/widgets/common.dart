@@ -444,15 +444,20 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // «Rooms & budget» — отдельный раздел; виден, когда включён (а команде — всегда)
+    final items = [
+      ..._items,
+      if (context.watch<AppState>().roomsVisible) (PropertyType.room, 'Rooms & budget', ZI.bed),
+    ];
     return SizedBox(
       height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: padding ?? const EdgeInsets.symmetric(horizontal: 14),
-        itemCount: _items.length,
+        itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final (type, label, icon) = _items[i];
+          final (type, label, icon) = items[i];
           final on = type == selected;
           return GestureDetector(
             onTap: () => onChanged(type),

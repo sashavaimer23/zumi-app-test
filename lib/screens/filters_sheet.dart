@@ -188,6 +188,7 @@ class _FiltersSheetState extends State<FiltersSheet> {
               _title('Property type'),
               _wrap([
                 for (final t in PropertyType.values)
+                  if (t != PropertyType.room || context.watch<AppState>().roomsVisible)
                   ZChip(
                     label: t.label,
                     selected: f.propertyType == t,

@@ -12,6 +12,7 @@ import 'ads.dart';
 import 'common.dart';
 import 'promo_card.dart';
 import 'wide_card.dart';
+import 'rooms.dart';
 import 'zicons.dart';
 
 /// «230 apartments», «18 listings»
@@ -201,6 +202,7 @@ class _ResultsSliverState extends State<ResultsSliver> {
           if (e is (Campaign, Property)) return PromotedCard(campaign: e.$1, property: e.$2, wide: desk);
           if (e is int) return FeedStripAd(slot: e);
           final p = e as Property;
+          if (p.isRoom) return RoomCard(p: p, onTap: () => openProperty(context, p));
           return desk
               ? PropertyWideCard(p: p, onTap: () => openProperty(context, p))
               : PropertyCard(p: p, onTap: () => openProperty(context, p));

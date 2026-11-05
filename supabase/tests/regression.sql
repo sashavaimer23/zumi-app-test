@@ -345,4 +345,58 @@ select zt.err('guests cannot run cleanups', 'permission denied', $$select cleanu
 select zt.err('guests cannot cancel orders in bulk', 'permission denied', $$select cleanup_orders()$$);
 reset role;
 
+-- ---------- Rooms & budget ----------
+select set_config('request.jwt.claim.sub', '', false);
+select zt.ok('rooms section is off by default', not (app_flags()->>'rooms')::boolean);
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('people cannot post rooms while the section is off', 'ROOMS_OFF', $$
+  insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id,room_info)
+  values (auth.uid(),'Room','rent','room',900,'SRID=4326;POINT(28.31234 -15.41234)','active',(select min(id) from areas),
+          '{"kind":"room","bathroom":"shared"}')$$);
+reset role;
+select set_config('request.jwt.claim.sub', '', false);   -- как в SQL Editor
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,room_info)
+values ('b0000000-0000-0000-0000-0000000000f1','a0000000-0000-0000-0000-000000000002','Room in Kalingalinga','sale','room',900,
+        'SRID=4326;POINT(28.31234 -15.41234)','active',(select min(id) from areas),
+        '{"kind":"boys_quarters","bathroom":"own","kitchen":"shared","water":"borehole","power":"own_prepaid","wall":true}');
+update properties set status = 'active' where id = 'b0000000-0000-0000-0000-0000000000f1';
+select zt.ok('rooms are always for rent', (select deal_type from properties where id = 'b0000000-0000-0000-0000-0000000000f1') = 'rent');
+select set_config('request.jwt.claim.sub', '', false);
+set role anon;
+select zt.ok('guests do not see rooms while off', not exists (select 1 from property_feed where property_type = 'room'));
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000005', false);
+select zt.ok('team sees rooms while off', exists (select 1 from property_feed where property_type = 'room'));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_set_setting('rooms_enabled', 'true');
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('room details are checked', 'properties_room_info_ok', $$
+  insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id,room_info)
+  values (auth.uid(),'Room','rent','room',900,'SRID=4326;POINT(28.31234 -15.41234)','active',(select min(id) from areas),
+          '{"kind":"palace"}')$$);
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+set role anon;
+select zt.ok('demo rooms are there for the preview', (select count(*) from property_feed where property_type = 'room' and is_demo) >= 4);
+select zt.ok('compounds are added as areas', (select count(*) from areas where kind = 'compound') >= 8);
+select zt.ok('guests see rooms when on, with approximate place',
+  (select abs(lat * 100 - round(lat * 100)) < 1e-6 and abs(lng * 100 - round(lng * 100)) < 1e-6
+     from property_feed where id = 'b0000000-0000-0000-0000-0000000000f1'));
+select zt.ok('room details are shown', (select room_info->>'water' = 'borehole' from property_feed where id = 'b0000000-0000-0000-0000-0000000000f1'));
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select zt.ok('owner sees the exact place',
+  (select round(lat::numeric, 5) = -15.41234 from property_feed where id = 'b0000000-0000-0000-0000-0000000000f1'));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_set_setting('rooms_enabled', 'false');
+reset role;
+select zt.ok('rooms are not counted in area prices',
+  (select listings_count from area_stats where id = (select min(id) from areas))
+  = (select count(*) from properties p where p.area_id = (select min(id) from areas) and p.status = 'active'
+       and p.property_type <> 'room' and (p.is_demo or coalesce(p.confirmed_at, p.created_at) > now() - interval '60 days')));
+delete from properties where id = 'b0000000-0000-0000-0000-0000000000f1';
+
 select zt.ok('ALL CHECKS PASSED', true);

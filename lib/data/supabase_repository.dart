@@ -132,6 +132,9 @@ class SupabaseRepository implements Repository {
       if (e.message.contains('PHONE_REQUIRED')) {
         throw AppException('Confirm your phone number to publish a listing.', code: 'PHONE_REQUIRED');
       }
+      if (e.message.contains('ROOMS_OFF')) {
+        throw AppException('Rooms & budget opens soon.', code: 'ROOMS_OFF');
+      }
       if (e.message.contains('BILLING_OFF')) {
         throw AppException('Paid features are not available yet.', code: 'BILLING_OFF');
       }
@@ -367,11 +370,11 @@ class SupabaseRepository implements Repository {
         if (_areasCache != null) return _areasCache!;
         // центр района отдаём как lat/lng через area_stats
         final rows = await _db.from('area_stats').select('id, city, name, lat, lng');
-        final extra = await _db.from('areas').select('id, tagline, image_url');
+        final extra = await _db.from('areas').select('id, tagline, image_url, kind');
         final byId = {for (final r in extra) r['id']: r};
         _areasCache = rows.map((r) {
           final e = byId[r['id']];
-          return Area.fromMap({...r, 'tagline': e?['tagline'], 'image_url': e?['image_url']});
+          return Area.fromMap({...r, 'tagline': e?['tagline'], 'image_url': e?['image_url'], 'kind': e?['kind']});
         }).toList()
           ..sort((a, b) => a.name.compareTo(b.name));
         return _areasCache!;
@@ -382,7 +385,8 @@ class SupabaseRepository implements Repository {
     var q = _db.from('property_feed').select(columns).eq('status', 'active').eq('is_fresh', true);
     if (f.dealType != null) q = q.eq('deal_type', f.dealType == DealType.sale ? 'sale' : 'rent');
     if (f.rentPeriod != null && f.dealType != DealType.sale) q = q.eq('rent_period', f.rentPeriod!);
-    if (f.propertyType != null) q = q.eq('property_type', f.propertyType!.name);
+    // комнаты живут в своём разделе «Rooms & budget» — в обычном поиске их нет
+    q = f.propertyType != null ? q.eq('property_type', f.propertyType!.name) : q.neq('property_type', 'room');
     if (f.city.isNotEmpty) q = q.eq('city', f.city);
     if (f.areaId != null) q = q.eq('area_id', f.areaId!);
     final text = f.query.trim().replaceAll(RegExp(r'[,()%*\\]'), ' ');
@@ -576,6 +580,7 @@ class SupabaseRepository implements Repository {
               'contact_phone': d.contactPhone.trim(),
               'contact_name': _user?.fullName,
               'status': 'active',
+              'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
             })
             .select('id')
             .single();
@@ -648,6 +653,7 @@ class SupabaseRepository implements Repository {
           'address': d.address.trim().isEmpty ? null : d.address.trim(),
           'nearby': d.nearby,
           'contact_phone': d.contactPhone.trim(),
+          'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', id);
 
@@ -951,6 +957,20 @@ class SupabaseRepository implements Repository {
   Future<(bool, int)> adsStatus() => _guard(() async {
         final m = Map<String, dynamic>.from(await _db.rpc('admin_promotion_status') as Map);
         return ((m['ads_enabled'] as bool?) ?? false, ((m['live_ads'] as num?) ?? 0).toInt());
+      });
+
+  @override
+  Future<(bool, int)> roomsStatus() => _guard(() async {
+        final flags = Map<String, dynamic>.from(await _db.rpc('app_flags') as Map);
+        final res = await _db.from('property_feed').select('id').eq('property_type', 'room').eq('status', 'active')
+            .count(CountOption.exact);
+        return ((flags['rooms'] as bool?) ?? false, res.count);
+      });
+
+  @override
+  Future<void> setRoomsEnabled(bool on) => _guard(() async {
+        await _db.rpc('admin_set_setting', params: {'p_key': 'rooms_enabled', 'p_value': '$on'});
+        Features.rooms = on;
       });
 
   @override

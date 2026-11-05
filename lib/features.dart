@@ -21,4 +21,7 @@ class Features {
   /// Платные функции (бусты, доп. места, тарифы). Владелец включает в кабинете → Payments.
   /// Покупки — только на сайте: в приложениях Android/iPhone о покупках не говорим (правила магазинов).
   static bool billing = false;
+
+  /// Раздел «Rooms & budget» (комнаты, boys' quarters, bedsitters). Пока выключен — видит только команда.
+  static bool rooms = false;
 }

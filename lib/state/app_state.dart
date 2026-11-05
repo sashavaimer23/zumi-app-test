@@ -38,15 +38,26 @@ class AppState extends ChangeNotifier {
     final wa = (f['wa_verify'] as String?)?.trim();
     final waNum = (wa == null || wa.isEmpty) ? null : wa;
     final billing = (f['billing'] as bool?) ?? false;
+    final rooms = (f['rooms'] as bool?) ?? false;
     if (promo == Features.promotion && ads == Features.ads && waNum == Features.waVerifyNumber &&
-        billing == Features.billing) {
+        billing == Features.billing && rooms == Features.rooms) {
       return;
     }
     Features.billing = billing;
+    Features.rooms = rooms;
     Features.promotion = promo;
     Features.ads = ads;
     Features.waVerifyNumber = waNum;
     notifyListeners();
+  }
+
+  /// Раздел «Rooms & budget» виден: включён владельцем — всем; выключен — только команде (для проверки)
+  bool get roomsVisible => Features.rooms || (_user?.isAdmin ?? false);
+
+  Future<void> setRooms(bool on) async {
+    await repo.setRoomsEnabled(on);
+    await loadFlags();
+    dataChanged();
   }
 
   /// Можно ли покупать сейчас: платные функции включены и это сайт (не приложение из магазина)

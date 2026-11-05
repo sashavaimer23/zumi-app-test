@@ -10,7 +10,7 @@ List<String> _sl(dynamic v) => v == null ? <String>[] : List<String>.from(v as L
 
 enum DealType { rent, sale }
 
-enum PropertyType { house, apartment, land, commercial }
+enum PropertyType { house, apartment, land, commercial, room }
 
 extension PropertyTypeX on PropertyType {
   String get label => switch (this) {
@@ -18,12 +18,14 @@ extension PropertyTypeX on PropertyType {
         PropertyType.apartment => 'Apartment',
         PropertyType.land => 'Land',
         PropertyType.commercial => 'Commercial',
+        PropertyType.room => 'Room',
       };
   String get plural => switch (this) {
         PropertyType.house => 'houses',
         PropertyType.apartment => 'apartments',
         PropertyType.land => 'plots',
         PropertyType.commercial => 'commercial',
+        PropertyType.room => 'rooms',
       };
 }
 
@@ -31,6 +33,7 @@ PropertyType parsePropertyType(String s) => switch (s) {
       'apartment' => PropertyType.apartment,
       'land' => PropertyType.land,
       'commercial' || 'office' => PropertyType.commercial,
+      'room' => PropertyType.room,
       _ => PropertyType.house,
     };
 
@@ -63,6 +66,8 @@ class Area {
   final double lng;
   final String? tagline;
   final String? imageUrl;
+  final String kind; // suburb | compound (там в основном комнаты — в подборках районов не показываем)
+  bool get isCompound => kind == 'compound';
 
   const Area({
     required this.id,
@@ -72,6 +77,7 @@ class Area {
     required this.lng,
     this.tagline,
     this.imageUrl,
+    this.kind = 'suburb',
   });
 
   factory Area.fromMap(Map<String, dynamic> m) => Area(
@@ -82,6 +88,7 @@ class Area {
         lng: _d(m['lng'])!,
         tagline: m['tagline'] as String?,
         imageUrl: m['image_url'] as String?,
+        kind: (m['kind'] as String?) ?? 'suburb',
       );
 }
 
@@ -133,6 +140,8 @@ class Property {
   final String? highlights;             // «Gated street | Borehole | Solar backup»
   final String? ownerAvatarUrl;         // фото автора
   final List<String> thumbs;            // маленькие копии фото для карточек (экономия трафика)
+  final RoomInfo? roomInfo;             // комната / boys' quarters / bedsitter: ванная, кухня, вода, свет
+  bool get isRoom => propertyType == PropertyType.room;
   final bool isFresh;                   // подтверждено «ещё доступно» за последние 37 дней (спросим через 30)
   final String contactMode;             // 'phone' — номер можно показать, 'chat' — только чат
   final bool hasPhone;                  // у объявления есть номер (сам номер выдаёт сервер по кнопке)
@@ -195,6 +204,7 @@ class Property {
     this.moderationNote,
     this.nearby = const {},
     this.ownerLicensed = false,
+    this.roomInfo,
     this.hiddenBy,
     this.hiddenReason,
     this.approvedAt,
@@ -253,6 +263,7 @@ class Property {
         moderationNote: m['moderation_note'] as String?,
         nearby: _nearby(m['nearby']),
         ownerLicensed: (m['owner_licensed'] as bool?) ?? false,
+        roomInfo: RoomInfo.fromJson(m['room_info']),
         hiddenBy: m['hidden_by'] as String?,
         hiddenReason: m['hidden_reason'] as String?,
         approvedAt: DateTime.tryParse((m['approved_at'] as String?) ?? ''),
@@ -307,7 +318,7 @@ class Property {
         nearby: nearby, ownerLicensed: ownerLicensed,
         hiddenBy: clearHidden ? null : (hiddenBy ?? this.hiddenBy),
         hiddenReason: clearHidden ? null : hiddenReason,
-        approvedAt: approvedAt,
+        approvedAt: approvedAt, roomInfo: roomInfo,
       );
 
   bool get isPending => status == 'pending';
@@ -316,16 +327,19 @@ class Property {
   /// Через сколько дней спросить «ещё доступно?» и через сколько скрыть без ответа
   static const askAfterDays = 30;
   static const hideAfterDays = 37;
+  // комнаты сдаются быстрее — спрашиваем через 14 дней, скрываем через 21
+  int get _askDays => isRoom ? 14 : askAfterDays;
+  int get _hideDays => isRoom ? 21 : hideAfterDays;
 
   /// Дней с последнего подтверждения
   int get daysSinceConfirmed =>
       DateTime.now().difference(confirmedAt ?? approvedAt ?? createdAt).inDays;
 
   /// Пора спросить автора «ещё доступно?» (объявление ещё в поиске)
-  bool get needsAvailabilityAnswer => status == 'active' && !isDemo && daysSinceConfirmed >= askAfterDays;
+  bool get needsAvailabilityAnswer => status == 'active' && !isDemo && daysSinceConfirmed >= _askDays;
 
   /// Дней до скрытия, если не ответить
-  int get daysUntilHidden => (hideAfterDays - daysSinceConfirmed).clamp(0, hideAfterDays);
+  int get daysUntilHidden => (_hideDays - daysSinceConfirmed).clamp(0, _hideDays);
 
   /// Не видно в поиске: скрыто, продано/сдано или не подтверждено вовремя
   bool get hiddenFromSearch =>
@@ -367,6 +381,12 @@ class Property {
   /// «3-bedroom house ,  70,8m»
   String get specsLine {
     final parts = <String>[];
+    if (isRoom) {
+      parts.add(kRoomKinds[roomInfo?.kind ?? 'room'] ?? 'Room');
+      final b = roomInfo?.bathroom;
+      if (b != null) parts.add(b == 'own' ? 'own bathroom' : 'shared bathroom');
+      return parts.join(' · ');
+    }
     final type = propertyType == PropertyType.commercial ? 'Commercial' : propertyType.label.toLowerCase();
     if (bedrooms != null && bedrooms! > 0) {
       parts.add('$bedrooms-bedroom $type');
@@ -512,6 +532,7 @@ class SearchFilters {
     if (dealType != null && p.dealType != dealType) return false;
     if (rentPeriod != null && p.dealType == DealType.rent && p.rentPeriod != rentPeriod) return false;
     if (propertyType != null && p.propertyType != propertyType) return false;
+    if (propertyType == null && p.isRoom) return false; // комнаты — только в своём разделе
     if (city.isNotEmpty && p.city != null && p.city != city) return false;
     if (areaId != null && p.areaId != areaId) return false;
     final q = query.trim().toLowerCase();
@@ -705,7 +726,8 @@ class ListingDraft {
       ..pinned = true
       ..address = p.address ?? ''
       ..nearby = {...p.nearby}
-      ..contactPhone = p.contactPhone ?? '';
+      ..contactPhone = p.contactPhone ?? ''
+      ..roomInfo = p.roomInfo ?? const RoomInfo();
     return d;
   }
 
@@ -728,6 +750,7 @@ class ListingDraft {
   String address = ''; // улица / номер участка — по желанию
   Map<String, String> nearby = {}; // что рядом (kNearbyPlaces → kNearbyDistances)
   String contactPhone = '';
+  RoomInfo roomInfo = const RoomInfo(); // только для типа «Room»
 }
 
 /// Фото: новое (байты с телефона) или уже загруженное (url) — при правке объявления
@@ -2304,4 +2327,87 @@ class BillingStatus {
         paid30d: (m['paid_30d'] as num?)?.toInt() ?? 0,
         activePlans: (m['active_plans'] as num?)?.toInt() ?? 0,
       );
+}
+
+
+// ======================================================================
+// ROOMS & BUDGET: комнаты, boys' quarters, bedsitters, хостелы
+// ======================================================================
+const kRoomKinds = <String, String>{
+  'room': 'Room in a house',
+  'boys_quarters': "Boys' quarters",
+  'bedsitter': 'Bedsitter',
+  'shared': 'Shared room',
+  'hostel': 'Student hostel',
+};
+const kRoomBathroom = <String, String>{'own': 'Own bathroom', 'shared': 'Shared bathroom'};
+const kRoomKitchen = <String, String>{'own': 'Own kitchen', 'shared': 'Shared kitchen', 'none': 'No kitchen'};
+const kRoomWater = <String, String>{
+  'borehole': 'Borehole water',
+  'council': 'Council water',
+  'tank': 'Water tank',
+  'none': 'No water on site',
+};
+const kRoomPower = <String, String>{
+  'own_prepaid': 'Own ZESCO prepaid',
+  'shared': 'Shared electricity',
+  'none': 'No electricity',
+};
+
+class RoomInfo {
+  final String kind;
+  final String? bathroom;
+  final String? kitchen;
+  final String? water;
+  final String? power;
+  final bool? wall;
+
+  const RoomInfo({this.kind = 'room', this.bathroom, this.kitchen, this.water, this.power, this.wall});
+
+  static RoomInfo? fromJson(dynamic v) {
+    if (v is! Map) return null;
+    String? pick(String k, Map<String, String> allowed) {
+      final x = v[k];
+      return x is String && allowed.containsKey(x) ? x : null;
+    }
+
+    return RoomInfo(
+      kind: pick('kind', kRoomKinds) ?? 'room',
+      bathroom: pick('bathroom', kRoomBathroom),
+      kitchen: pick('kitchen', kRoomKitchen),
+      water: pick('water', kRoomWater),
+      power: pick('power', kRoomPower),
+      wall: v['wall'] is bool ? v['wall'] as bool : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'kind': kind,
+        if (bathroom != null) 'bathroom': bathroom,
+        if (kitchen != null) 'kitchen': kitchen,
+        if (water != null) 'water': water,
+        if (power != null) 'power': power,
+        if (wall != null) 'wall': wall,
+      };
+
+  RoomInfo copyWith({String? kind, String? bathroom, String? kitchen, String? water, String? power, bool? wall}) =>
+      RoomInfo(
+        kind: kind ?? this.kind,
+        bathroom: bathroom ?? this.bathroom,
+        kitchen: kitchen ?? this.kitchen,
+        water: water ?? this.water,
+        power: power ?? this.power,
+        wall: wall ?? this.wall,
+      );
+
+  String get kindLabel => kRoomKinds[kind] ?? 'Room';
+
+  /// Короткие подписи для карточки и страницы
+  List<String> get facts => [
+        if (bathroom != null) kRoomBathroom[bathroom]!,
+        if (kitchen != null) kRoomKitchen[kitchen]!,
+        if (water != null) kRoomWater[water]!,
+        if (power != null) kRoomPower[power]!,
+        if (wall == true) 'Walled yard',
+      ];
 }

@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../widgets/ads.dart';
 import '../widgets/availability.dart';
 import '../widgets/common.dart';
+import '../widgets/rooms.dart';
 import '../widgets/contact.dart';
 import '../widgets/gallery.dart';
 import '../widgets/reviews.dart';
@@ -208,7 +209,13 @@ class _PropertyScreenState extends State<PropertyScreen> {
               _Spec(ZI.eye, '${p.viewsCount} views'),
             ]),
             const SizedBox(height: 22),
+            // комнаты: главное правило — никаких денег за просмотр
+            if (p.isRoom) const RoomSafetyNote(margin: EdgeInsets.only(bottom: 16)),
             TrustPanel(p: p),
+            if (p.isRoom && p.roomInfo != null) ...[
+              _h('Room details'),
+              RoomDetails(info: p.roomInfo!),
+            ],
             if (p.nearby.isNotEmpty) ...[
               _h("What's nearby"),
               NearbyList(p.nearby),
@@ -235,7 +242,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
               ]),
             ],
             _h('Details'),
-            _row('Property type', p.propertyType.label),
+            _row('Property type', p.isRoom ? (p.roomInfo?.kindLabel ?? 'Room') : p.propertyType.label),
             if (p.dealType == DealType.rent) _row('Rental', p.rentPeriod == 'day' ? 'Daily' : 'Long-term'),
             if (p.leaseTerm != null) _row('Lease term', p.leaseTerm == 'year' ? 'From a year' : 'A few months'),
             if (p.renovation != null) _row('Renovation', renovationLabels[p.renovation] ?? p.renovation!),
@@ -254,21 +261,37 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   ),
                   children: [
                     TileLayer(urlTemplate: AppConfig.mapTilesUrl, userAgentPackageName: AppConfig.mapUserAgent),
-                    MarkerLayer(markers: [
-                      Marker(
-                        point: LatLng(p.lat, p.lng),
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.topCenter,
-                        child: const Icon(ZI.pinFill, color: Zc.orange, size: 44),
-                      ),
-                    ]),
+                    // комната: только район (круг ~1 км), точное место — после разговора с хозяином
+                    if (p.isRoom && !(p.ownerId != null && p.ownerId == context.read<AppState>().user?.id))
+                      CircleLayer(circles: [
+                        CircleMarker(
+                          point: LatLng(p.lat, p.lng),
+                          radius: 700,
+                          useRadiusInMeter: true,
+                          color: const Color(0x2EFF7A59), // Zc.orange, прозрачный
+                          borderColor: Zc.orange,
+                          borderStrokeWidth: 1.5,
+                        ),
+                      ])
+                    else
+                      MarkerLayer(markers: [
+                        Marker(
+                          point: LatLng(p.lat, p.lng),
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.topCenter,
+                          child: const Icon(ZI.pinFill, color: Zc.orange, size: 44),
+                        ),
+                      ]),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 6),
-            Text('Approximate location · Map ${AppConfig.mapAttribution}',
+            Text(
+                p.isRoom && !(p.ownerId != null && p.ownerId == context.read<AppState>().user?.id)
+                    ? 'Area only — the owner shares the exact place when you talk · Map ${AppConfig.mapAttribution}'
+                    : 'Approximate location · Map ${AppConfig.mapAttribution}',
                 style: const TextStyle(color: Zc.grey, fontSize: 12)),
             _h(p.listedBy == 'agent' ? 'Agent' : 'Owner'),
             InkWell(

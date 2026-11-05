@@ -199,6 +199,10 @@ abstract class Repository {
   Future<(bool, int)> adsStatus();
   Future<void> setAdsEnabled(bool on);
 
+  /// Раздел «Rooms & budget»: включён ли и сколько комнат сейчас в поиске; включить / выключить (только владелец)
+  Future<(bool, int)> roomsStatus();
+  Future<void> setRoomsEnabled(bool on);
+
   // --- поддержка (пользователь)
   Future<List<SupportTicket>> myTickets();
   Future<String> openTicket({

@@ -10,6 +10,7 @@ import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/promo_card.dart';
 import '../widgets/results.dart';
+import '../widgets/rooms.dart';
 import '../widgets/wide_card.dart';
 import 'neighborhoods_screen.dart';
 import 'search_screen.dart';
@@ -164,7 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final counts = snap.data![1] as Map<int, int>;
             final mostViewed = snap.data![2] as List<Property>;
             // популярные районы: сначала с фото, затем по количеству объявлений
-            final popular = [...areas]..sort((a, b) {
+            // compounds (там в основном комнаты) — не в подборке районов
+            final popular = [...areas.where((a) => !a.isCompound)]..sort((a, b) {
                 final ai = a.imageUrl != null ? 1 : 0, bi = b.imageUrl != null ? 1 : 0;
                 if (ai != bi) return bi - ai;
                 return (counts[b.id] ?? 0) - (counts[a.id] ?? 0);
@@ -222,7 +224,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --------------------- лента результатов ---------------------
   List<Widget> _results() {
+    final rooms = _filters.propertyType == PropertyType.room;
     return [
+      if (rooms)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 0,
+                isDesktop(context) ? desktopSide(context) : 16, 6),
+            child: const RoomsIntro(),
+          ),
+        ),
       SliverToBoxAdapter(
         child: FutureBuilder<int>(
           future: _countFuture,

@@ -723,6 +723,7 @@ class _AdsHubState extends State<_AdsHub> {
     return Column(children: [
       const _FeatureSwitch.ads(),
       const _FeatureSwitch.promotion(),
+      const _FeatureSwitch.rooms(),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
         child: Align(
@@ -1093,9 +1094,11 @@ class _Funnel extends StatelessWidget {
 // Пока выключено — в приложении этого нет совсем; сервер тоже не показывает. Без обновления приложения.
 // ======================================================================
 class _FeatureSwitch extends StatefulWidget {
-  const _FeatureSwitch.promotion() : ads = false;
-  const _FeatureSwitch.ads() : ads = true;
+  const _FeatureSwitch.promotion() : ads = false, rooms = false;
+  const _FeatureSwitch.ads() : ads = true, rooms = false;
+  const _FeatureSwitch.rooms() : ads = false, rooms = true;
   final bool ads;
+  final bool rooms; // раздел «Rooms & budget»
 
   @override
   State<_FeatureSwitch> createState() => _FeatureSwitchState();
@@ -1107,11 +1110,39 @@ class _FeatureSwitchState extends State<_FeatureSwitch> {
 
   Future<(bool, int)> _load() {
     final repo = context.read<AppState>().repo;
+    if (widget.rooms) return repo.roomsStatus();
     return widget.ads ? repo.adsStatus() : repo.promotionStatus();
   }
 
   Future<void> _set(bool on) async {
     final ads = widget.ads;
+    if (widget.rooms) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(on ? 'Open Rooms & budget?' : 'Hide Rooms & budget?'),
+          content: Text(on
+              ? 'Everyone will see the Rooms & budget section and can post rooms, boys\' quarters and bedsitters. '
+                  'Best after WhatsApp number checks are live — the cheap segment attracts the most scammers.'
+              : 'The section and all rooms disappear for everyone except the Zumi team. Rooms are kept.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(on ? 'Open' : 'Hide')),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+      setState(() => _busy = true);
+      try {
+        await context.read<AppState>().setRooms(on);
+        if (mounted) setState(() => _status = _load());
+      } catch (e) {
+        if (mounted) showSnack(context, '$e');
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1158,7 +1189,7 @@ class _FeatureSwitchState extends State<_FeatureSwitch> {
         future: _status,
         builder: (context, snap) {
           final (on, live) = snap.data ?? (false, 0);
-          final what = ads ? 'Ad banners' : 'Agent promotion';
+          final what = widget.rooms ? 'Rooms & budget' : (ads ? 'Ad banners' : 'Agent promotion');
           return Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1166,13 +1197,18 @@ class _FeatureSwitchState extends State<_FeatureSwitch> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(children: [
-              Icon(ads ? ZI.storefront : ZI.bolt, color: on ? Zc.green : Zc.orange),
+              Icon(widget.rooms ? ZI.bed : (ads ? ZI.storefront : ZI.bolt), color: on ? Zc.green : Zc.orange),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('$what ${on ? 'ON' : 'OFF'}', style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(
-                    ads
+                    widget.rooms
+                        ? (on
+                            ? '$live ${live == 1 ? 'room is' : 'rooms are'} in the section now.'
+                            : 'Only the Zumi team sees the section ($live ${live == 1 ? 'room' : 'rooms'} ready). '
+                                'People cannot post rooms yet.')
+                        : ads
                         ? (on
                             ? '$live ${live == 1 ? 'banner is' : 'banners are'} running now.'
                             : 'No banners and no "Your ad here" in the app. You can still prepare banners below.')

@@ -168,4 +168,19 @@ void main() {
     await licensed.signIn(email: 'agent@test.com', password: 'secret1'); // в демо — агент с проверенной лицензией
     expect((await licensed.myQuota()).allowed, 25);
   });
+
+  test('rooms: own section, details parsed, asked sooner', () {
+    final m = {
+      'id': 'r1', 'title': 'Room', 'deal_type': 'rent', 'property_type': 'room', 'price': 1200,
+      'lat': -15.4, 'lng': 28.3, 'status': 'active', 'created_at': DateTime.now().subtract(const Duration(days: 15)).toIso8601String(),
+      'room_info': {'kind': 'boys_quarters', 'bathroom': 'own', 'water': 'borehole', 'wall': true, 'junk': 'x'},
+    };
+    final p = Property.fromMap(m);
+    expect(p.isRoom, isTrue);
+    expect(p.roomInfo!.kindLabel, "Boys' quarters");
+    expect(p.roomInfo!.facts, contains('Borehole water'));
+    expect(p.needsAvailabilityAnswer, isTrue); // комнаты — через 14 дней
+    expect(SearchFilters().matches(p), isFalse); // в обычном поиске комнат нет
+    expect((SearchFilters()..propertyType = PropertyType.room).matches(p), isTrue);
+  });
 }
