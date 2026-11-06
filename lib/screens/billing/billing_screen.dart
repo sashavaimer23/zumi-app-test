@@ -48,7 +48,10 @@ class _PlansScreenState extends State<PlansScreen> {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final (b, prices, orders) = snap.data!;
           // агентам — Pro и Agency, собственникам — тариф арендодателя
-          final plans = prices.where((p) => p.kind == 'plan' && (agent ? !p.ownersOnly : !p.agentsOnly)).toList();
+          // команда в предпросмотре видит все тарифы
+          final plans = prices
+              .where((p) => p.kind == 'plan' && ((app.user?.isAdmin ?? false) || (agent ? !p.ownersOnly : !p.agentsOnly)))
+              .toList();
           final slots = prices.where((p) => p.kind == 'slots').toList();
           final packs = prices.where((p) => p.kind == 'boost_pack').toList();
           return RefreshIndicator(
@@ -61,6 +64,10 @@ class _PlansScreenState extends State<PlansScreen> {
                   const SizedBox(height: 14),
                   const _Note('To buy boosts, extra listings or a plan, open Zumi in your browser — '
                       'payments are made on the Zumi website.'),
+                ] else if (app.billingPreview) ...[
+                  const SizedBox(height: 14),
+                  const _Note('Preview — only you (the Zumi owner) see prices and can test buying. Payments are OFF '
+                      'for everyone else; orders are confirmed by hand in the team panel → Payments.'),
                 ] else if (!Features.billing) ...[
                   const SizedBox(height: 14),
                   const _Note('Zumi is free during launch. Plans and boosts will appear here later.'),

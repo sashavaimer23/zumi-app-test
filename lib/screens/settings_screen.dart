@@ -328,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
 
-              if (Features.billing) ...[
+              if (app.billingVisible) ...[
                 const _Section('Plans & payments'),
                 _Row(
                   icon: ZI.crown,

@@ -184,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _IdentityCard(isAgent: user.isAgent),
                     const SizedBox(height: 14),
                     _QuotaCard(quota: quota),
-                    if (Features.billing) ...[
+                    if (app.billingVisible) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: () => openPlans(context),
@@ -674,8 +674,8 @@ class _MyListingTile extends StatelessWidget {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               if (active) const PopupMenuItem(value: 'share', child: Text('Share')),
-              if (active && Features.billing) const PopupMenuItem(value: 'boost', child: Text('Boost — get more views')),
-              if (active && app.promotionOn && !Features.billing)
+              if (active && app.billingVisible) const PopupMenuItem(value: 'boost', child: Text('Boost — get more views')),
+              if (active && app.promotionOn && !app.billingVisible)
                 const PopupMenuItem(value: 'promote', child: Text('Promote to top')),
               if (active) const PopupMenuItem(value: 'confirm', child: Text('Confirm still available')),
               if (active) const PopupMenuItem(value: 'hide', child: Text('Hide from search')),

@@ -61,7 +61,13 @@ class AppState extends ChangeNotifier {
   }
 
   /// Можно ли покупать сейчас: платные функции включены и это сайт (не приложение из магазина)
-  bool get canBuy => Features.billing && kIsWeb;
+  /// Платные функции видны: всем — когда оплата включена; владельцу Zumi — всегда (проверка кнопок до запуска)
+  bool get billingVisible => Features.billing || (_user?.isOwner ?? false);
+
+  /// Предпросмотр: оплата выключена для всех, но владелец видит платное, чтобы проверить
+  bool get billingPreview => !Features.billing && (_user?.isOwner ?? false);
+
+  bool get canBuy => billingVisible && kIsWeb;
 
   /// Владелец: платные функции ON/OFF (вместе с ними включается показ бустов и Featured)
   Future<void> setBilling(bool on) async {
