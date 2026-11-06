@@ -399,10 +399,10 @@ class DemoRepository implements Repository {
     final u = _requireUser();
     // как на сервере: объявления на проверке тоже занимают место
     final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
-    // как на сервере: агент с проверенной лицензией — 25, без — 15, собственник — 2; тариф — если больше
+    // как на сервере: агент с проверенной лицензией — 20, без — 15, собственник — 2; тариф — если больше
     final base = u.isAgent && u.licenceVerified ? 20 : (_limits[u.role] ?? 999);
     final planActive = _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now());
-    final planLimit = !planActive ? 0 : (_billing.plan == 'agency' ? 150 : 50);
+    final planLimit = !planActive ? 0 : switch (_billing.plan) { 'agency' => 150, 'landlord' => 10, _ => 50 };
     final allowed = (planLimit > base ? planLimit : base) + _billing.extraSlots;
     return Quota(used, allowed);
   }
@@ -462,6 +462,8 @@ class DemoRepository implements Repository {
       nearby: Map.of(d.nearby),
       ownerLicensed: u.isAgent && u.licenceVerified,
       roomInfo: d.propertyType == PropertyType.room ? d.roomInfo : null,
+      unitsTotal: d.unitsTotalToSave,
+      unitsAvailable: d.unitsAvailableToSave,
       images: images,
       listedBy: u.isAgent ? 'agent' : 'owner',
       contactName: u.fullName,
@@ -517,6 +519,8 @@ class DemoRepository implements Repository {
       nearby: Map.of(d.nearby),
       ownerLicensed: u.isAgent && u.licenceVerified,
       roomInfo: d.propertyType == PropertyType.room ? d.roomInfo : null,
+      unitsTotal: d.unitsTotalToSave,
+      unitsAvailable: d.unitsAvailableToSave,
       status: old.status,
       images: images,
       listedBy: old.listedBy,
@@ -838,14 +842,38 @@ class DemoRepository implements Repository {
         description: 'Post one more listing above your free limit for 30 days.', amount: 30, days: 30),
     PriceItem(code: 'slot_pack5', kind: 'slots', title: '5 extra listings — 30 days',
         description: 'Post five more listings for 30 days. Save K30.', amount: 120, days: 30, quantity: 5),
+    PriceItem(code: 'plan_landlord_m', kind: 'plan', title: 'Landlord — 1 month',
+        description: 'Up to 10 listings for your own properties. 1 boost included.', amount: 75, days: 30,
+        plan: 'landlord', ownersOnly: true),
+    PriceItem(code: 'plan_landlord_3m', kind: 'plan', title: 'Landlord — 3 months',
+        description: 'Up to 10 listings. Save 10%. 3 boosts included.', amount: 200, days: 91, quantity: 3,
+        plan: 'landlord', ownersOnly: true),
+    PriceItem(code: 'plan_landlord_6m', kind: 'plan', title: 'Landlord — 6 months',
+        description: 'Up to 10 listings. Save 15%. 6 boosts included.', amount: 380, days: 182, quantity: 6,
+        plan: 'landlord', ownersOnly: true),
+    PriceItem(code: 'plan_landlord_y', kind: 'plan', title: 'Landlord — 12 months',
+        description: 'Up to 10 listings for a year — 2 months free. 12 boosts included.', amount: 750, days: 365,
+        quantity: 12, plan: 'landlord', ownersOnly: true),
     PriceItem(code: 'plan_pro_m', kind: 'plan', title: 'Pro — 1 month',
         description: '50 listings, 2 boosts every month, Pro badge, full statistics.', amount: 250, days: 30,
         quantity: 2, plan: 'pro', agentsOnly: true),
     PriceItem(code: 'plan_pro_y', kind: 'plan', title: 'Pro — 12 months',
         description: 'Pro for a year — 2 months free. 24 boosts included.', amount: 2500, days: 365,
         quantity: 24, plan: 'pro', agentsOnly: true),
+    PriceItem(code: 'plan_pro_3m', kind: 'plan', title: 'Pro — 3 months',
+        description: 'Pro for 3 months. Save 10%. 6 boosts included.', amount: 675, days: 91, quantity: 6,
+        plan: 'pro', agentsOnly: true),
+    PriceItem(code: 'plan_pro_6m', kind: 'plan', title: 'Pro — 6 months',
+        description: 'Pro for 6 months. Save 15%. 12 boosts included.', amount: 1275, days: 182, quantity: 12,
+        plan: 'pro', agentsOnly: true),
     PriceItem(code: 'plan_agency_m', kind: 'plan', title: 'Agency — 1 month',
         description: '150 listings, 8 boosts every month, agency page.', amount: 750, days: 30, quantity: 8,
+        plan: 'agency', agentsOnly: true),
+    PriceItem(code: 'plan_agency_3m', kind: 'plan', title: 'Agency — 3 months',
+        description: 'Agency for 3 months. Save 10%. 24 boosts included.', amount: 2025, days: 91, quantity: 24,
+        plan: 'agency', agentsOnly: true),
+    PriceItem(code: 'plan_agency_6m', kind: 'plan', title: 'Agency — 6 months',
+        description: 'Agency for 6 months. Save 15%. 48 boosts included.', amount: 3825, days: 182, quantity: 48,
         plan: 'agency', agentsOnly: true),
     PriceItem(code: 'plan_agency_y', kind: 'plan', title: 'Agency — 12 months',
         description: 'Agency for a year — 2 months free. 96 boosts included.', amount: 7500, days: 365,
@@ -879,6 +907,7 @@ class DemoRepository implements Repository {
     final it = _prices.where((p) => p.code == itemCode && p.active).firstOrNull;
     if (it == null) throw AppException('This option is not available now', code: 'BAD_ITEM');
     if (it.agentsOnly && !(u.isAgent || u.isAdmin)) throw AppException('This is for agents', code: 'AGENTS_ONLY');
+    if (it.ownersOnly && u.isAgent) throw AppException('This plan is for property owners', code: 'OWNERS_ONLY');
     if ((it.kind == 'boost' || it.kind == 'featured') &&
         !_props.any((p) => p.id == propertyId && p.ownerId == u.id && p.status == 'active')) {
       throw AppException('You can boost only your own active listing', code: 'NOT_YOUR_LISTING');
@@ -1371,6 +1400,25 @@ class DemoRepository implements Repository {
       _syncBadgeFor(userId);
     }
     _log(approve ? 'approve' : 'reject', 'licence', l.isEmpty ? userId : '${l.first.userName} ${l.first.licenceNo}', note);
+  }
+
+  @override
+  Future<List<SuspectOwner>> adminSuspectOwners() async {
+    _requireAdmin();
+    final byOwner = <String, List<Property>>{};
+    for (final p in _props.where((p) => p.status == 'active' && p.listedBy == 'owner' && p.ownerId != null)) {
+      byOwner.putIfAbsent(p.ownerId!, () => []).add(p);
+    }
+    return [
+      for (final e in byOwner.entries)
+        if (e.value.length >= 4 || e.value.map((p) => p.areaName).toSet().length >= 3)
+          SuspectOwner(
+            userId: e.key,
+            name: e.value.first.contactName ?? 'Owner',
+            activeListings: e.value.length,
+            areas: e.value.map((p) => p.areaName).toSet().length,
+          ),
+    ];
   }
 
   @override

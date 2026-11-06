@@ -332,6 +332,22 @@ select admin_mark_order((select (r->>'id')::uuid from so), 'paid', null);
 reset role;
 select zt.ok('extra listing slot added for 30 days',
   (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 3);
+-- тариф арендодателя: только собственникам
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
+select zt.err('agents cannot buy the landlord plan', 'OWNERS_ONLY', $$select create_order('plan_landlord_m')$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('owners cannot buy agent plans', 'AGENTS_ONLY', $$select create_order('plan_pro_3m')$$);
+create temp table lo as select create_order('plan_landlord_3m') as r;
+select zt.ok('landlord 3 months costs K200', (select (r->>'amount')::numeric = 200 from lo));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_mark_order((select (r->>'id')::uuid from lo), 'paid', null);
+reset role;
+select zt.ok('landlord plan: 10 listings (+1 bought slot) for 3 months',
+  (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 11
+  and (select plan = 'landlord' and plan_until > now() + interval '90 days' and boost_credits = 3
+         from profiles where id = 'a0000000-0000-0000-0000-000000000001'));
+drop table lo;
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
 select admin_set_setting('billing_enabled', 'false');
@@ -484,6 +500,42 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004
 select zt.ok('owner sees email status', admin_email_status() ? 'sent_24h');
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
 select zt.ok('others do not see email status', admin_email_status() is null);
+reset role;
+
+-- ---------- бизнес-модель: дом на несколько квартир, жалоба «это агент», подозрительные, напоминание ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,units_total,units_available)
+values ('b0000000-0000-0000-0000-0000000000e3','a0000000-0000-0000-0000-000000000001','Block of flats','rent','apartment',4000,
+        'SRID=4326;POINT(28.32 -15.42)','active',(select min(id) from areas),6,2);
+update properties set status = 'active' where id = 'b0000000-0000-0000-0000-0000000000e3';
+set role anon;
+select zt.ok('feed shows free units of a building',
+  (select units_total = 6 and units_available = 2 from property_feed where id = 'b0000000-0000-0000-0000-0000000000e3'));
+reset role;
+select zt.err('free units cannot exceed the total', 'properties_units_ok',
+  $$update properties set units_available = 7 where id = 'b0000000-0000-0000-0000-0000000000e3'$$);
+select zt.err('a building needs at least 2 units', 'properties_units_ok',
+  $$update properties set units_total = 1, units_available = 1 where id = 'b0000000-0000-0000-0000-0000000000e3'$$);
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000003', false);
+insert into listing_reports(property_id, reporter_id, reason)
+values ('b0000000-0000-0000-0000-0000000000e3', auth.uid(), 'agent_as_owner');
+select zt.ok('people can report "this is an agent"', true);
+select zt.ok('only the team sees suspect owners', not exists (select 1 from admin_suspect_owners()));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select zt.ok('team sees the reported "owner"',
+  exists (select 1 from admin_suspect_owners() where user_id = 'a0000000-0000-0000-0000-000000000001' and agent_reports = 1));
+reset role;
+delete from properties where id = 'b0000000-0000-0000-0000-0000000000e3';
+update profiles set plan_until = now() + interval '3 days' where id = 'a0000000-0000-0000-0000-000000000001';
+set role service_role;
+select zt.ok('reminder 5 days before the plan ends',
+  exists (select 1 from jsonb_array_elements(email_due(50)) e
+           where e->>'kind' = 'plan_ending' and e->>'email' = 'owner@x.zm' and e->'data'->>'plan' = 'landlord'
+             and (e->'data'->>'days')::int = 3));
+select email_mark('a0000000-0000-0000-0000-000000000001', 'plan_ending', 'a0000000-0000-0000-0000-000000000001', true);
+select zt.ok('only one reminder',
+  not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'kind' = 'plan_ending'));
 reset role;
 
 select zt.ok('ALL CHECKS PASSED', true);

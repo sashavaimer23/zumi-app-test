@@ -124,6 +124,10 @@ void main() {
     expect(b.boostCredits, 2);
     expect((await repo.myQuota()).allowed, greaterThanOrEqualTo(50));
     expect((await repo.billingStatus()).revenue30d, 250);
+    // тариф арендодателя — только собственникам; агентам — Pro на 3 и 6 месяцев
+    await expectLater(repo.createOrder('plan_landlord_m'), throwsA(isA<AppException>()));
+    final codes = (await repo.priceList()).map((p) => p.code).toSet();
+    expect(codes, containsAll(['plan_landlord_m', 'plan_landlord_3m', 'plan_pro_3m', 'plan_pro_6m', 'plan_agency_6m']));
   });
 
   test('money format', () {

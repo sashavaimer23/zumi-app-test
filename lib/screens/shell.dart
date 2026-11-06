@@ -20,6 +20,7 @@ import 'home_screen.dart';
 import 'post/post_wizard.dart';
 import 'profile_screen.dart';
 import 'public_profile_screen.dart';
+import 'billing/billing_screen.dart';
 import 'saved_screen.dart';
 import 'support/support_screen.dart';
 
@@ -145,6 +146,11 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
       }
       if (open == 'chats' || open == 'listings') {
         go(open == 'chats' ? 3 : 4);
+        return;
+      }
+      if (open == 'plans') {
+        go(4);
+        openPlans(context);
         return;
       }
       if (open == 'support') {

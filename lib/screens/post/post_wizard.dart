@@ -417,6 +417,7 @@ class _PostWizardState extends State<PostWizard> {
           _label('Bathrooms'),
           _NumberDropdown(value: _d.bathrooms, max: 8, onChanged: (v) => setState(() => _d.bathrooms = v)),
         ],
+        if (_d.multiUnitAllowed) ..._unitsFields(isRoom),
         if (!isRoom) ...[
           _label(isLand ? 'Plot size (m²)' : 'Property size (m²)'),
           TextField(
@@ -477,6 +478,70 @@ class _PostWizardState extends State<PostWizard> {
         },
       ),
     );
+  }
+
+  /// «Несколько квартир / комнат»: одно объявление на весь дом или блок
+  List<Widget> _unitsFields(bool isRoom) {
+    final on = _d.unitsTotal != null;
+    final what = isRoom ? 'rooms' : 'flats';
+    return [
+      const SizedBox(height: 14),
+      Container(
+        decoration: BoxDecoration(color: Zc.greenTint, borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.fromLTRB(14, 4, 8, on ? 14 : 4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            activeThumbColor: Zc.orange,
+            value: on,
+            title: Text('Several $what for rent here', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            subtitle: Text(
+                'A house, block or yard with several $what? Post it once — it counts as one listing.',
+                style: const TextStyle(fontSize: 12, color: Zc.grey)),
+            onChanged: (v) => setState(() {
+              _d.unitsTotal = v ? 2 : null;
+              _d.unitsAvailable = 1;
+            }),
+          ),
+          if (on) ...[
+            Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(isRoom ? 'Rooms in total' : 'Flats in total',
+                      style: const TextStyle(fontSize: 13, color: Zc.grey)),
+                  _NumberDropdown(
+                    value: _d.unitsTotal!,
+                    min: 2,
+                    max: 60,
+                    plusAtMax: false,
+                    onChanged: (v) => setState(() {
+                      _d.unitsTotal = v;
+                      if (_d.unitsAvailable > v) _d.unitsAvailable = v;
+                    }),
+                  ),
+                ]),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Free now', style: TextStyle(fontSize: 13, color: Zc.grey)),
+                  _NumberDropdown(
+                    value: _d.unitsAvailable,
+                    min: 1,
+                    max: _d.unitsTotal!,
+                    plusAtMax: false,
+                    onChanged: (v) => setState(() => _d.unitsAvailable = v),
+                  ),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            Text('Describe one typical ${isRoom ? 'room' : 'flat'} above. When all are taken, mark the listing as rented.',
+                style: const TextStyle(fontSize: 12, color: Zc.grey)),
+          ],
+        ]),
+      ),
+    ];
   }
 
   /// Комната: вид жилья, ванная, кухня, вода, свет, забор
@@ -1130,8 +1195,11 @@ class _PillToggle extends StatelessWidget {
 }
 
 class _NumberDropdown extends StatelessWidget {
-  const _NumberDropdown({required this.value, required this.max, required this.onChanged});
+  const _NumberDropdown(
+      {required this.value, required this.max, required this.onChanged, this.min = 0, this.plusAtMax = true});
+  final bool plusAtMax;
   final int value;
+  final int min;
   final int max;
   final ValueChanged<int> onChanged;
 
@@ -1139,9 +1207,9 @@ class _NumberDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<int>(
       key: ValueKey(value), // значение задаёт родитель — пересоздаём поле при смене
-      initialValue: value,
+      initialValue: value.clamp(min, max),
       icon: const Icon(ZI.caretDown, color: Zc.green, size: 28),
-      items: [for (var i = 0; i <= max; i++) DropdownMenuItem(value: i, child: Text(i == max ? '$i+' : '$i'))],
+      items: [for (var i = min; i <= max; i++) DropdownMenuItem(value: i, child: Text(i == max && plusAtMax ? '$i+' : '$i'))],
       onChanged: (v) => onChanged(v ?? value),
     );
   }
@@ -1282,8 +1350,9 @@ class _LimitReached extends StatelessWidget {
         Text(
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
           '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
-          '${context.watch<AppState>().canBuy ? 'To add more, get extra listings${isAgent ? ' or a Pro plan' : ''}.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
-          '${unlicensed ? '\n\nLicensed agents can post up to 20 listings — add your ZIEA registration number.' : ''}',
+          '${context.watch<AppState>().canBuy ? 'To add more, get ${isAgent ? 'extra listings or a Pro plan' : 'the Landlord plan — up to 10 listings from K75 a month'}.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
+          '${unlicensed ? '\n\nLicensed agents can post up to 20 listings — add your ZIEA registration number.' : ''}'
+          '${!isAgent ? '\n\nTip: a house or block with several flats can be ONE listing — choose "Several units" and say how many are free.' : ''}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),
@@ -1300,7 +1369,7 @@ class _LimitReached extends StatelessWidget {
           if (unlicensed) const SizedBox(height: 12),
           Center(
             child: PrimaryButton(
-              label: isAgent ? 'See plans and extra listings' : 'Get extra listings',
+              label: isAgent ? 'See plans and extra listings' : 'See the Landlord plan',
               width: double.infinity,
               onPressed: () => openPlans(context),
             ),

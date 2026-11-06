@@ -183,4 +183,22 @@ void main() {
     expect(SearchFilters().matches(p), isFalse); // в обычном поиске комнат нет
     expect((SearchFilters()..propertyType = PropertyType.room).matches(p), isTrue);
   });
+
+  test('building with several flats: one listing, "2 of 6 units free"', () {
+    final p = Property.fromMap({
+      'id': 'u1', 'title': 'Block of flats', 'deal_type': 'rent', 'property_type': 'apartment', 'price': 4000,
+      'lat': -15.4, 'lng': 28.3, 'status': 'active', 'bedrooms': 2, 'units_total': 6, 'units_available': 2,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    expect(p.isMultiUnit, isTrue);
+    expect(p.specsLine, contains('2 of 6 units free'));
+    final d = ListingDraft()
+      ..dealType = DealType.rent
+      ..propertyType = PropertyType.apartment
+      ..unitsTotal = 3
+      ..unitsAvailable = 5;
+    expect(d.unitsAvailableToSave, 3); // свободно не больше, чем всего
+    d.dealType = DealType.sale;
+    expect(d.unitsTotalToSave, isNull); // только для аренды
+  });
 }

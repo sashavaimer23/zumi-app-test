@@ -79,6 +79,19 @@ function compose(it: Item, site: string): { subject: string; title: string; body
         button: "Answer in one tap",
         link: `${site}/?listing=${d.listing_id}`,
       };
+    case "plan_ending": {
+      const name = ({ pro: "Pro", agency: "Agency", landlord: "Landlord" } as Record<string, string>)[d.plan] ?? "Zumi";
+      const days = Number(d.days ?? 1);
+      return {
+        subject: `Your ${name} plan ends in ${days} ${days === 1 ? "day" : "days"}`,
+        title: `Your ${name} plan ends on ${esc(d.until)}`,
+        body: `Renew to keep posting above your free limit and to get your monthly boosts. ` +
+          `Your listings stay up either way — we never remove them.<br><br>` +
+          `Tip: pay for 3, 6 or 12 months and save up to 17%.`,
+        button: "Renew my plan",
+        link: `${site}/?open=plans`,
+      };
+    }
     default:
       return { subject: "News from Zumi", title: "Zumi", body: "", button: "Open Zumi", link: site };
   }

@@ -47,7 +47,8 @@ class _PlansScreenState extends State<PlansScreen> {
           if (snap.hasError) return Center(child: Text('${snap.error}'));
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final (b, prices, orders) = snap.data!;
-          final plans = prices.where((p) => p.kind == 'plan' && (agent || !p.agentsOnly)).toList();
+          // агентам — Pro и Agency, собственникам — тариф арендодателя
+          final plans = prices.where((p) => p.kind == 'plan' && (agent ? !p.ownersOnly : !p.agentsOnly)).toList();
           final slots = prices.where((p) => p.kind == 'slots').toList();
           final packs = prices.where((p) => p.kind == 'boost_pack').toList();
           return RefreshIndicator(
@@ -65,7 +66,9 @@ class _PlansScreenState extends State<PlansScreen> {
                   const _Note('Zumi is free during launch. Plans and boosts will appear here later.'),
                 ],
                 if (app.canBuy && plans.isNotEmpty) ...[
-                  _title('Plans for agents', 'More listings, boosts every month and a Pro badge.'),
+                  agent
+                      ? _title('Plans for agents', 'More listings, boosts every month and a Pro badge. Pay for 3, 6 or 12 months and save.')
+                      : _title('Landlord plan', 'Have more than 2 properties? Post up to 10 — from K75 a month. Pay for longer and save.'),
                   for (final p in plans) _PriceCard(item: p, onBuy: () => _buy(p)),
                 ],
                 if (app.canBuy && packs.isNotEmpty) ...[

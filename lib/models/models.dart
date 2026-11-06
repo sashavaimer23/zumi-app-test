@@ -141,6 +141,10 @@ class Property {
   final String? ownerAvatarUrl;         // фото автора
   final List<String> thumbs;            // маленькие копии фото для карточек (экономия трафика)
   final RoomInfo? roomInfo;             // комната / boys' quarters / bedsitter: ванная, кухня, вода, свет
+  final int? unitsTotal;                // дом / блок на несколько квартир: всего квартир (одно объявление)
+  final int? unitsAvailable;            // …и сколько свободно сейчас
+  bool get isMultiUnit => unitsTotal != null && unitsTotal! > 1;
+  String? get unitsLabel => isMultiUnit ? '${unitsAvailable ?? 1} of $unitsTotal ${isRoom ? 'rooms' : 'units'} free' : null;
   bool get isRoom => propertyType == PropertyType.room;
   final bool isFresh;                   // подтверждено «ещё доступно» за последние 37 дней (спросим через 30)
   final String contactMode;             // 'phone' — номер можно показать, 'chat' — только чат
@@ -205,6 +209,8 @@ class Property {
     this.nearby = const {},
     this.ownerLicensed = false,
     this.roomInfo,
+    this.unitsTotal,
+    this.unitsAvailable,
     this.hiddenBy,
     this.hiddenReason,
     this.approvedAt,
@@ -264,6 +270,8 @@ class Property {
         nearby: _nearby(m['nearby']),
         ownerLicensed: (m['owner_licensed'] as bool?) ?? false,
         roomInfo: RoomInfo.fromJson(m['room_info']),
+        unitsTotal: (m['units_total'] as num?)?.toInt(),
+        unitsAvailable: (m['units_available'] as num?)?.toInt(),
         hiddenBy: m['hidden_by'] as String?,
         hiddenReason: m['hidden_reason'] as String?,
         approvedAt: DateTime.tryParse((m['approved_at'] as String?) ?? ''),
@@ -318,7 +326,7 @@ class Property {
         nearby: nearby, ownerLicensed: ownerLicensed,
         hiddenBy: clearHidden ? null : (hiddenBy ?? this.hiddenBy),
         hiddenReason: clearHidden ? null : hiddenReason,
-        approvedAt: approvedAt, roomInfo: roomInfo,
+        approvedAt: approvedAt, roomInfo: roomInfo, unitsTotal: unitsTotal, unitsAvailable: unitsAvailable,
       );
 
   bool get isPending => status == 'pending';
@@ -385,6 +393,7 @@ class Property {
       parts.add(kRoomKinds[roomInfo?.kind ?? 'room'] ?? 'Room');
       final b = roomInfo?.bathroom;
       if (b != null) parts.add(b == 'own' ? 'own bathroom' : 'shared bathroom');
+      if (unitsLabel != null) parts.add(unitsLabel!);
       return parts.join(' · ');
     }
     final type = propertyType == PropertyType.commercial ? 'Commercial' : propertyType.label.toLowerCase();
@@ -395,6 +404,7 @@ class Property {
     }
     final size = areaSqm ?? plotSqm;
     if (size != null) parts.add('${_num(size)} m²');
+    if (unitsLabel != null) parts.add(unitsLabel!);
     return parts.join(',  ');
   }
 
@@ -731,7 +741,9 @@ class ListingDraft {
       ..address = p.address ?? ''
       ..nearby = {...p.nearby}
       ..contactPhone = p.contactPhone ?? ''
-      ..roomInfo = p.roomInfo ?? const RoomInfo();
+      ..roomInfo = p.roomInfo ?? const RoomInfo()
+      ..unitsTotal = p.unitsTotal
+      ..unitsAvailable = p.unitsAvailable ?? 1;
     return d;
   }
 
@@ -755,6 +767,17 @@ class ListingDraft {
   Map<String, String> nearby = {}; // что рядом (kNearbyPlaces → kNearbyDistances)
   String contactPhone = '';
   RoomInfo roomInfo = const RoomInfo(); // только для типа «Room»
+
+  /// «Дом на несколько квартир»: одно объявление вместо нескольких (только аренда, не земля)
+  int? unitsTotal;
+  int unitsAvailable = 1;
+  bool get multiUnitAllowed => dealType == DealType.rent && propertyType != PropertyType.land;
+  int? get unitsTotalToSave => multiUnitAllowed && unitsTotal != null && unitsTotal! > 1 ? unitsTotal : null;
+  int? get unitsAvailableToSave {
+    final t = unitsTotalToSave;
+    if (t == null) return null;
+    return unitsAvailable.clamp(1, t);
+  }
 }
 
 /// Фото: новое (байты с телефона) или уже загруженное (url) — при правке объявления
@@ -894,6 +917,7 @@ const reportReasons = <String, String>{
   'not_available': 'Property is not available',
   'wrong_info': 'Wrong price, photos or details',
   'duplicate': 'Duplicate listing',
+  'agent_as_owner': 'An agent posing as the owner',
   'other': 'Something else',
 };
 
@@ -2137,8 +2161,9 @@ class PriceItem {
   final String currency;
   final int days;
   final int quantity;
-  final String? plan; // pro | agency
+  final String? plan; // pro | agency | landlord
   final bool agentsOnly;
+  final bool ownersOnly; // тариф арендодателя — только собственникам
   final bool active;
 
   const PriceItem({
@@ -2152,6 +2177,7 @@ class PriceItem {
     this.quantity = 1,
     this.plan,
     this.agentsOnly = false,
+    this.ownersOnly = false,
     this.active = true,
   });
 
@@ -2166,6 +2192,7 @@ class PriceItem {
         quantity: (m['quantity'] as num?)?.toInt() ?? 1,
         plan: m['plan'] as String?,
         agentsOnly: (m['agents_only'] as bool?) ?? false,
+        ownersOnly: (m['owners_only'] as bool?) ?? false,
         active: (m['active'] as bool?) ?? true,
       );
 
@@ -2173,7 +2200,7 @@ class PriceItem {
 
   PriceItem copyWith({double? amount, bool? active}) => PriceItem(
         code: code, kind: kind, title: title, description: description, amount: amount ?? this.amount,
-        currency: currency, days: days, quantity: quantity, plan: plan, agentsOnly: agentsOnly,
+        currency: currency, days: days, quantity: quantity, plan: plan, agentsOnly: agentsOnly, ownersOnly: ownersOnly,
         active: active ?? this.active,
       );
 }
@@ -2296,7 +2323,7 @@ class BillingInfo {
         paymentInfo: (m['payment_info'] as String?) ?? '',
       );
 
-  String get planLabel => switch (plan) { 'pro' => 'Pro', 'agency' => 'Agency', _ => 'Free' };
+  String get planLabel => switch (plan) { 'pro' => 'Pro', 'agency' => 'Agency', 'landlord' => 'Landlord', _ => 'Free' };
 }
 
 /// Кабинет владельца → Payments
@@ -2414,4 +2441,27 @@ class RoomInfo {
         if (power != null) kRoomPower[power]!,
         if (wall == true) 'Walled yard',
       ];
+}
+
+/// Кабинет команды → Reports: «собственники», похожие на агентов
+class SuspectOwner {
+  final String userId;
+  final String name;
+  final String? phone;
+  final int activeListings;
+  final int areas;
+  final int agentReports;
+  final String? plan;
+  const SuspectOwner({required this.userId, required this.name, this.phone, this.activeListings = 0,
+      this.areas = 0, this.agentReports = 0, this.plan});
+
+  factory SuspectOwner.fromMap(Map<String, dynamic> m) => SuspectOwner(
+        userId: m['user_id'] as String,
+        name: (m['full_name'] as String?) ?? 'No name',
+        phone: m['phone'] as String?,
+        activeListings: (m['active_listings'] as num?)?.toInt() ?? 0,
+        areas: (m['areas'] as num?)?.toInt() ?? 0,
+        agentReports: (m['agent_reports'] as num?)?.toInt() ?? 0,
+        plan: m['plan'] as String?,
+      );
 }

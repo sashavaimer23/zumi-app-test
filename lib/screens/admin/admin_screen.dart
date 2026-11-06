@@ -17,6 +17,7 @@ import '../../utils/download.dart';
 import '../help/help_screen.dart';
 import '../promotion/crop_dialog.dart';
 import '../property_screen.dart';
+import '../public_profile_screen.dart';
 import '../support/ticket_chat_screen.dart';
 
 part 'admin_extra.dart';
@@ -767,7 +768,8 @@ class _ReportsState extends State<_Reports> {
           _future = _load();
         }),
       ),
-      child: _Loader<List<ReportItem>>(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _Loader<List<ReportItem>>(
         future: _future,
         builder: (list) {
           if (list.isEmpty) return _emptyDone('No reports.');
@@ -830,6 +832,8 @@ class _ReportsState extends State<_Reports> {
           ]);
         },
       ),
+        const _SuspectOwners(),
+      ]),
     );
   }
 }
@@ -1052,5 +1056,67 @@ class _Log extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// «Собственники», которые похожи на агентов: много объектов в разных районах или жалобы «это агент».
+/// Агент под видом собственника не платит и не показывает лицензию — проверить и при необходимости
+/// попросить сменить роль или заблокировать.
+class _SuspectOwners extends StatefulWidget {
+  const _SuspectOwners();
+
+  @override
+  State<_SuspectOwners> createState() => _SuspectOwnersState();
+}
+
+class _SuspectOwnersState extends State<_SuspectOwners> {
+  late final Future<List<SuspectOwner>> _future = context.read<AppState>().repo.adminSuspectOwners();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 26),
+      Text('Owners who may be agents', style: zHeadline(context, size: 20)),
+      const SizedBox(height: 4),
+      const Text(
+          'Properties in 3+ areas, 4+ active listings, or reported as "an agent posing as the owner". '
+          'Agents must use an agent account and show their ZIEA licence.',
+          style: TextStyle(color: Zc.grey, fontSize: 13)),
+      const SizedBox(height: 12),
+      _Loader<List<SuspectOwner>>(
+        future: _future,
+        builder: (list) {
+          if (list.isEmpty) return _emptyDone('Nobody looks suspicious.');
+          return Column(children: [
+            for (final o in list)
+              _Card(
+                highlight: o.agentReports > 0,
+                child: Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(o.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(
+                          [
+                            if (o.phone != null) o.phone!,
+                            '${o.activeListings} active listings in ${o.areas} ${o.areas == 1 ? 'area' : 'areas'}',
+                            if (o.plan != null) '${o.plan} plan',
+                          ].join(' · '),
+                          style: const TextStyle(fontSize: 13, color: Zc.grey)),
+                      if (o.agentReports > 0)
+                        Text('${o.agentReports} ${o.agentReports == 1 ? 'report' : 'reports'}: agent posing as the owner',
+                            style: const TextStyle(fontSize: 13, color: Zc.orange, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.push(
+                        context, MaterialPageRoute(builder: (_) => PublicProfileScreen(userId: o.userId))),
+                    child: const Text('Open profile'),
+                  ),
+                ]),
+              ),
+          ]);
+        },
+      ),
+    ]);
   }
 }

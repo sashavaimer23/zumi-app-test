@@ -155,6 +155,7 @@ class SupabaseRepository implements Repository {
         throw AppException('You can boost only your own active listing', code: 'NOT_YOUR_LISTING');
       }
       if (e.message.contains('AGENTS_ONLY')) throw AppException('This is for agents', code: 'AGENTS_ONLY');
+      if (e.message.contains('OWNERS_ONLY')) throw AppException('This plan is for property owners', code: 'OWNERS_ONLY');
       if (e.message.contains('FINISH_SIGNUP')) {
         throw AppException('Please finish setting up your account first.', code: 'FINISH_SIGNUP');
       }
@@ -592,6 +593,8 @@ class SupabaseRepository implements Repository {
               'contact_name': _user?.fullName,
               'status': 'active',
               'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
+              'units_total': d.unitsTotalToSave,
+              'units_available': d.unitsAvailableToSave,
             })
             .select('id')
             .single();
@@ -665,6 +668,8 @@ class SupabaseRepository implements Repository {
           'nearby': d.nearby,
           'contact_phone': d.contactPhone.trim(),
           'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
+              'units_total': d.unitsTotalToSave,
+              'units_available': d.unitsAvailableToSave,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', id);
 
@@ -1318,6 +1323,17 @@ class SupabaseRepository implements Repository {
   @override
   Future<void> adminReviewLicence(String userId, bool approve, {String? note}) => _guard(() async {
         await _db.rpc('admin_review_licence', params: {'uid': userId, 'approve': approve, 'p_note': note});
+      });
+
+  @override
+  Future<List<SuspectOwner>> adminSuspectOwners() => _guard(() async {
+        try {
+          final rows = await _db.rpc('admin_suspect_owners') as List;
+          return rows.map((r) => SuspectOwner.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+        } on PostgrestException catch (e) {
+          if (e.code == 'PGRST202') return const <SuspectOwner>[]; // база ещё без 033
+          rethrow;
+        }
       });
 
   @override

@@ -227,6 +227,9 @@ abstract class Repository {
   Future<List<LicenceItem>> adminLicenceQueue();
   Future<void> adminReviewLicence(String userId, bool approve, {String? note});
   Future<List<ReportItem>> adminReports({bool onlyNew = true});
+
+  /// «Собственники», похожие на агентов: объекты в 3+ районах, 4+ объявления или жалобы «это агент»
+  Future<List<SuspectOwner>> adminSuspectOwners();
   Future<void> adminResolveReport(String id, String action, {String? note});
   Future<void> adminRestoreListing(String propertyId);
   Future<List<SupportTicket>> adminTickets({String? status});
