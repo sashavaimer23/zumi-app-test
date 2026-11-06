@@ -376,7 +376,7 @@ class _QuotaCard extends StatelessWidget {
               SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Licensed agents can post up to 25 listings. Add your ZIEA number →',
+                  'Licensed agents can post up to 20 listings. Add your ZIEA number →',
                   style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline),
                 ),
               ),

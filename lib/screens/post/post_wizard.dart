@@ -1283,7 +1283,7 @@ class _LimitReached extends StatelessWidget {
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
           '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
           '${context.watch<AppState>().canBuy ? 'To add more, get extra listings${isAgent ? ' or a Pro plan' : ''}.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
-          '${unlicensed ? '\n\nLicensed agents can post up to 25 listings — add your ZIEA registration number.' : ''}',
+          '${unlicensed ? '\n\nLicensed agents can post up to 20 listings — add your ZIEA registration number.' : ''}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),
         ),

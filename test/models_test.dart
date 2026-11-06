@@ -156,7 +156,7 @@ void main() {
     expect(r.items.single.comment, 'Slow on 3G');
   });
 
-  test('launch limits: owner 2, agent 15, licensed agent 25', () async {
+  test('launch limits: owner 2, agent 15, licensed agent 20', () async {
     final owner = await ownerWithPhone(email: 'q@x.zm', phone: '+260974444444');
     expect((await owner.myQuota()).allowed, 2);
 
@@ -166,7 +166,7 @@ void main() {
 
     final licensed = DemoRepository();
     await licensed.signIn(email: 'agent@test.com', password: 'secret1'); // в демо — агент с проверенной лицензией
-    expect((await licensed.myQuota()).allowed, 25);
+    expect((await licensed.myQuota()).allowed, 20);
   });
 
   test('rooms: own section, details parsed, asked sooner', () {

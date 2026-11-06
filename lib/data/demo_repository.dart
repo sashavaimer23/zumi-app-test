@@ -400,7 +400,7 @@ class DemoRepository implements Repository {
     // как на сервере: объявления на проверке тоже занимают место
     final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
     // как на сервере: агент с проверенной лицензией — 25, без — 15, собственник — 2; тариф — если больше
-    final base = u.isAgent && u.licenceVerified ? 25 : (_limits[u.role] ?? 999);
+    final base = u.isAgent && u.licenceVerified ? 20 : (_limits[u.role] ?? 999);
     final planActive = _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now());
     final planLimit = !planActive ? 0 : (_billing.plan == 'agency' ? 150 : 50);
     final allowed = (planLimit > base ? planLimit : base) + _billing.extraSlots;

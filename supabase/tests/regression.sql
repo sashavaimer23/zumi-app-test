@@ -179,9 +179,9 @@ insert into auth.users(id, email, raw_user_meta_data) values
  ('a0000000-0000-0000-0000-000000000011', 'agent2@x.zm', '{"full_name":"Agent Two","role":"agent"}');
 select zt.ok('owner: 2 free listings', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 2);
 select zt.ok('agent without a checked licence: 15', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 15);
-select zt.ok('agent with a checked licence: 25', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 25);
+select zt.ok('agent with a checked licence: 20', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 20);
 update profiles set extra_listing_slots = 3 where id = 'a0000000-0000-0000-0000-000000000002';
-select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 28);
+select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 23);
 
 -- ---------- рекламные баннеры: выключатель ----------
 insert into ads(id, advertiser, title, placement, image_url, target_type, target, starts_on, ends_on, status)
