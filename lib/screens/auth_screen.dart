@@ -42,6 +42,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _licence = TextEditingController(); // номер ZIEA (агенты)
+  final _agencyName = TextEditingController(); // регистрация агентства
+  final _firmNo = TextEditingController();
 
   /// Почта, на которую ушло письмо «подтвердите почту» — пока не null, показываем экран «Проверьте почту»
   String? _awaitingEmail;
@@ -52,7 +54,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void dispose() {
     _resendTimer?.cancel();
-    for (final c in [_email, _password, _name, _phone, _licence]) {
+    for (final c in [_email, _password, _name, _phone, _licence, _agencyName, _firmNo]) {
       c.dispose();
     }
     super.dispose();
@@ -80,8 +82,10 @@ class _AuthScreenState extends State<AuthScreen> {
           phone: _phone.text.trim(),
           role: _role,
           termsAccepted: _consent,
-          licenceNo: _role == 'agent' ? _licence.text.trim() : null,
+          licenceNo: _role != 'owner' ? _licence.text.trim() : null,
           marketing: _marketing,
+          agencyName: _role == 'agency' ? _agencyName.text.trim() : null,
+          firmLicenceNo: _role == 'agency' ? _firmNo.text.trim() : null,
         );
         // после регистрации — предлагаем подтвердить телефон по SMS (можно пропустить)
         if (!widget.embedded) nav.pop(true);
@@ -331,8 +335,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
                 ),
                 const SizedBox(height: 18),
-                if (_role == 'agent') ...[
-                  const FieldLabel('ZIEA registration number', optional: true),
+                if (_role == 'agency') AgencyFields(name: _agencyName, firmNo: _firmNo),
+                if (_role != 'owner') ...[
+                  FieldLabel(_role == 'agency' ? 'Your personal ZIEA number' : 'ZIEA registration number', optional: true),
                   TextFormField(
                     controller: _licence,
                     textCapitalization: TextCapitalization.characters,

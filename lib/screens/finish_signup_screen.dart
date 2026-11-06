@@ -35,6 +35,8 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
   late final TextEditingController _name;
   final _phone = TextEditingController();
   final _licence = TextEditingController();
+  final _agencyName = TextEditingController();
+  final _firmNo = TextEditingController();
   String _role = 'owner';
   bool _consent = false;
   bool _marketing = false;
@@ -49,7 +51,7 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _licence]) {
+    for (final c in [_name, _phone, _licence, _agencyName, _firmNo]) {
       c.dispose();
     }
     super.dispose();
@@ -68,13 +70,16 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
     final nav = Navigator.of(context);
     try {
       await context.read<AppState>().repo.completeSignup(
-            role: _role,
+            role: _role == 'agency' ? 'agent' : _role,
             fullName: _name.text.trim(),
             phone: _phone.text.trim(),
-            licenceNo: _role == 'agent' ? _licence.text.trim() : null,
+            licenceNo: _role != 'owner' ? _licence.text.trim() : null,
             termsAccepted: _consent,
             marketing: _marketing,
           );
+      if (_role == 'agency' && mounted) {
+        await context.read<AppState>().repo.createAgency(name: _agencyName.text.trim(), firmLicenceNo: _firmNo.text.trim());
+      }
       // как после обычной регистрации — предлагаем сразу подтвердить телефон (можно пропустить)
       nav.push(MaterialPageRoute(builder: (_) => const PhoneVerifyScreen(afterSignup: true)));
     } on AppException catch (e) {
@@ -126,8 +131,9 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
                 validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
               ),
               const SizedBox(height: 18),
-              if (_role == 'agent') ...[
-                const FieldLabel('ZIEA registration number', optional: true),
+              if (_role == 'agency') AgencyFields(name: _agencyName, firmNo: _firmNo),
+                if (_role != 'owner') ...[
+                FieldLabel(_role == 'agency' ? 'Your personal ZIEA number' : 'ZIEA registration number', optional: true),
                 TextFormField(
                   controller: _licence,
                   textCapitalization: TextCapitalization.characters,

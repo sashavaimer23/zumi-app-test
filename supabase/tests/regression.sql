@@ -538,4 +538,73 @@ select zt.ok('only one reminder',
   not exists (select 1 from jsonb_array_elements(email_due(50)) e where e->>'kind' = 'plan_ending'));
 reset role;
 
+-- ---------- агентства ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000a6', 'agency@x.zm',
+  '{"full_name":"Boss Agent","role":"agency","agency_name":"Copper Homes","firm_licence_no":"ZIEA-F-9","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000a7', 'staff@x.zm', '{"full_name":"Staff","role":"agent","terms_accepted":true}');
+select zt.ok('signing up as Agency creates the agency',
+  (select p.role = 'agent' and a.name = 'Copper Homes' and a.firm_licence_no = 'ZIEA-F-9' and p.agency_name = 'Copper Homes'
+     from profiles p join agencies a on a.id = p.agency_id where p.id = 'a0000000-0000-0000-0000-0000000000a6'));
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a7', false);
+select zt.err('nobody can put themselves into an agency', 'USE_INVITE',
+  $$update profiles set agency_id = (select id from agencies limit 1) where id = auth.uid()$$);
+select zt.err('only agency owners make invites', 'NOT_AGENCY_OWNER', $$select agency_invite()$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a6', false);
+create temp table inv as select agency_invite() as code;
+grant select on inv to authenticated;
+select zt.ok('agency has 30 shared free listings', (select allowed from listing_quota(auth.uid())) = 30);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
+select zt.err('owners cannot join an agency', 'AGENTS_ONLY', $$select join_agency((select code from inv))$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a7', false);
+select zt.ok('invite shows the agency name before joining',
+  (select agency_invite_info((select code from inv))->>'name') = 'Copper Homes');
+select join_agency((select code from inv));
+select zt.ok('agent joined by invite', (select agency_name = 'Copper Homes' from profiles where id = auth.uid()));
+select zt.err('an invite works once', 'ALREADY_IN_AGENCY', $$select join_agency((select code from inv))$$);
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id) values
+ ('a0000000-0000-0000-0000-0000000000a7','Staff house','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas)),
+ ('a0000000-0000-0000-0000-0000000000a6','Boss house','rent','house',6000,'SRID=4326;POINT(28.32 -15.41)','active',(select min(id) from areas));
+update properties set status = 'active' where owner_id in ('a0000000-0000-0000-0000-0000000000a6', 'a0000000-0000-0000-0000-0000000000a7');
+select zt.ok('the limit is shared: both agents see 2 of 30 used',
+  (select used = 2 and allowed = 30 from listing_quota('a0000000-0000-0000-0000-0000000000a7'))
+  and (select used = 2 from listing_quota('a0000000-0000-0000-0000-0000000000a6')));
+update app_settings set value = 'true' where key = 'billing_enabled';
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a7', false);
+select zt.err('staff cannot buy their own plan', 'ASK_AGENCY_OWNER', $$select create_order('plan_pro_m')$$);
+reset role;
+update app_settings set value = 'false' where key = 'billing_enabled';
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select admin_verify_agency((select agency_id from profiles where id = 'a0000000-0000-0000-0000-0000000000a6'), true);
+select zt.ok('verified firm: 50 shared listings', (select allowed from listing_quota('a0000000-0000-0000-0000-0000000000a7')) = 50);
+select zt.ok('team sees agencies to check', exists (select 1 from admin_agencies() where name = 'Copper Homes' and members = 2));
+select set_config('request.jwt.claim.sub', '', false);
+reset role;
+set role anon;
+select zt.ok('agency page is public: 2 agents, 2 listings, firm number hidden',
+  (select (j->>'active_listings')::int = 2 and jsonb_array_length(j->'members') = 2 and j->>'firm_licence_no' is null
+            and (j->>'verified')::boolean
+     from (select agency_page(agency_id) as j from profiles where id = 'a0000000-0000-0000-0000-0000000000a6') x));
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a6', false);
+select update_agency('Copper Homes Ltd', 'ZIEA-F-10', null, 'Lusaka homes since 2015');
+select zt.ok('renamed agency: staff show the new name; new firm number needs a new check',
+  (select agency_name = 'Copper Homes Ltd' from profiles where id = 'a0000000-0000-0000-0000-0000000000a7')
+  and (select allowed from listing_quota(auth.uid())) = 30);
+select zt.err('agency owner cannot leave', 'OWNER_CANNOT_LEAVE', $$select leave_agency()$$);
+select agency_remove_member('a0000000-0000-0000-0000-0000000000a7');
+select zt.ok('removed agent: own limit again, no agency name',
+  (select agency_id is null and agency_name is null from profiles where id = 'a0000000-0000-0000-0000-0000000000a7')
+  and (select used = 1 and allowed = 15 from listing_quota('a0000000-0000-0000-0000-0000000000a7')));
+reset role;
+drop table inv;
+delete from properties where owner_id in ('a0000000-0000-0000-0000-0000000000a6', 'a0000000-0000-0000-0000-0000000000a7');
+
 select zt.ok('ALL CHECKS PASSED', true);

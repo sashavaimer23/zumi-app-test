@@ -23,6 +23,7 @@ import 'verify/get_verified_screen.dart';
 import 'auth_screen.dart';
 import 'shell.dart';
 import '../widgets/zicons.dart';
+import 'agency_screen.dart';
 
 /// Профиль: роль, лимит бесплатных объявлений, мои объявления, выход.
 class ProfileScreen extends StatefulWidget {
@@ -184,6 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _IdentityCard(isAgent: user.isAgent),
                     const SizedBox(height: 14),
                     _QuotaCard(quota: quota),
+                    const AgencyProfileCard(),
                     if (app.billingVisible) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(

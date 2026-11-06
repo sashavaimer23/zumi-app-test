@@ -21,6 +21,8 @@ abstract class Repository {
     bool termsAccepted = true,
     String? licenceNo, // агент может сразу указать номер ZIEA
     bool marketing = false, // согласие на новости и предложения (по умолчанию нет)
+    String? agencyName, // role == 'agency': агент + агентство сразу
+    String? firmLicenceNo,
   });
   Future<void> signOut();
 
@@ -227,6 +229,19 @@ abstract class Repository {
   Future<List<LicenceItem>> adminLicenceQueue();
   Future<void> adminReviewLicence(String userId, bool approve, {String? note});
   Future<List<ReportItem>> adminReports({bool onlyNew = true});
+
+  // ---------- агентства ----------
+  Future<String> createAgency({required String name, String? firmLicenceNo, String? phone});
+  Future<void> updateAgency({required String name, String? firmLicenceNo, String? phone, String? about});
+  Future<AgencyPage?> agencyPage(String agencyId);
+  Future<List<Property>> agencyListings(AgencyPage a);
+  Future<String> agencyInvite();
+  Future<AgencyInviteInfo?> agencyInviteInfo(String code);
+  Future<String> joinAgency(String code);
+  Future<void> leaveAgency();
+  Future<void> agencyRemoveMember(String userId);
+  Future<List<AgencyAdminItem>> adminAgencies();
+  Future<void> adminVerifyAgency(String agencyId, bool ok);
 
   /// «Собственники», похожие на агентов: объекты в 3+ районах, 4+ объявления или жалобы «это агент»
   Future<List<SuspectOwner>> adminSuspectOwners();

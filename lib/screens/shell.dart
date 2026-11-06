@@ -20,6 +20,7 @@ import 'home_screen.dart';
 import 'post/post_wizard.dart';
 import 'profile_screen.dart';
 import 'public_profile_screen.dart';
+import 'agency_screen.dart';
 import 'billing/billing_screen.dart';
 import 'saved_screen.dart';
 import 'support/support_screen.dart';
@@ -135,6 +136,14 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     final open = q['open']; // из писем: chats | listings | support
     final alerts = q['email_alerts']; // ссылка Unsubscribe из письма
     try {
+      if (q['join'] != null) {
+        await showJoinAgency(context, q['join']!);
+        return;
+      }
+      if (q['agency'] != null) {
+        openAgency(context, q['agency']!);
+        return;
+      }
       if (alerts != null) {
         showSnack(
             context,

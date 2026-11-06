@@ -135,4 +135,28 @@ void main() {
     expect(money(2500), 'K2,500');
     expect(money(12.5), 'K12.50');
   });
+
+  test('agency: sign up, invite an agent, shared limit, remove', () async {
+    final repo = DemoRepository();
+    await repo.signUp(
+        email: 'head@copper.zm', password: 'secret1', fullName: 'Head', phone: '+260971111111', role: 'agency',
+        agencyName: 'Copper Homes', firmLicenceNo: 'ZIEA-F-1');
+    final head = repo.currentUser!;
+    expect(head.isAgent, isTrue);
+    expect(head.agencyId, isNotNull);
+    expect((await repo.myQuota()).allowed, 30);
+    final code = await repo.agencyInvite();
+    expect((await repo.agencyInviteInfo(code))?.name, 'Copper Homes');
+    await repo.signOut();
+    await repo.signUp(
+        email: 'staff.agent@copper.zm', password: 'secret1', fullName: 'Staff', phone: '+260972222222', role: 'agent');
+    await repo.joinAgency(code);
+    expect(repo.currentUser!.agencyName, 'Copper Homes');
+    await expectLater(repo.joinAgency(code), throwsA(isA<AppException>())); // приглашение одноразовое
+    final page = (await repo.agencyPage(head.agencyId!))!;
+    expect(page.members.length, 2);
+    expect(page.firmLicenceNo, isNull); // номер фирмы видит только глава агентства и команда
+    await repo.leaveAgency();
+    expect(repo.currentUser!.agencyId, isNull);
+  });
 }

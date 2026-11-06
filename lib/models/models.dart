@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../config.dart';
 import '../features.dart';
 
 // Модели данных Zumi. Поля совпадают с колонками view `property_feed` в Supabase.
@@ -589,6 +590,7 @@ class AppUser {
   final String? phone;
   final String role; // 'agent' | 'owner' | 'admin'
   final String? teamLevel; // команда Zumi: 'moderator' | 'owner'
+  final String? agencyId; // агент в агентстве (общий лимит, страница агентства)
   final String? agencyName;
   final bool phoneVerified;   // телефон подтверждён SMS-кодом
   final bool idVerified;      // NRC/паспорт + селфи проверены командой Zumi
@@ -635,6 +637,7 @@ class AppUser {
     this.marketingEmail = false,
     this.marketingWhatsapp = false,
     this.emailAlerts = true,
+    this.agencyId,
     this.needsOnboarding = false,
   });
 
@@ -676,6 +679,8 @@ class AppUser {
     bool? marketingEmail,
     bool? marketingWhatsapp,
     bool? emailAlerts,
+    String? agencyId,
+    bool clearAgency = false,
   }) =>
       AppUser(
         id: id,
@@ -702,6 +707,7 @@ class AppUser {
         marketingEmail: marketingEmail ?? this.marketingEmail,
         marketingWhatsapp: marketingWhatsapp ?? this.marketingWhatsapp,
         emailAlerts: emailAlerts ?? this.emailAlerts,
+        agencyId: clearAgency ? null : (agencyId ?? this.agencyId),
         needsOnboarding: needsOnboarding,
       );
 
@@ -807,6 +813,7 @@ class PublicProfile {
   final bool phoneVerified;
   final bool licenceVerified;
   final DateTime? memberSince;
+  final String? agencyId;
   final int activeListings;
 
   const PublicProfile({
@@ -823,10 +830,17 @@ class PublicProfile {
     this.licenceVerified = false,
     this.memberSince,
     this.activeListings = 0,
+    this.agencyId,
   });
 
   bool get isAgent => role == 'agent';
   String get displayName => (fullName ?? '').trim().isEmpty ? (isAgent ? 'Agent' : 'Owner') : fullName!.trim();
+
+  PublicProfile withAgency(String? id) => PublicProfile(
+        id: this.id, role: role, fullName: fullName, agencyName: agencyName, avatarUrl: avatarUrl, bio: bio,
+        hasWhatsapp: hasWhatsapp, contactMode: contactMode, verified: verified, phoneVerified: phoneVerified,
+        licenceVerified: licenceVerified, memberSince: memberSince, activeListings: activeListings, agencyId: id,
+      );
 
   factory PublicProfile.fromMap(Map<String, dynamic> m) => PublicProfile(
         id: m['id'] as String,
@@ -2465,3 +2479,99 @@ class SuspectOwner {
         plan: m['plan'] as String?,
       );
 }
+
+// ---------------------------------------------------------------------
+// Агентства: компания + её агенты, общий лимит объявлений
+// ---------------------------------------------------------------------
+class AgencyMember {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+  final bool licensed;
+  final bool isOwner;
+  final int listings;
+  const AgencyMember({required this.id, required this.name, this.avatarUrl, this.licensed = false,
+      this.isOwner = false, this.listings = 0});
+
+  factory AgencyMember.fromMap(Map<String, dynamic> m) => AgencyMember(
+        id: m['id'] as String,
+        name: ((m['full_name'] as String?) ?? '').trim().isEmpty ? 'Agent' : (m['full_name'] as String).trim(),
+        avatarUrl: m['avatar_url'] as String?,
+        licensed: (m['licensed'] as bool?) ?? false,
+        isOwner: (m['is_owner'] as bool?) ?? false,
+        listings: (m['listings'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class AgencyPage {
+  final String id;
+  final String name;
+  final String? logoUrl;
+  final String? about;
+  final String? phone;
+  final String? firmLicenceNo; // видят только владелец агентства и команда
+  final bool verified;          // команда Zumi проверила регистрацию фирмы в ZIEA
+  final String ownerId;
+  final bool isOwner;           // я — владелец агентства
+  final bool isMember;          // я — агент этого агентства
+  final DateTime? createdAt;
+  final List<AgencyMember> members;
+  final int activeListings;
+  const AgencyPage({required this.id, required this.name, this.logoUrl, this.about, this.phone,
+      this.firmLicenceNo, this.verified = false, required this.ownerId, this.isOwner = false,
+      this.isMember = false, this.createdAt, this.members = const [], this.activeListings = 0});
+
+  factory AgencyPage.fromMap(Map<String, dynamic> m) => AgencyPage(
+        id: m['id'] as String,
+        name: (m['name'] as String?) ?? 'Agency',
+        logoUrl: m['logo_url'] as String?,
+        about: m['about'] as String?,
+        phone: m['phone'] as String?,
+        firmLicenceNo: m['firm_licence_no'] as String?,
+        verified: (m['verified'] as bool?) ?? false,
+        ownerId: m['owner_id'] as String,
+        isOwner: (m['is_owner'] as bool?) ?? false,
+        isMember: (m['is_member'] as bool?) ?? false,
+        createdAt: DateTime.tryParse((m['created_at'] as String?) ?? ''),
+        members: [
+          for (final x in (m['members'] as List? ?? const [])) AgencyMember.fromMap(Map<String, dynamic>.from(x as Map)),
+        ],
+        activeListings: (m['active_listings'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Приглашение в агентство (по ссылке ?join=КОД): название показываем ещё до входа
+class AgencyInviteInfo {
+  final String agencyId;
+  final String name;
+  final bool valid;
+  const AgencyInviteInfo({required this.agencyId, required this.name, this.valid = true});
+}
+
+/// Кабинет команды → Licences → Agencies
+class AgencyAdminItem {
+  final String id;
+  final String name;
+  final String? firmLicenceNo;
+  final bool verified;
+  final String? ownerName;
+  final String? ownerPhone;
+  final int members;
+  final int activeListings;
+  const AgencyAdminItem({required this.id, required this.name, this.firmLicenceNo, this.verified = false,
+      this.ownerName, this.ownerPhone, this.members = 0, this.activeListings = 0});
+
+  factory AgencyAdminItem.fromMap(Map<String, dynamic> m) => AgencyAdminItem(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        firmLicenceNo: m['firm_licence_no'] as String?,
+        verified: (m['verified'] as bool?) ?? false,
+        ownerName: m['owner_name'] as String?,
+        ownerPhone: m['owner_phone'] as String?,
+        members: (m['members'] as num?)?.toInt() ?? 0,
+        activeListings: (m['active_listings'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Ссылка-приглашение в агентство
+String agencyInviteLink(String code) => '${AppConfig.siteUrl ?? 'https://zumihome.com'}/?join=$code';

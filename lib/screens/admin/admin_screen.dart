@@ -675,7 +675,7 @@ class _LicencesState extends State<_Licences> {
               ),
             ),
           );
-          if (list.isEmpty) return Column(children: [rule, _emptyDone('No licences waiting.')]);
+          if (list.isEmpty) return Column(children: [rule, _emptyDone('No licences waiting.'), const _AgenciesAdmin()]);
           return Column(children: [
             rule,
             for (final l in list)
@@ -695,6 +695,7 @@ class _LicencesState extends State<_Licences> {
                   ]),
                 ]),
               ),
+            const _AgenciesAdmin(),
           ]);
         },
       ),
@@ -1112,6 +1113,75 @@ class _SuspectOwnersState extends State<_SuspectOwners> {
                         context, MaterialPageRoute(builder: (_) => PublicProfileScreen(userId: o.userId))),
                     child: const Text('Open profile'),
                   ),
+                ]),
+              ),
+          ]);
+        },
+      ),
+    ]);
+  }
+}
+
+/// Агентства: проверка регистрации фирмы в ZIEA (после проверки общий лимит 30 → 50 и значок)
+class _AgenciesAdmin extends StatefulWidget {
+  const _AgenciesAdmin();
+
+  @override
+  State<_AgenciesAdmin> createState() => _AgenciesAdminState();
+}
+
+class _AgenciesAdminState extends State<_AgenciesAdmin> {
+  late Future<List<AgencyAdminItem>> _future = context.read<AppState>().repo.adminAgencies();
+
+  Future<void> _set(AgencyAdminItem a, bool ok) async {
+    try {
+      await context.read<AppState>().repo.adminVerifyAgency(a.id, ok);
+      if (!mounted) return;
+      showSnack(context, ok ? '${a.name}: firm checked' : '${a.name}: check removed');
+      setState(() => _future = context.read<AppState>().repo.adminAgencies());
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 26),
+      Text('Agencies', style: zHeadline(context, size: 20)),
+      const SizedBox(height: 4),
+      const Text('Check the firm registration number on the ZIEA list. Checked agencies get the '
+          '"Registered firm" badge and a shared limit of 50 instead of 30.',
+          style: TextStyle(color: Zc.grey, fontSize: 13)),
+      const SizedBox(height: 12),
+      _Loader<List<AgencyAdminItem>>(
+        future: _future,
+        builder: (list) {
+          if (list.isEmpty) return _emptyDone('No agencies yet.');
+          return Column(children: [
+            for (final a in list)
+              _Card(
+                highlight: !a.verified && (a.firmLicenceNo ?? '').isNotEmpty,
+                child: Row(children: [
+                  const Icon(ZI.users, color: Zc.green, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(a.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      SelectableText(
+                        [
+                          (a.firmLicenceNo ?? '').isEmpty ? 'No firm number yet' : 'ZIEA firm no. ${a.firmLicenceNo}',
+                          '${a.members} ${a.members == 1 ? 'agent' : 'agents'} · ${a.activeListings} listings',
+                          if (a.ownerName != null) 'Head: ${a.ownerName}${a.ownerPhone == null ? '' : ' · ${a.ownerPhone}'}',
+                        ].join('\n'),
+                        style: const TextStyle(fontSize: 13, color: Zc.grey, height: 1.4),
+                      ),
+                    ]),
+                  ),
+                  if (a.verified)
+                    _actionBtn('Remove check', () => _set(a, false))
+                  else if ((a.firmLicenceNo ?? '').isNotEmpty)
+                    _actionBtn('Firm checked', () => _set(a, true), primary: true),
                 ]),
               ),
           ]);

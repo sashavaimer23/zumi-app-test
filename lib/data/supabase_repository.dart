@@ -66,6 +66,11 @@ class SupabaseRepository implements Repository {
       try {
         ver = Map<String, dynamic>.from(await _db.rpc('my_verification') as Map);
       } catch (_) {/* не критично */}
+      String? agencyId;
+      try {
+        final a = await _db.from('profiles').select('agency_id').eq('id', u.id).maybeSingle();
+        agencyId = a?['agency_id'] as String?;
+      } catch (_) {/* база ещё без 034 */}
       bool alerts = true;
       try {
         alerts = (await _db.rpc('my_email_alerts') as bool?) ?? true;
@@ -97,6 +102,7 @@ class SupabaseRepository implements Repository {
         marketingWhatsapp: (ver?['marketing_whatsapp'] as bool?) ?? false,
         needsOnboarding: (ver?['needs_onboarding'] as bool?) ?? false,
         emailAlerts: alerts,
+        agencyId: agencyId,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
@@ -156,6 +162,18 @@ class SupabaseRepository implements Repository {
       }
       if (e.message.contains('AGENTS_ONLY')) throw AppException('This is for agents', code: 'AGENTS_ONLY');
       if (e.message.contains('OWNERS_ONLY')) throw AppException('This plan is for property owners', code: 'OWNERS_ONLY');
+      for (final (k, msg) in const [
+        ('ALREADY_IN_AGENCY', 'You are already in an agency. Leave it first.'),
+        ('NOT_AGENCY_OWNER', 'Only the agency owner can do this.'),
+        ('BAD_CODE', 'This invite link is not valid or was already used. Ask for a new one.'),
+        ('OWNER_CANNOT_LEAVE', 'The agency owner cannot leave the agency.'),
+        ('NOT_A_MEMBER', 'This agent is not in your agency.'),
+        ('ASK_AGENCY_OWNER', 'Your agency owner buys plans and extra listings for the whole agency.'),
+        ('TOO_MANY_INVITES', 'Too many invites today. Try again tomorrow.'),
+        ('USE_INVITE', 'Join an agency with an invite link from its owner.'),
+      ]) {
+        if (e.message.contains(k)) throw AppException(msg, code: k);
+      }
       if (e.message.contains('FINISH_SIGNUP')) {
         throw AppException('Please finish setting up your account first.', code: 'FINISH_SIGNUP');
       }
@@ -225,6 +243,8 @@ class SupabaseRepository implements Repository {
     bool termsAccepted = true,
     String? licenceNo,
     bool marketing = false,
+    String? agencyName,
+    String? firmLicenceNo,
   }) =>
       _guard(() async {
         final res = await _db.auth.signUp(
@@ -238,7 +258,9 @@ class SupabaseRepository implements Repository {
             'role': role,
             'terms_accepted': termsAccepted,
             'marketing': marketing,
-            if (role == 'agent' && (licenceNo ?? '').trim().isNotEmpty) 'licence_no': licenceNo!.trim(),
+            if ((role == 'agent' || role == 'agency') && (licenceNo ?? '').trim().isNotEmpty) 'licence_no': licenceNo!.trim(),
+            if (role == 'agency') 'agency_name': (agencyName ?? '').trim(),
+            if (role == 'agency' && (firmLicenceNo ?? '').trim().isNotEmpty) 'firm_licence_no': firmLicenceNo!.trim(),
           },
         );
         if (res.session == null) {
@@ -780,7 +802,13 @@ class SupabaseRepository implements Repository {
         if (userId.startsWith('demo:')) return _demoAuthor(userId);
         final res = await _db.rpc('public_profile', params: {'uid': userId}) as List;
         if (res.isEmpty) return null;
-        return PublicProfile.fromMap(Map<String, dynamic>.from(res.first as Map));
+        final p = PublicProfile.fromMap(Map<String, dynamic>.from(res.first as Map));
+        try {
+          final a = await _db.from('profiles').select('agency_id').eq('id', userId).maybeSingle();
+          return p.withAgency(a?['agency_id'] as String?);
+        } catch (_) {
+          return p; // база ещё без 034
+        }
       });
 
   /// Демо-объявления без автора: «каталог» собираем по имени в объявлении
@@ -1324,6 +1352,86 @@ class SupabaseRepository implements Repository {
   Future<void> adminReviewLicence(String userId, bool approve, {String? note}) => _guard(() async {
         await _db.rpc('admin_review_licence', params: {'uid': userId, 'approve': approve, 'p_note': note});
       });
+
+  // ---------- агентства ----------
+  @override
+  Future<String> createAgency({required String name, String? firmLicenceNo, String? phone}) => _guard(() async {
+        final id = await _db.rpc('create_agency', params: {'p_name': name, 'p_firm_no': firmLicenceNo, 'p_phone': phone});
+        await refreshUser();
+        return id as String;
+      });
+
+  @override
+  Future<void> updateAgency({required String name, String? firmLicenceNo, String? phone, String? about}) =>
+      _guard(() async {
+        await _db.rpc('update_agency',
+            params: {'p_name': name, 'p_firm_no': firmLicenceNo, 'p_phone': phone, 'p_about': about});
+      });
+
+  @override
+  Future<AgencyPage?> agencyPage(String agencyId) => _guard(() async {
+        final r = await _db.rpc('agency_page', params: {'p_id': agencyId});
+        if (r == null) return null;
+        return AgencyPage.fromMap(Map<String, dynamic>.from(r as Map));
+      });
+
+  @override
+  Future<List<Property>> agencyListings(AgencyPage a) => _guard(() async {
+        final ids = a.members.map((m) => m.id).toList();
+        if (ids.isEmpty) return const <Property>[];
+        final rows = await _db
+            .from('property_feed')
+            .select()
+            .inFilter('owner_id', ids)
+            .eq('status', 'active')
+            .order('created_at', ascending: false)
+            .limit(120);
+        return rows.map(Property.fromMap).toList();
+      });
+
+  @override
+  Future<String> agencyInvite() => _guard(() async => await _db.rpc('agency_invite') as String);
+
+  @override
+  Future<AgencyInviteInfo?> agencyInviteInfo(String code) => _guard(() async {
+        final r = await _db.rpc('agency_invite_info', params: {'p_code': code});
+        if (r == null) return null;
+        final m = Map<String, dynamic>.from(r as Map);
+        return AgencyInviteInfo(
+            agencyId: m['agency_id'] as String, name: m['name'] as String, valid: (m['valid'] as bool?) ?? false);
+      });
+
+  @override
+  Future<String> joinAgency(String code) => _guard(() async {
+        final id = await _db.rpc('join_agency', params: {'p_code': code}) as String;
+        await refreshUser();
+        return id;
+      });
+
+  @override
+  Future<void> leaveAgency() => _guard(() async {
+        await _db.rpc('leave_agency');
+        await refreshUser();
+      });
+
+  @override
+  Future<void> agencyRemoveMember(String userId) =>
+      _guard(() async => _db.rpc('agency_remove_member', params: {'p_user': userId}));
+
+  @override
+  Future<List<AgencyAdminItem>> adminAgencies() => _guard(() async {
+        try {
+          final rows = await _db.rpc('admin_agencies') as List;
+          return rows.map((r) => AgencyAdminItem.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+        } on PostgrestException catch (e) {
+          if (e.code == 'PGRST202') return const <AgencyAdminItem>[]; // база ещё без 034
+          rethrow;
+        }
+      });
+
+  @override
+  Future<void> adminVerifyAgency(String agencyId, bool ok) =>
+      _guard(() async => _db.rpc('admin_verify_agency', params: {'p_id': agencyId, 'p_ok': ok}));
 
   @override
   Future<List<SuspectOwner>> adminSuspectOwners() => _guard(() async {

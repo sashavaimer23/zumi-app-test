@@ -97,10 +97,14 @@ class DemoRepository implements Repository {
     bool termsAccepted = true,
     String? licenceNo,
     bool marketing = false,
+    String? agencyName,
+    String? firmLicenceNo,
   }) async {
     await _lag();
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
-    final u = AppUser(
+    final agency = role == 'agency';
+    if (agency) role = 'agent';
+    var u = AppUser(
       id: 'demo-${email.toLowerCase().hashCode}',
       email: email,
       fullName: fullName,
@@ -111,6 +115,12 @@ class DemoRepository implements Repository {
       marketingWhatsapp: marketing,
       createdAt: DateTime.now(),
     );
+    if (agency && (agencyName ?? '').trim().length >= 2) {
+      final a = _DemoAgency(id: 'ag-${u.id}', ownerId: u.id, name: agencyName!.trim(),
+          firmNo: (firmLicenceNo ?? '').trim().isEmpty ? null : firmLicenceNo!.trim());
+      _agencies[a.id] = a;
+      u = u.copyWith(agencyId: a.id, agencyName: a.name);
+    }
     _known[u.id] = u;
     if (!u.isAdmin) _newAccounts.add(u.id);
     if (u.licenceNo != null) {
@@ -398,6 +408,20 @@ class DemoRepository implements Repository {
   Future<Quota> myQuota() async {
     final u = _requireUser();
     // как на сервере: объявления на проверке тоже занимают место
+    final ag = u.agencyId == null ? null : _agencies[u.agencyId];
+    if (ag != null) {
+      // агентство: общий лимит на всех агентов — 30, с проверенной фирмой 50
+      final members = _known.values.where((x) => x.agencyId == ag.id).map((x) => x.id).toSet()..add(u.id);
+      final usedAll = _props
+          .where((p) => members.contains(p.ownerId) && const {'active', 'draft', 'pending'}.contains(p.status))
+          .length;
+      final free = ag.verified ? 50 : 30;
+      final bossPlan = ag.ownerId == u.id && _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now()) &&
+              _billing.plan == 'agency'
+          ? 150
+          : 0;
+      return Quota(usedAll, (bossPlan > free ? bossPlan : free) + (ag.ownerId == u.id ? _billing.extraSlots : 0));
+    }
     final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
     // как на сервере: агент с проверенной лицензией — 20, без — 15, собственник — 2; тариф — если больше
     final base = u.isAgent && u.licenceVerified ? 20 : (_limits[u.role] ?? 999);
@@ -1402,6 +1426,158 @@ class DemoRepository implements Repository {
     _log(approve ? 'approve' : 'reject', 'licence', l.isEmpty ? userId : '${l.first.userName} ${l.first.licenceNo}', note);
   }
 
+  // ---------- агентства ----------
+  final Map<String, _DemoAgency> _agencies = {};
+  final Map<String, String> _invites = {}; // код → id агентства
+
+  _DemoAgency _myOwnAgency() {
+    final u = _requireUser();
+    return _agencies.values.firstWhere((a) => a.ownerId == u.id,
+        orElse: () => throw AppException('Only the agency owner can do this.', code: 'NOT_AGENCY_OWNER'));
+  }
+
+  void _syncAgencyNames(_DemoAgency a) {
+    for (final m in _known.values.where((x) => x.agencyId == a.id).toList()) {
+      _setUser(m.copyWith(agencyName: a.name));
+    }
+  }
+
+  @override
+  Future<String> createAgency({required String name, String? firmLicenceNo, String? phone}) async {
+    final u = _requireUser();
+    if (!(u.isAgent || u.isAdmin)) throw AppException('This is for agents', code: 'AGENTS_ONLY');
+    if (u.agencyId != null) throw AppException('You are already in an agency. Leave it first.', code: 'ALREADY_IN_AGENCY');
+    if (name.trim().length < 2) throw AppException('Enter the agency name', code: 'BAD_NAME');
+    final a = _DemoAgency(id: 'ag-${u.id}', ownerId: u.id, name: name.trim(),
+        firmNo: (firmLicenceNo ?? '').trim().isEmpty ? null : firmLicenceNo!.trim(), phone: phone);
+    _agencies[a.id] = a;
+    _setUser(u.copyWith(agencyId: a.id, agencyName: a.name));
+    return a.id;
+  }
+
+  @override
+  Future<void> updateAgency({required String name, String? firmLicenceNo, String? phone, String? about}) async {
+    final a = _myOwnAgency();
+    if (name.trim().length < 2) throw AppException('Enter the agency name', code: 'BAD_NAME');
+    final firm = (firmLicenceNo ?? '').trim().isEmpty ? null : firmLicenceNo!.trim();
+    if (firm != a.firmNo) a.verified = false;
+    a
+      ..name = name.trim()
+      ..firmNo = firm
+      ..phone = phone
+      ..about = about;
+    _syncAgencyNames(a);
+  }
+
+  @override
+  Future<AgencyPage?> agencyPage(String agencyId) async {
+    await _lag();
+    final a = _agencies[agencyId];
+    if (a == null) return null;
+    final me = _user;
+    final members = _known.values.where((x) => x.agencyId == a.id).toList()
+      ..sort((x, y) => (x.id == a.ownerId ? 0 : 1).compareTo(y.id == a.ownerId ? 0 : 1));
+    return AgencyPage(
+      id: a.id,
+      name: a.name,
+      about: a.about,
+      phone: a.phone,
+      firmLicenceNo: me != null && (me.id == a.ownerId || me.isAdmin) ? a.firmNo : null,
+      verified: a.verified,
+      ownerId: a.ownerId,
+      isOwner: me?.id == a.ownerId,
+      isMember: me?.agencyId == a.id,
+      createdAt: a.createdAt,
+      members: [
+        for (final m in members)
+          AgencyMember(
+            id: m.id,
+            name: m.fullName ?? 'Agent',
+            avatarUrl: m.avatarUrl,
+            licensed: m.licenceVerified,
+            isOwner: m.id == a.ownerId,
+            listings: _props.where((p) => p.ownerId == m.id && p.status == 'active').length,
+          ),
+      ],
+      activeListings: _props.where((p) => members.any((m) => m.id == p.ownerId) && p.status == 'active').length,
+    );
+  }
+
+  @override
+  Future<List<Property>> agencyListings(AgencyPage a) async {
+    final ids = a.members.map((m) => m.id).toSet();
+    return _props.where((p) => ids.contains(p.ownerId) && p.status == 'active').toList();
+  }
+
+  @override
+  Future<String> agencyInvite() async {
+    final a = _myOwnAgency();
+    final code = (DateTime.now().microsecondsSinceEpoch.toRadixString(36).toUpperCase() + 'XXXXXXXX').substring(0, 8);
+    _invites[code] = a.id;
+    return code;
+  }
+
+  @override
+  Future<AgencyInviteInfo?> agencyInviteInfo(String code) async {
+    final id = _invites[code.trim().toUpperCase()];
+    final a = id == null ? null : _agencies[id];
+    return a == null ? null : AgencyInviteInfo(agencyId: a.id, name: a.name);
+  }
+
+  @override
+  Future<String> joinAgency(String code) async {
+    final u = _requireUser();
+    if (!(u.isAgent || u.isAdmin)) throw AppException('This is for agents', code: 'AGENTS_ONLY');
+    if (u.agencyId != null) throw AppException('You are already in an agency. Leave it first.', code: 'ALREADY_IN_AGENCY');
+    final id = _invites.remove(code.trim().toUpperCase());
+    final a = id == null ? null : _agencies[id];
+    if (a == null) {
+      throw AppException('This invite link is not valid or was already used. Ask for a new one.', code: 'BAD_CODE');
+    }
+    _setUser(u.copyWith(agencyId: a.id, agencyName: a.name));
+    return a.id;
+  }
+
+  @override
+  Future<void> leaveAgency() async {
+    final u = _requireUser();
+    if (_agencies.values.any((a) => a.ownerId == u.id)) {
+      throw AppException('The agency owner cannot leave the agency.', code: 'OWNER_CANNOT_LEAVE');
+    }
+    _setUser(u.copyWith(clearAgency: true, agencyName: ''));
+  }
+
+  @override
+  Future<void> agencyRemoveMember(String userId) async {
+    final a = _myOwnAgency();
+    final m = _known[userId];
+    if (m == null || m.agencyId != a.id) throw AppException('This agent is not in your agency.', code: 'NOT_A_MEMBER');
+    if (userId == a.ownerId) throw AppException('The agency owner cannot leave the agency.', code: 'OWNER_CANNOT_LEAVE');
+    _setUser(m.copyWith(clearAgency: true, agencyName: ''));
+  }
+
+  @override
+  Future<List<AgencyAdminItem>> adminAgencies() async {
+    _requireAdmin();
+    return [
+      for (final a in _agencies.values)
+        AgencyAdminItem(
+          id: a.id,
+          name: a.name,
+          firmLicenceNo: a.firmNo,
+          verified: a.verified,
+          ownerName: _known[a.ownerId]?.fullName,
+          members: _known.values.where((x) => x.agencyId == a.id).length,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> adminVerifyAgency(String agencyId, bool ok) async {
+    _requireAdmin();
+    _agencies[agencyId]?.verified = ok;
+  }
+
   @override
   Future<List<SuspectOwner>> adminSuspectOwners() async {
     _requireAdmin();
@@ -2107,4 +2283,17 @@ class DemoRepository implements Repository {
       lastMessageAt: DateTime.now(),
     );
   }
+}
+
+/// Демо: агентство
+class _DemoAgency {
+  _DemoAgency({required this.id, required this.ownerId, required this.name, this.firmNo, this.phone});
+  final String id;
+  final String ownerId;
+  String name;
+  String? firmNo;
+  String? phone;
+  String? about;
+  bool verified = false;
+  final DateTime createdAt = DateTime.now();
 }

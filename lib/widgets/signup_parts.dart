@@ -38,10 +38,14 @@ class RolePicker extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(child: _card('owner', 'Owner', 'I list my own property', ZI.house)),
-        const SizedBox(width: 12),
-        Expanded(child: _card('agent', 'Agent', 'I list for clients', ZI.badge)),
+  Widget build(BuildContext context) => Column(children: [
+        Row(children: [
+          Expanded(child: _card('owner', 'Owner', 'I list my own property', ZI.house)),
+          const SizedBox(width: 12),
+          Expanded(child: _card('agent', 'Agent', 'I list for clients', ZI.badge)),
+        ]),
+        const SizedBox(height: 12),
+        _card('agency', 'Agency', 'A company with several agents — one shared page and listing limit', ZI.users),
       ]);
 
   Widget _card(String role, String title, String sub, IconData icon) {
@@ -69,6 +73,38 @@ class RolePicker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Регистрация агентства: название компании и номер регистрации фирмы в ZIEA
+class AgencyFields extends StatelessWidget {
+  const AgencyFields({super.key, required this.name, required this.firmNo});
+  final TextEditingController name;
+  final TextEditingController firmNo;
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const FieldLabel('Agency name', required: true),
+        TextFormField(
+          controller: name,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'e.g. Copper Homes Realty'),
+          validator: (v) => (v ?? '').trim().length < 2 ? 'Enter the agency name' : null,
+        ),
+        const SizedBox(height: 18),
+        const FieldLabel('ZIEA firm registration number', optional: true),
+        TextFormField(
+          controller: firmNo,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(hintText: 'Company registration with ZIEA — or leave empty'),
+          validator: (v) => (v ?? '').trim().length > 40 ? 'Too long' : null,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+            'After sign-up you can invite your agents with a link. The whole agency shares one listing limit '
+            '(30 free, 50 once we check your firm registration) and gets its own page.',
+            style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35)),
+        const SizedBox(height: 18),
+      ]);
 }
 
 /// Подсказка под полем лицензии ZIEA

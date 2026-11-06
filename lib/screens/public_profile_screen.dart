@@ -14,6 +14,7 @@ import '../widgets/trust.dart';
 import '../widgets/wide_card.dart';
 import '../widgets/zicons.dart';
 import '../widgets/back_to_top.dart';
+import 'agency_screen.dart';
 
 /// Публичная страница человека.
 ///  • Агент — как витрина агентства: фото, агентство, проверки, рейтинг, «о себе»,
@@ -109,6 +110,26 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                 padding: EdgeInsets.fromLTRB(side, 6, side, 0),
                 sliver: SliverToBoxAdapter(child: _Header(pr: pr, rating: rating)),
               ),
+              if (pr.agencyId != null)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(side, 16, side, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Zc.green,
+                          side: const BorderSide(color: Zc.green),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: () => openAgency(context, pr.agencyId!),
+                        icon: const Icon(ZI.users, size: 18),
+                        label: Text('${(pr.agencyName ?? '').isEmpty ? 'Agency' : pr.agencyName} — all agents and listings'),
+                      ),
+                    ),
+                  ),
+                ),
               if (pr.isAgent && (pr.bio ?? '').isNotEmpty)
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(side, 22, side, 0),
