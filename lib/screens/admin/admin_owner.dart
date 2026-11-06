@@ -1545,7 +1545,7 @@ class _PaymentsAdminState extends State<_PaymentsAdmin> {
                     Text(
                       st.enabled
                           ? 'People can buy boosts, Featured, extra listings and Pro / Agency on the website.'
-                          : 'Zumi is free. Nothing can be bought. Prices and payment details can be prepared below.',
+                          : 'Zumi is free for everyone. Only you see prices and can test buying (Profile → Plans & payments). Keep this OFF until launch.',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ]),
