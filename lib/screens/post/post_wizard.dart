@@ -488,7 +488,7 @@ class _PostWizardState extends State<PostWizard> {
       const SizedBox(height: 14),
       Container(
         decoration: BoxDecoration(color: Zc.greenTint, borderRadius: BorderRadius.circular(14)),
-        padding: const EdgeInsets.fromLTRB(14, 4, 8, on ? 14 : 4),
+        padding: EdgeInsets.fromLTRB(14, 4, 8, on ? 14 : 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
