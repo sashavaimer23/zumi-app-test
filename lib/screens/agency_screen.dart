@@ -104,7 +104,7 @@ class _AgencyScreenState extends State<AgencyScreen> {
                         onPressed: () => showShareSheet(
                           context,
                           text: '${a.name} on Zumi — ${a.activeListings} listings in Zambia',
-                          link: AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/?agency=${a.id}',
+                          link: AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/agency/${a.id}',
                         ),
                         icon: const Icon(ZI.share, color: Zc.green),
                       ),

@@ -48,7 +48,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
   void _share() => showShareSheet(
         context,
         text: p.shareText(null),
-        link: AppConfig.siteUrl == null || p.isDemo ? null : '${AppConfig.siteUrl}/?listing=${p.id}',
+        link: AppConfig.siteUrl == null || p.isDemo ? null : '${AppConfig.siteUrl}/l/${p.id}',
       );
 
   /// Страница автора: у агента — каталог и отзывы, у собственника — коротко

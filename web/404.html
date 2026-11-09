@@ -19,5 +19,10 @@ a.btn{background:#F07A5A;color:#fff;text-decoration:none;font-weight:700;padding
 <p>The link may be old or mistyped. You'll be taken to Zumi in a few seconds.</p>
 <a class="btn" href="/">Go to Zumi</a>
 </main>
-<script>setTimeout(function(){location.replace('/')},5000)</script>
+<script>
+// короткие ссылки (/l/…, /agent/…, /agency/…) открываем в приложении, остальное — на главную
+(function(){var m=location.pathname.match(/^\/(l|agent|agency)\/([0-9a-f-]{36})/i);
+if(m){location.replace('/?'+({l:'listing',agent:'agent',agency:'agency'})[m[1]]+'='+m[2]);return;}
+setTimeout(function(){location.replace('/')},5000);})();
+</script>
 </body></html>

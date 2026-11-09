@@ -54,7 +54,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     showShareSheet(
       context,
       text: '$who on Zumi — ${pr.activeListings} ${pr.activeListings == 1 ? 'listing' : 'listings'} in Zambia',
-      link: site == null || widget.userId.startsWith('demo:') ? null : '$site/?agent=${widget.userId}',
+      link: site == null || widget.userId.startsWith('demo:') ? null : '$site/agent/${widget.userId}',
     );
   }
 

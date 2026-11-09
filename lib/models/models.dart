@@ -378,7 +378,7 @@ class Property {
 
   /// Ссылка, которой можно поделиться (сайт открывает объявление по ?listing=id)
   String shareText(String? siteUrl) {
-    final link = siteUrl == null ? '' : '\n$siteUrl/?listing=$id';
+    final link = siteUrl == null ? '' : '\n$siteUrl/l/$id';
     return '$title — $priceLabel\n${locationLine.isEmpty ? 'Zambia' : locationLine}\nSee it on Zumi$link';
   }
 

@@ -186,7 +186,7 @@ class Contact {
 
   /// Готовое сообщение для WhatsApp: какой дом, сколько стоит, где — человек может дописать своё
   static String whatsappTemplate(Property p) {
-    final link = AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/?listing=${p.id}';
+    final link = AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/l/${p.id}';
     return [
       'Hi! I found your listing on Zumi:',
       '🏠 ${p.title}${p.specsLine.isEmpty ? '' : ' (${p.specsLine.replaceAll(',  ', ', ')})'}',

@@ -630,7 +630,7 @@ class _MyListingTile extends StatelessWidget {
                     showShareSheet(
                       context,
                       text: p.shareText(null),
-                      link: AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/?listing=${p.id}',
+                      link: AppConfig.siteUrl == null ? null : '${AppConfig.siteUrl}/l/${p.id}',
                     );
                     return;
                   case 'boost':
@@ -779,7 +779,7 @@ class _AgentPageCard extends StatelessWidget {
               onPressed: () => showShareSheet(
                 context,
                 text: '${user.agencyName ?? user.fullName ?? 'My'} listings on Zumi',
-                link: site == null ? null : '$site/?agent=${user.id}',
+                link: site == null ? null : '$site/agent/${user.id}',
               ),
               icon: const Icon(ZI.share, size: 18),
               label: const Text('Share'),
