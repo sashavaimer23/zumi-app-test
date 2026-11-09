@@ -138,9 +138,7 @@ class ConsentCheck extends StatelessWidget {
                   baseline: TextBaseline.alphabetic,
                   child: _link('Privacy Policy', () => openLegal(context, LegalDoc.privacy)),
                 ),
-                const TextSpan(
-                    text: ', and to Zumi processing my data to run my account and storing it on servers '
-                        'outside Zambia (European Union).'),
+                const TextSpan(text: '.'),
                 const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
               ]),
             ),

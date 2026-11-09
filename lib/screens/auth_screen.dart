@@ -8,7 +8,6 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
-import '../widgets/data_notice.dart';
 import '../widgets/signup_parts.dart';
 import 'forgot_password_screen.dart';
 import 'help/help_screen.dart';
@@ -385,8 +384,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 // отдельная галочка согласия — дата согласия сохраняется на сервере
                 ConsentCheck(value: _consent, onChanged: (v) => setState(() => _consent = v)),
                 // где хранятся данные — до согласия, простыми словами
-                const Padding(padding: EdgeInsets.only(top: 6, bottom: 6), child: DataNotice(compact: true)),
-                MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
+                  MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
               ],
               const SizedBox(height: 30),
               Center(

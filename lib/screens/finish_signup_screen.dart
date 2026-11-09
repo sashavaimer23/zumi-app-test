@@ -5,7 +5,6 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
-import '../widgets/data_notice.dart';
 import '../widgets/signup_parts.dart';
 import 'verify/phone_verify_screen.dart';
 
@@ -145,7 +144,6 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
                 const SizedBox(height: 18),
               ],
               ConsentCheck(value: _consent, onChanged: (v) => setState(() => _consent = v)),
-              const Padding(padding: EdgeInsets.only(top: 6, bottom: 6), child: DataNotice(compact: true)),
               MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
               const SizedBox(height: 30),
               PrimaryButton(label: 'Continue', loading: _loading, onPressed: _submit, width: double.infinity),
