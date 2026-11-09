@@ -274,7 +274,11 @@ class _ReportSheetState extends State<_ReportSheet> {
       await context.read<AppState>().repo.reportListing(widget.p.id, _reason!, _details.text.trim());
       if (!mounted) return;
       Navigator.pop(context);
-      showSnack(context, 'Thank you! Our team will check this listing.');
+      showSnack(
+          context,
+          _reason == 'not_available'
+              ? 'Thank you! We will ask the owner to confirm. If they do not, the listing is paused.'
+              : 'Thank you! Our team will check this listing.');
     } catch (e) {
       if (mounted) showSnack(context, '$e');
     } finally {

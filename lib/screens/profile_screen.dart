@@ -602,7 +602,7 @@ class _MyListingTile extends StatelessWidget {
               if (p.isPending)
                 const Padding(
                   padding: EdgeInsets.only(top: 4),
-                  child: Text('The Zumi team checks first listings — usually about 15 minutes.',
+                  child: Text('The Zumi team checks listings of new accounts — usually within a few hours.',
                       style: TextStyle(fontSize: 11, color: Zc.grey)),
                 ),
               if (p.hiddenByTeam)

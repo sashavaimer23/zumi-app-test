@@ -68,8 +68,10 @@ class Onboarding {
             _Step(TourKeys.post, 'List your property', 'Renting out or selling? Post a listing for free.'),
           ],
         Tour.owner => [
-            _Step(TourKeys.profile, 'Your listings', 'Profile → My listings: edit, see views and confirm '
-                'every 30 days answer "still available?" in one tap.', round: true),
+            _Step(TourKeys.profile, 'Your listings', 'Profile → My listings: edit, see views and answer '
+                '"still available?" in one tap.', round: true),
+            _Step(TourKeys.profile, 'Rented or sold? Hide it', 'As soon as it is taken, open My listings → ⋯ → '
+                '"Mark as rented". People stop calling about it, and your free slot is back.', round: true),
             _Step(TourKeys.chats, 'Messages', 'Questions from tenants and buyers arrive here.', round: true),
           ],
         Tour.agent => [
@@ -77,6 +79,9 @@ class Onboarding {
             _Step(TourKeys.profile, 'Your agent cabinet', 'Profile: your listings, Promotion and the ZIEA licence '
                 'check. Add your ZIEA number to get the "Licensed agent" badge.', round: true),
             _Step(TourKeys.chats, 'Messages', 'Enquiries from clients arrive here.', round: true),
+            _Step(TourKeys.profile, 'Rented or sold? Hide it', 'As soon as a property is taken, open My listings → ⋯ → '
+                '"Mark as rented". Clients trust agents whose listings are real — and the slot is free for a new one. '
+                'Once a week we ask "still available?" — one tap.', round: true),
           ],
       };
 

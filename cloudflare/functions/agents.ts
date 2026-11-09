@@ -92,7 +92,7 @@ export const onRequestGet: PagesFunction = async () =>
 <tr><td>Agent with a ZIEA licence</td><td><b>15</b></td></tr>
 <tr><td>Agency (whole team)</td><td><b>25</b> shared</td></tr>
 </table>
-<p class="muted">For our first agents: what you post during the launch stays up — we never remove your listings if plans change later.</p>
+<p class="muted">For our first agents: what you post during the launch stays up — if plans change later, we never remove listings that follow our rules.</p>
 
 <h2>Badges that build trust</h2>
 <div class="feats">

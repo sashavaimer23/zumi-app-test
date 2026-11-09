@@ -42,7 +42,7 @@ class _ListingsQueueState extends State<_ListingsQueue> {
   Widget build(BuildContext context) {
     return _Page(
       title: 'Listings to check',
-      subtitle: 'The first 2 listings of every new person wait here. Check the photos, price and description.',
+      subtitle: 'All listings from accounts younger than 14 days (and the first 2 of everyone) wait here. Check the photos, price and description.',
       child: _Loader<List<Property>>(
         future: _future,
         builder: (list) {

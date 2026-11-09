@@ -91,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 itemBuilder: (_, i) {
                   final m = msgs[i];
                   final mine = m.senderId == me;
-                  return Align(
+                  final bubble = Align(
                     alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
                       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.75),
@@ -110,6 +110,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Text(m.body, style: TextStyle(color: mine ? Colors.white : Zc.text, fontSize: 15)),
                     ),
                   );
+                  // просьба заплатить заранее — предупреждаем того, кого просят (не отправителя)
+                  if (mine || !looksLikePaymentRequest(m.body)) return bubble;
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    bubble,
+                    const _PayWarning(),
+                  ]);
                 },
               );
             },
@@ -161,4 +167,30 @@ class _ChatScreenState extends State<ChatScreen> {
       ]),
     );
   }
+}
+
+
+/// «Never pay before you have seen the property» — под сообщением с просьбой о деньгах
+class _PayWarning extends StatelessWidget {
+  const _PayWarning();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.85),
+        margin: const EdgeInsets.only(top: 2, bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: const Color(0xFFFFF1D6), borderRadius: BorderRadius.circular(12)),
+        child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(ZI.warning, size: 18, color: Color(0xFF9A6200)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Never pay a deposit, viewing fee or any money before you have seen the property in person '
+              'and met the owner or agent. Zumi never asks for payment in chat. '
+              'If someone insists, report the listing.',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF6B4A00), height: 1.35),
+            ),
+          ),
+        ]),
+      );
 }

@@ -2578,3 +2578,14 @@ class AgencyAdminItem {
 
 /// Ссылка-приглашение в агентство
 String agencyInviteLink(String code) => '${AppConfig.siteUrl ?? 'https://zumihome.com'}/?join=$code';
+
+/// Сообщение в чате похоже на просьбу заплатить заранее (самая частая схема мошенников:
+/// «переведите депозит / плату за просмотр на Airtel Money — и я пришлю ключи»).
+/// Тогда получатель видит под сообщением спокойное предупреждение. Отправитель — ничего.
+final _payWords = RegExp(
+  r'\b(deposit|mobile\s*money|momo|airtel\s*money|mtn\s*money|zamtel\s*kwacha|viewing\s*fee|booking\s*fee|'
+  r'reservation\s*fee|advance\s*payment|pay\s*(first|before|now|upfront|up\s*front|in\s*advance)|'
+  r'send\s*(the\s*|me\s*)?(money|cash|payment|k\s?\d+)|transfer\s*(the\s*)?(money|k\s?\d+)|western\s*union|moneygram)\b',
+  caseSensitive: false,
+);
+bool looksLikePaymentRequest(String text) => _payWords.hasMatch(text);

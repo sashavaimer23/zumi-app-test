@@ -312,7 +312,7 @@ class _PostWizardState extends State<PostWizard> {
             icon: ZI.camera,
             title: 'Your first listing — 3 minutes',
             text: 'Have 5+ daylight photos ready: every room, the outside and the street. '
-                'Your first 2 listings are checked by the Zumi team, usually within a day.',
+                'In your first 2 weeks the Zumi team checks your listings, usually within a day.',
             margin: EdgeInsets.only(bottom: 16),
           ),
         if (q != null && !_editing)
@@ -937,13 +937,30 @@ class _PostWizardState extends State<PostWizard> {
         const SizedBox(height: 16),
         Text(
           _created?.isPending ?? false
-              ? 'Your first listings get a quick check by the Zumi team — usually about 15 minutes. '
+              ? 'Listings from new accounts get a quick check by the Zumi team — usually within a few hours. '
                   'It appears in search right after.'
               : 'People can now find your property\non Zumi.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 18, color: Zc.grey, height: 1.35),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 18),
+        // чтобы на Zumi не висели уже сданные дома
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(color: Zc.chip, borderRadius: BorderRadius.circular(14)),
+          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(ZI.info, size: 18, color: Zc.green),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Rented or sold? Please hide it right away: Profile → My listings → ⋯ → "Mark as rented". '
+                'Listings that are no longer free get reported by people and paused.',
+                style: TextStyle(fontSize: 14, color: Zc.text, height: 1.4),
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 22),
         // агенту без проверенной лицензии — предложить добавить номер ZIEA (необязательно)
         if (_created != null &&
             (context.watch<AppState>().user?.isAgent ?? false) &&

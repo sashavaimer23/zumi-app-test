@@ -628,4 +628,35 @@ select zt.err('team accounts are not switched here', 'TEAM_ACCOUNT', $$select ad
 reset role;
 delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000b1';
 
+-- ---------- 037: новые аккаунты и «уже сдан» ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000c1', 'fresh@x.zm', '{"full_name":"Fresh","role":"agent","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000c2', 'r1@x.zm', '{"full_name":"R1","role":"owner","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000c3', 'r2@x.zm', '{"full_name":"R2","role":"owner","terms_accepted":true}');
+insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id,approved_at,listed_by)
+select 'a0000000-0000-0000-0000-0000000000c1','Old '||g,'rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),now(),'agent'
+  from generate_series(1,2) g;
+update properties set status = 'active', approved_at = now() where owner_id = 'a0000000-0000-0000-0000-0000000000c1';
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000c1','a0000000-0000-0000-0000-0000000000c1','Third','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
+select zt.ok('new account (under 14 days): 3rd listing still goes to review',
+  (select status from properties where id = 'b0000000-0000-0000-0000-0000000000c1') = 'pending');
+update profiles set created_at = now() - interval '20 days' where id = 'a0000000-0000-0000-0000-0000000000c1';
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000c2','a0000000-0000-0000-0000-0000000000c1','Fourth','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
+select zt.ok('older account with 2 approved: published at once',
+  (select status = 'active' and approved_at is not null from properties where id = 'b0000000-0000-0000-0000-0000000000c2'));
+update properties set confirmed_at = now() - interval '1 day' where id = 'b0000000-0000-0000-0000-0000000000c2';
+insert into listing_reports(property_id, reporter_id, reason) values
+ ('b0000000-0000-0000-0000-0000000000c2','a0000000-0000-0000-0000-0000000000c2','not_available');
+select zt.ok('one "not available" report changes nothing',
+  (select confirmed_at > now() - interval '2 days' from properties where id = 'b0000000-0000-0000-0000-0000000000c2'));
+insert into listing_reports(property_id, reporter_id, reason) values
+ ('b0000000-0000-0000-0000-0000000000c2','a0000000-0000-0000-0000-0000000000c3','not_available');
+select zt.ok('two people say "not available": owner is asked now, listing still visible',
+  (select status = 'active' and confirmed_at <= now() - interval '7 days' and is_fresh
+     from property_feed where id = 'b0000000-0000-0000-0000-0000000000c2'));
+delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000c1';
+
 select zt.ok('ALL CHECKS PASSED', true);
