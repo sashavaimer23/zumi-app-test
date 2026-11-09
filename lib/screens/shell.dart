@@ -171,7 +171,7 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
       }
       if (open == 'plans') {
         go(4);
-        openPlans(context);
+        if (context.read<AppState>().billingVisible) openPlans(context);
         return;
       }
       if (open == 'support') {

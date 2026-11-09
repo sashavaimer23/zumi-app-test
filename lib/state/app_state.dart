@@ -61,11 +61,14 @@ class AppState extends ChangeNotifier {
   }
 
   /// Можно ли покупать сейчас: платные функции включены и это сайт (не приложение из магазина)
-  /// Платные функции видны: всем — когда оплата включена; владельцу Zumi — всегда (проверка кнопок до запуска)
-  bool get billingVisible => Features.billing || (_user?.isOwner ?? false);
+  /// Платные функции видны только когда оплата включена (Admin → Payments).
+  /// Предпросмотр для владельца выключен: на время запуска всё выглядит бесплатным для всех;
+  /// кнопки оплаты будем доделывать на тестовом сайте (песочнице).
+  static const _ownerPreview = false;
+  bool get billingVisible => Features.billing || (_ownerPreview && (_user?.isOwner ?? false));
 
   /// Предпросмотр: оплата выключена для всех, но владелец видит платное, чтобы проверить
-  bool get billingPreview => !Features.billing && (_user?.isOwner ?? false);
+  bool get billingPreview => _ownerPreview && !Features.billing && (_user?.isOwner ?? false);
 
   bool get canBuy => billingVisible && kIsWeb;
 
