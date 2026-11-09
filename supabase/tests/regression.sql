@@ -657,6 +657,9 @@ insert into listing_reports(property_id, reporter_id, reason) values
 select zt.ok('two people say "not available": owner is asked now, listing still visible',
   (select status = 'active' and confirmed_at <= now() - interval '7 days' and is_fresh
      from property_feed where id = 'b0000000-0000-0000-0000-0000000000c2'));
+update properties set advance_months = 3 where id = 'b0000000-0000-0000-0000-0000000000c2';
+select zt.ok('upfront months are in the feed', (select advance_months = 3 from property_feed where id = 'b0000000-0000-0000-0000-0000000000c2'));
+select zt.err('upfront months only for rent', 'properties_advance_ok', $$update properties set deal_type = 'sale' where id = 'b0000000-0000-0000-0000-0000000000c2'$$);
 delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000c1';
 
 select zt.ok('ALL CHECKS PASSED', true);

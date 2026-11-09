@@ -228,25 +228,14 @@ class _PropertyScreenState extends State<PropertyScreen> {
             // реклама: блок под описанием
             if (context.watch<AppState>().adsOn)
               const Padding(padding: EdgeInsets.only(top: 22), child: ListingAdBlock()),
-            if (p.amenities.isNotEmpty) ...[
-              _h('Amenities'),
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                for (final a in p.amenities)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Zc.green, width: 0.8),
-                    ),
-                    child: Text(amenityLabels[a] ?? a, style: const TextStyle(color: Zc.green)),
-                  ),
-              ]),
-            ],
+            ..._amenityGroup('Power & water', p.amenities.where(powerWaterLabels.containsKey).toList()),
+            ..._amenityGroup('Amenities', p.amenities.where((a) => !powerWaterLabels.containsKey(a)).toList()),
             _h('Details'),
             _row('Property type', p.isRoom ? (p.roomInfo?.kindLabel ?? 'Room') : p.propertyType.label),
             if (p.dealType == DealType.rent) _row('Rental', p.rentPeriod == 'day' ? 'Daily' : 'Long-term'),
             if (p.leaseTerm != null) _row('Lease term', p.leaseTerm == 'year' ? 'From a year' : 'A few months'),
-            if (p.renovation != null) _row('Renovation', renovationLabels[p.renovation] ?? p.renovation!),
+            if (p.advanceMonths != null && p.dealType == DealType.rent)
+              _row('Paid upfront', p.advanceMonths == 1 ? '1 month' : '${p.advanceMonths} months'),
             if (p.kidsAllowed != null) _row('Kids allowed', p.kidsAllowed! ? 'Yes' : 'No'),
             if (p.petsAllowed != null) _row('Pets allowed', p.petsAllowed! ? 'Yes' : 'No'),
             _h('Location'),
@@ -393,6 +382,23 @@ class _PropertyScreenState extends State<PropertyScreen> {
       ),
     );
   }
+
+  List<Widget> _amenityGroup(String title, List<String> keys) => keys.isEmpty
+      ? const []
+      : [
+          _h(title),
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            for (final a in keys)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Zc.green, width: 0.8),
+                ),
+                child: Text(allAmenityLabels[a] ?? a, style: const TextStyle(color: Zc.green)),
+              ),
+          ]),
+        ];
 
   Widget _h(String t) => Padding(
         padding: const EdgeInsets.only(top: 28, bottom: 12),

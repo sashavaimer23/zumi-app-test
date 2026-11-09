@@ -53,6 +53,22 @@ const amenityLabels = <String, String>{
   'garage': 'Garage',
 };
 
+/// Свет и вода — для Замбии это важно (отключения ZESCO, перебои с водой). Всё по желанию.
+/// Хранится в том же списке amenities, отдельная группа только в интерфейсе.
+const powerWaterLabels = <String, String>{
+  'solar': 'Solar panels',
+  'inverter': 'Inverter / battery backup',
+  'generator': 'Generator',
+  'prepaid_meter': 'Own ZESCO prepaid meter',
+  'borehole': 'Borehole',
+  'water_tank': 'Water tank',
+  'council_water': 'Council water',
+  'water_24h': 'Water 24/7',
+};
+
+/// Все подписи удобств (для показа на странице объявления)
+const allAmenityLabels = <String, String>{...amenityLabels, ...powerWaterLabels};
+
 const renovationLabels = <String, String>{
   'cosmetic': 'Cosmetic',
   'designer': 'Designer',
@@ -144,6 +160,7 @@ class Property {
   final RoomInfo? roomInfo;             // комната / boys' quarters / bedsitter: ванная, кухня, вода, свет
   final int? unitsTotal;                // дом / блок на несколько квартир: всего квартир (одно объявление)
   final int? unitsAvailable;            // …и сколько свободно сейчас
+  final int? advanceMonths;             // аренда: сколько месяцев платить вперёд (по желанию)
   bool get isMultiUnit => unitsTotal != null && unitsTotal! > 1;
   String? get unitsLabel => isMultiUnit ? '${unitsAvailable ?? 1} of $unitsTotal ${isRoom ? 'rooms' : 'units'} free' : null;
   bool get isRoom => propertyType == PropertyType.room;
@@ -212,6 +229,7 @@ class Property {
     this.roomInfo,
     this.unitsTotal,
     this.unitsAvailable,
+    this.advanceMonths,
     this.hiddenBy,
     this.hiddenReason,
     this.approvedAt,
@@ -273,6 +291,7 @@ class Property {
         roomInfo: RoomInfo.fromJson(m['room_info']),
         unitsTotal: (m['units_total'] as num?)?.toInt(),
         unitsAvailable: (m['units_available'] as num?)?.toInt(),
+        advanceMonths: (m['advance_months'] as num?)?.toInt(),
         hiddenBy: m['hidden_by'] as String?,
         hiddenReason: m['hidden_reason'] as String?,
         approvedAt: DateTime.tryParse((m['approved_at'] as String?) ?? ''),
@@ -329,6 +348,7 @@ class Property {
         hiddenBy: clearHidden ? null : (hiddenBy ?? this.hiddenBy),
         hiddenReason: clearHidden ? null : hiddenReason,
         approvedAt: approvedAt, roomInfo: roomInfo, unitsTotal: unitsTotal, unitsAvailable: unitsAvailable,
+        advanceMonths: advanceMonths,
       );
 
   bool get isPending => status == 'pending';
@@ -472,6 +492,7 @@ class SearchFilters {
   bool onlyOwner;
   bool onlyAgent;
   String? leaseTerm;
+  int? maxAdvance;            // аренда: платить вперёд не больше N месяцев
   double? minSqm;
   double? maxSqm;
   bool onlyVerified;          // только с плашкой Verified (проверенный автор)
@@ -497,6 +518,7 @@ class SearchFilters {
     this.onlyOwner = false,
     this.onlyAgent = false,
     this.leaseTerm,
+    this.maxAdvance,
     this.minSqm,
     this.maxSqm,
     this.onlyVerified = false,
@@ -511,7 +533,7 @@ class SearchFilters {
         query: query, areaId: areaId, minPrice: minPrice, maxPrice: maxPrice,
         minBedrooms: minBedrooms, minBathrooms: minBathrooms, renovation: {...renovation},
         kidsAllowed: kidsAllowed, petsAllowed: petsAllowed, amenities: {...amenities},
-        onlyOwner: onlyOwner, onlyAgent: onlyAgent, leaseTerm: leaseTerm,
+        onlyOwner: onlyOwner, onlyAgent: onlyAgent, leaseTerm: leaseTerm, maxAdvance: maxAdvance,
         minSqm: minSqm, maxSqm: maxSqm, onlyVerified: onlyVerified,
         onlyLocationVerified: onlyLocationVerified, currency: currency, sort: sort,
       );
@@ -533,6 +555,7 @@ class SearchFilters {
     n += amenities.length;
     if (onlyOwner || onlyAgent) n++;
     if (leaseTerm != null) n++;
+    if (maxAdvance != null) n++;
     if (minSqm != null || maxSqm != null) n++;
     if (onlyVerified) n++;
     if (onlyLocationVerified) n++;
@@ -565,6 +588,7 @@ class SearchFilters {
     if (onlyOwner && !onlyAgent && p.listedBy != 'owner') return false;
     if (onlyAgent && !onlyOwner && p.listedBy != 'agent') return false;
     if (leaseTerm != null && p.leaseTerm != leaseTerm) return false;
+    if (maxAdvance != null && (p.advanceMonths == null || p.advanceMonths! > maxAdvance!)) return false;
     if (onlyVerified && !p.isVerified) return false;
     if (onlyLocationVerified && !p.propertyVerified) return false;
     final size = p.areaSqm ?? p.plotSqm;
@@ -752,7 +776,9 @@ class ListingDraft {
       ..contactPhone = p.contactPhone ?? ''
       ..roomInfo = p.roomInfo ?? const RoomInfo()
       ..unitsTotal = p.unitsTotal
-      ..unitsAvailable = p.unitsAvailable ?? 1;
+      ..unitsAvailable = p.unitsAvailable ?? 1
+      ..advanceMonths = p.advanceMonths
+      ..hadAdvance = p.advanceMonths != null;
     return d;
   }
 
@@ -782,6 +808,12 @@ class ListingDraft {
   int unitsAvailable = 1;
   bool get multiUnitAllowed => dealType == DealType.rent && propertyType != PropertyType.land;
   int? get unitsTotalToSave => multiUnitAllowed && unitsTotal != null && unitsTotal! > 1 ? unitsTotal : null;
+  /// Аренда помесячно: сколько месяцев платить вперёд (null — не указано)
+  int? advanceMonths;
+  bool hadAdvance = false; // при правке: было указано — значит, можно и стереть
+  int? get advanceMonthsToSave =>
+      dealType == DealType.rent && rentPeriod == 'month' && propertyType != PropertyType.land ? advanceMonths : null;
+
   int? get unitsAvailableToSave {
     final t = unitsTotalToSave;
     if (t == null) return null;
@@ -2589,3 +2621,7 @@ final _payWords = RegExp(
   caseSensitive: false,
 );
 bool looksLikePaymentRequest(String text) => _payWords.hasMatch(text);
+
+/// «3 months upfront»
+String advanceLabel(int m) => m == 1 ? '1 month upfront' : '$m months upfront';
+const kAdvanceChoices = [1, 2, 3, 6, 12];

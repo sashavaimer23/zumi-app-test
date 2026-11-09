@@ -152,6 +152,7 @@ class _FiltersSheetState extends State<FiltersSheet> {
                     f.dealType = f.dealType == DealType.sale ? null : DealType.sale;
                     f.rentPeriod = null;
                     f.leaseTerm = null;
+                    f.maxAdvance = null;
                     f.minPrice = f.maxPrice = null;
                   }),
                 ),
@@ -247,20 +248,22 @@ class _FiltersSheetState extends State<FiltersSheet> {
               _plusRow(f.minBedrooms, (v) => _changed(() => f.minBedrooms = v)),
               _title('Bathrooms'),
               _plusRow(f.minBathrooms, (v) => _changed(() => f.minBathrooms = v)),
-              _title('Renovation'),
-              _wrap([
-                for (final e in renovationLabels.entries)
-                  ZChip(
-                    label: e.value,
-                    selected: f.renovation.contains(e.key),
-                    onTap: () => _changed(() =>
-                        f.renovation.contains(e.key) ? f.renovation.remove(e.key) : f.renovation.add(e.key)),
-                  ),
-              ]),
               if (isRent) ...[
                 _title('Tenant preferences'),
                 _switch('Kids allowed', f.kidsAllowed, (v) => _changed(() => f.kidsAllowed = v)),
                 _switch('Pets allowed', f.petsAllowed, (v) => _changed(() => f.petsAllowed = v)),
+              ],
+              if (f.propertyType != PropertyType.land) ...[
+                _title('Power & water'),
+                _wrap([
+                  for (final e in powerWaterLabels.entries)
+                    ZChip(
+                      label: e.value,
+                      selected: f.amenities.contains(e.key),
+                      onTap: () => _changed(() =>
+                          f.amenities.contains(e.key) ? f.amenities.remove(e.key) : f.amenities.add(e.key)),
+                    ),
+                ]),
               ],
               _title('In the property'),
               _wrap([
@@ -299,6 +302,20 @@ class _FiltersSheetState extends State<FiltersSheet> {
                     onTap: () => _changed(() => f.leaseTerm = f.leaseTerm == 'months' ? null : 'months'),
                   ),
                 ]),
+                _title('Rent paid upfront'),
+                _wrap([
+                  for (final (m, label) in const [(1, '1 month only'), (3, 'Up to 3 months'), (6, 'Up to 6 months')])
+                    ZChip(
+                      label: label,
+                      selected: f.maxAdvance == m,
+                      onTap: () => _changed(() => f.maxAdvance = f.maxAdvance == m ? null : m),
+                    ),
+                ]),
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text('Shows only listings where the owner said how many months to pay upfront.',
+                      style: TextStyle(fontSize: 12, color: Zc.grey)),
+                ),
               ],
               _title('Area m²'),
               Row(children: [

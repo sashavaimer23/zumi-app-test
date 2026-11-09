@@ -435,13 +435,13 @@ class SupabaseRepository implements Repository {
     if (withPrice && f.maxPrice != null) q = q.lte('price', f.maxPrice!);
     if (f.minBedrooms != null) q = q.gte('bedrooms', f.minBedrooms!);
     if (f.minBathrooms != null) q = q.gte('bathrooms', f.minBathrooms!);
-    if (f.renovation.isNotEmpty) q = q.inFilter('renovation', f.renovation.toList());
     if (f.kidsAllowed) q = q.eq('kids_allowed', true);
     if (f.petsAllowed) q = q.eq('pets_allowed', true);
     if (f.amenities.isNotEmpty) q = q.contains('amenities', f.amenities.toList());
     if (f.onlyOwner && !f.onlyAgent) q = q.eq('listed_by', 'owner');
     if (f.onlyAgent && !f.onlyOwner) q = q.eq('listed_by', 'agent');
     if (f.leaseTerm != null) q = q.eq('lease_term', f.leaseTerm!);
+    if (f.maxAdvance != null) q = q.lte('advance_months', f.maxAdvance!);
     if (f.onlyVerified) q = q.eq('owner_identity_verified', true);
     if (f.onlyLocationVerified) q = q.eq('property_verified', true);
     if (f.minSqm != null) q = q.gte('area_sqm', f.minSqm!);
@@ -620,6 +620,8 @@ class SupabaseRepository implements Repository {
               'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
               'units_total': d.unitsTotalToSave,
               'units_available': d.unitsAvailableToSave,
+              // поле из миграции 037: отправляем, только если указано (до миграции объявления сохраняются)
+              if (d.advanceMonthsToSave != null || d.hadAdvance) 'advance_months': d.advanceMonthsToSave,
             })
             .select('id')
             .single();
@@ -695,6 +697,8 @@ class SupabaseRepository implements Repository {
           'room_info': d.propertyType == PropertyType.room ? d.roomInfo.toJson() : null,
               'units_total': d.unitsTotalToSave,
               'units_available': d.unitsAvailableToSave,
+              // поле из миграции 037: отправляем, только если указано (до миграции объявления сохраняются)
+              if (d.advanceMonthsToSave != null || d.hadAdvance) 'advance_months': d.advanceMonthsToSave,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', id);
 

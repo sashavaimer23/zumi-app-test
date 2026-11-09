@@ -440,6 +440,29 @@ class _PostWizardState extends State<PostWizard> {
         DescriptionHints(controller: _desc),
         if (!isLand && !isRoom) ...[
           const SizedBox(height: 36),
+          Text('Power & water', style: zHeadline(context, size: 36)),
+          const SizedBox(height: 8),
+          const Text('Optional — tenants and buyers in Zambia often ask about this first.',
+              style: TextStyle(fontSize: 16, color: Zc.grey)),
+          const SizedBox(height: 20),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 14,
+            childAspectRatio: 3.4,
+            children: [
+              for (final e in powerWaterLabels.entries)
+                _PillToggle(
+                  label: e.value,
+                  selected: _d.amenities.contains(e.key),
+                  onTap: () => setState(
+                      () => _d.amenities.contains(e.key) ? _d.amenities.remove(e.key) : _d.amenities.add(e.key)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 36),
           Text('Amenities', style: zHeadline(context, size: 36)),
           const SizedBox(height: 8),
           const Text('Select what your property offers.', style: TextStyle(fontSize: 16, color: Zc.grey)),
@@ -737,6 +760,22 @@ class _PostWizardState extends State<PostWizard> {
             ZChip(label: 'Per month', selected: _d.rentPeriod == 'month', onTap: () => setState(() => _d.rentPeriod = 'month')),
             ZChip(label: 'Per day', selected: _d.rentPeriod == 'day', onTap: () => setState(() => _d.rentPeriod = 'day')),
           ]),
+          if (_d.rentPeriod == 'month' && _d.propertyType != PropertyType.land) ...[
+            _label('Rent paid upfront (optional)'),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final m in kAdvanceChoices)
+                ZChip(
+                  label: m == 1 ? '1 month' : '$m months',
+                  selected: _d.advanceMonths == m,
+                  onTap: () => setState(() => _d.advanceMonths = _d.advanceMonths == m ? null : m),
+                ),
+            ]),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('How many months of rent the tenant pays when moving in. Tenants can filter by this.',
+                  style: TextStyle(fontSize: 12, color: Zc.grey)),
+            ),
+          ],
         ],
         // цены похожих объявлений в районе
         if (_d.area == null)
