@@ -21,6 +21,7 @@ import 'post/post_wizard.dart';
 import 'profile_screen.dart';
 import 'public_profile_screen.dart';
 import 'agency_screen.dart';
+import 'auth_screen.dart';
 import 'billing/billing_screen.dart';
 import 'saved_screen.dart';
 import 'support/support_screen.dart';
@@ -138,6 +139,17 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
     try {
       if (q['join'] != null) {
         await showJoinAgency(context, q['join']!);
+        return;
+      }
+      if (q['signup'] != null) {
+        // со страницы zumihome.com/agents: «Join as an agent» / «Register your agency»
+        final role = q['signup'] == 'agency' ? 'agency' : 'agent';
+        if (context.read<AppState>().user == null) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => AuthScreen(startSignUp: true, initialRole: role)));
+        } else {
+          go(4);
+        }
         return;
       }
       if (q['agency'] != null) {

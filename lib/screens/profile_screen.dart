@@ -169,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: ZI.badge,
                         title: 'Your agent cabinet',
                         text: 'Here are your catalogue, your public agent page and your badges. '
-                            '${user.licenceVerified ? 'Your ZIEA licence is checked — your listings show "Licensed agent".' : 'Add your ZIEA registration number: until it is checked, your listings show "licence not verified".'}',
+                            '${user.licenceVerified ? 'Your ZIEA licence is checked — your listings show "Licensed agent".' : 'Have a ZIEA licence? Add the number to get the "Licensed agent" badge and 5 more free listings. No licence is fine too — you can post right away.'}',
                         actionLabel: user.licenceVerified || (user.licenceNo ?? '').isNotEmpty ? null : 'Add ZIEA number',
                         onAction: () => Navigator.push(
                           context,

@@ -17,11 +17,15 @@ import '../widgets/zicons.dart';
 /// Вход / регистрация. При регистрации выбирается роль: собственник или агент.
 /// Возвращает true через Navigator.pop, если пользователь вошёл.
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.embedded = false, this.reason});
+  const AuthScreen({super.key, this.embedded = false, this.reason, this.startSignUp = false, this.initialRole});
 
   /// true — экран встроен во вкладку (без кнопки «назад» и без pop)
   final bool embedded;
   final String? reason;
+
+  /// ссылка со страницы «Zumi для агентов» (?signup=agent): сразу регистрация с нужной ролью
+  final bool startSignUp;
+  final String? initialRole;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -49,6 +53,13 @@ class _AuthScreenState extends State<AuthScreen> {
   int _resendIn = 0; // секунд до повторной отправки
   Timer? _resendTimer;
   bool _resending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _signUp = widget.startSignUp;
+    if (const ['owner', 'agent', 'agency'].contains(widget.initialRole)) _role = widget.initialRole!;
+  }
 
   @override
   void dispose() {

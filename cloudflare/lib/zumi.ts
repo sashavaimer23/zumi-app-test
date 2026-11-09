@@ -118,7 +118,7 @@ footer{margin-top:40px;font-size:14px}
 </style></head><body><main>
 <header><a class="logo" href="/">ZUMI</a><a class="btn" href="/">Open Zumi</a></header>
 ${o.body}
-<footer class="muted"><a href="/">Zumi</a> — homes to rent and buy in Zambia · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></footer>
+<footer class="muted"><a href="/">Zumi</a> — homes to rent and buy in Zambia · <a href="/agents">For agents</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></footer>
 </main></body></html>`,
     { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" } },
   );

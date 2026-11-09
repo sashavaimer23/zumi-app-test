@@ -14,7 +14,7 @@ export const onRequestGet: PagesFunction = async () => {
   const u = (loc: string, last?: string) => `<url><loc>${SITE}${loc}</loc>${last ? `<lastmod>${last.slice(0, 10)}</lastmod>` : ""}</url>`;
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${u("/")}${u("/rent")}${u("/buy")}
+${u("/")}${u("/agents")}${u("/rent")}${u("/buy")}
 ${all.filter((a) => withRent.has(a.id)).map((a) => u(`/rent/${slug(a.name)}`)).join("")}
 ${all.filter((a) => withSale.has(a.id)).map((a) => u(`/buy/${slug(a.name)}`)).join("")}
 ${listings.map((l) => u(`/l/${l.id}`, l.updated_at)).join("")}
