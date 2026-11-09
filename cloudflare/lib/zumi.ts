@@ -38,7 +38,9 @@ export const rpc = <T>(name: string, args: Record<string, unknown>) =>
 
 // кто пришёл: поисковик / мессенджер (показываем страницу) или человек (в приложение)
 const BOTS = /bot|crawl|spider|slurp|facebookexternalhit|facebot|whatsapp|telegram|twitter|slack|linkedin|discord|viber|skype|pinterest|embedly|preview|google|bing|yandex|applebot|duckduck/i;
-export const isBot = (req: Request) => BOTS.test(req.headers.get("user-agent") ?? "");
+// ?preview — посмотреть страницу так, как её видят Google и WhatsApp
+export const isBot = (req: Request) =>
+  BOTS.test(req.headers.get("user-agent") ?? "") || new URL(req.url).searchParams.has("preview");
 
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
