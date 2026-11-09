@@ -42,6 +42,10 @@ const BOTS = /bot|crawl|spider|slurp|facebookexternalhit|facebot|whatsapp|telegr
 export const isBot = (req: Request) =>
   BOTS.test(req.headers.get("user-agent") ?? "") || new URL(req.url).searchParams.has("preview");
 
+// демо-фото хранятся в приложении («asset:p1.jpg») — даём полный адрес
+export const img = (u?: string | null) =>
+  !u ? undefined : u.startsWith("asset:") ? `${SITE}/assets/assets/images/${u.slice(6)}` : u;
+
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -82,7 +86,7 @@ export function page(o: {
   title: string; description: string; url: string; image?: string | null; body: string; noindex?: boolean;
   jsonld?: unknown;
 }) {
-  const img = o.image || `${SITE}/og-image.jpg`;
+  const image = img(o.image) || `${SITE}/og-image.jpg`;
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -92,8 +96,8 @@ export function page(o: {
 ${o.noindex ? '<meta name="robots" content="noindex">' : ""}
 <meta property="og:type" content="website"><meta property="og:site_name" content="Zumi">
 <meta property="og:url" content="${esc(o.url)}"><meta property="og:title" content="${esc(o.title)}">
-<meta property="og:description" content="${esc(o.description)}"><meta property="og:image" content="${esc(img)}">
-<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${esc(img)}">
+<meta property="og:description" content="${esc(o.description)}"><meta property="og:image" content="${esc(image)}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${esc(image)}">
 <link rel="icon" type="image/png" href="/favicon.png">
 ${o.jsonld ? `<script type="application/ld+json">${JSON.stringify(o.jsonld).replace(/</g, "\\u003c")}</script>` : ""}
 <style>
@@ -121,8 +125,8 @@ ${o.body}
 }
 
 export function card(p: Listing) {
-  const img = p.thumb_urls?.[0] ?? p.image_urls?.[0];
-  return `<a class="card" href="/l/${p.id}">${img ? `<img src="${esc(img)}" alt="${esc(headline(p))}" loading="lazy">` : "<img alt=''>"}
+  const pic = img(p.thumb_urls?.[0] ?? p.image_urls?.[0]);
+  return `<a class="card" href="/l/${p.id}">${pic ? `<img src="${esc(pic)}" alt="${esc(headline(p))}" loading="lazy">` : "<img alt=''>"}
 <div><b>${esc(priceLine(p))}</b><br>${esc(p.title)}<br><span class="muted">${esc(specs(p))}${p.area_name ? ` · ${esc(p.area_name)}` : ""}</span></div></a>`;
 }
 

@@ -1,5 +1,5 @@
 // /l/<id> — объявление: превью для WhatsApp/Facebook и страница для Google; людей — сразу в приложение
-import { card, esc, headline, isBot, LISTING_COLS, Listing, notFound, page, priceLine, sb, SITE, specs, typeName, slug } from "../../lib/zumi";
+import { card, esc, img as fullImg, headline, isBot, LISTING_COLS, Listing, notFound, page, priceLine, sb, SITE, specs, typeName, slug } from "../../lib/zumi";
 
 export const onRequestGet: PagesFunction = async ({ request, params }) => {
   const id = String(params.id ?? "");
@@ -13,7 +13,7 @@ export const onRequestGet: PagesFunction = async ({ request, params }) => {
   const h = headline(p);
   const title = `${priceLine(p)} · ${h} — Zumi`;
   const desc = [specs(p), (p.description ?? "").replace(/\s+/g, " ").slice(0, 160)].filter(Boolean).join(" — ");
-  const img = p.image_urls?.[0] ?? p.thumb_urls?.[0];
+  const img = fullImg(p.image_urls?.[0] ?? p.thumb_urls?.[0]);
   const who = p.listed_by === "agent" ? (p.agency_name || p.owner_name || "Agent") : "Owner";
   const deal = p.deal_type === "rent" ? "rent" : "buy";
   const area = p.area_name ? `<a href="/${deal}/${slug(p.area_name)}">${esc(typeName(p.property_type, true))} to ${deal} in ${esc(p.area_name)}</a>` : "";
