@@ -230,6 +230,12 @@ abstract class Repository {
   Future<void> adminReviewLicence(String userId, bool approve, {String? note});
   Future<List<ReportItem>> adminReports({bool onlyNew = true});
 
+  /// Собственник сам становится агентом (обратно — только через команду)
+  Future<void> becomeAgent({String? licenceNo});
+
+  /// Команда: сменить тип аккаунта по почте ('owner' | 'agent'), вернуть «owner → agent»
+  Future<String> adminSetAccountType(String email, String type);
+
   // ---------- агентства ----------
   Future<String> createAgency({required String name, String? firmLicenceNo, String? phone});
   Future<void> updateAgency({required String name, String? firmLicenceNo, String? phone, String? about});

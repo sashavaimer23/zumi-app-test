@@ -110,6 +110,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _becomeAgent(BuildContext context) async {
+    final licence = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Switch to an agent account?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text(
+              'Agents can post up to 15 listings for free (20 with a checked ZIEA licence) and can join an agency. '
+              'Your listings will show "Agent". To switch back later you will need to write to support.',
+              style: TextStyle(height: 1.4)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: licence,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(labelText: 'ZIEA registration number (optional)'),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Switch')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await context.read<AppState>().repo.becomeAgent(licenceNo: licence.text.trim());
+      if (context.mounted) showSnack(context, 'You now have an agent account');
+    } catch (e) {
+      if (context.mounted) showSnack(context, '$e');
+    }
+  }
+
   Future<void> _changePassword() async {
     final repo = context.read<AppState>().repo;
     final pass = await showDialog<String>(context: context, builder: (_) => const _NewPasswordDialog());
@@ -377,7 +410,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _Row(
                 icon: u.isAgent ? ZI.badge : ZI.house,
                 title: u.isAdmin ? 'Zumi team' : (u.isAgent ? 'Agent account' : 'Owner account'),
-                subtitle: 'To change the account type, write to support',
+                subtitle: u.isAdmin
+                    ? 'Team account'
+                    : u.isAgent
+                        ? 'To switch back to an owner account, write to support'
+                        : 'Are you an agent? Tap to switch to an agent account',
+                onTap: (u.isAdmin || u.isAgent) ? null : () => _becomeAgent(context),
               ),
               _Row(icon: ZI.lock, title: 'Change password', onTap: _changePassword),
 

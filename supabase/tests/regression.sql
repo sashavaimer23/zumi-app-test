@@ -607,4 +607,25 @@ reset role;
 drop table inv;
 delete from properties where owner_id in ('a0000000-0000-0000-0000-0000000000a6', 'a0000000-0000-0000-0000-0000000000a7');
 
+-- ---------- смена типа аккаунта ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000b1', 'switch@x.zm', '{"full_name":"Switcher","role":"owner","terms_accepted":true}');
+insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id) values
+ ('a0000000-0000-0000-0000-0000000000b1','My flat','rent','apartment',3000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas));
+set role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000b1', false);
+select become_agent('ZIEA-777');
+select zt.ok('owner becomes an agent by themselves; listings now say Agent',
+  (select role = 'agent' and agent_licence_no = 'ZIEA-777' from profiles where id = auth.uid())
+  and not exists (select 1 from properties where owner_id = auth.uid() and listed_by <> 'agent'));
+select zt.err('people cannot change their type back', 'FORBIDDEN', $$select admin_set_account_type('switch@x.zm', 'owner')$$);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+select zt.ok('team can switch an agent back to owner', admin_set_account_type('switch@x.zm', 'owner') = 'agent → owner');
+select zt.ok('listings follow the account type',
+  not exists (select 1 from properties where owner_id = 'a0000000-0000-0000-0000-0000000000b1' and listed_by <> 'owner'));
+select zt.err('team accounts are not switched here', 'TEAM_ACCOUNT', $$select admin_set_account_type('boss@x.zm', 'agent')$$);
+reset role;
+delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000b1';
+
 select zt.ok('ALL CHECKS PASSED', true);

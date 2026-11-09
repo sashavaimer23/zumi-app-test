@@ -302,6 +302,7 @@ class Property {
     bool? ownerLicenceVerified,
     String? hiddenBy,
     bool clearHidden = false,
+    String? listedBy,
   }) =>
       Property(
         id: id, ownerId: ownerId, title: title, description: description,
@@ -309,7 +310,7 @@ class Property {
         rentPeriod: rentPeriod, bedrooms: bedrooms, bathrooms: bathrooms, areaSqm: areaSqm,
         plotSqm: plotSqm, amenities: amenities, areaId: areaId, areaName: areaName, city: city,
         address: address, lat: lat, lng: lng, status: status ?? this.status,
-        isPromoted: isPromoted ?? promoted, images: images, listedBy: listedBy,
+        isPromoted: isPromoted ?? promoted, images: images, listedBy: listedBy ?? this.listedBy,
         contactName: contactName ?? this.contactName, contactPhone: contactPhone, renovation: renovation,
         kidsAllowed: kidsAllowed, petsAllowed: petsAllowed, leaseTerm: leaseTerm,
         viewsCount: viewsCount, createdAt: createdAt, isDemo: isDemo,
@@ -681,13 +682,14 @@ class AppUser {
     bool? emailAlerts,
     String? agencyId,
     bool clearAgency = false,
+    String? role,
   }) =>
       AppUser(
         id: id,
         email: email,
         fullName: fullName ?? this.fullName,
         phone: phone ?? this.phone,
-        role: role,
+        role: role ?? this.role,
         teamLevel: teamLevel,
         agencyName: agencyName ?? this.agencyName,
         phoneVerified: phoneVerified ?? this.phoneVerified,

@@ -171,6 +171,9 @@ class SupabaseRepository implements Repository {
         ('ASK_AGENCY_OWNER', 'Your agency owner buys plans and extra listings for the whole agency.'),
         ('TOO_MANY_INVITES', 'Too many invites today. Try again tomorrow.'),
         ('USE_INVITE', 'Join an agency with an invite link from its owner.'),
+        ('ASK_SUPPORT', 'Please write to support to change your account type.'),
+        ('USER_NOT_FOUND', 'No account with this email.'),
+        ('IN_AGENCY', 'This agent is in an agency — they must leave it first.'),
       ]) {
         if (e.message.contains(k)) throw AppException(msg, code: k);
       }
@@ -1352,6 +1355,16 @@ class SupabaseRepository implements Repository {
   Future<void> adminReviewLicence(String userId, bool approve, {String? note}) => _guard(() async {
         await _db.rpc('admin_review_licence', params: {'uid': userId, 'approve': approve, 'p_note': note});
       });
+
+  @override
+  Future<void> becomeAgent({String? licenceNo}) => _guard(() async {
+        await _db.rpc('become_agent', params: {'p_licence': licenceNo});
+        await refreshUser();
+      });
+
+  @override
+  Future<String> adminSetAccountType(String email, String type) => _guard(() async =>
+      await _db.rpc('admin_set_account_type', params: {'p_email': email, 'p_type': type}) as String);
 
   // ---------- агентства ----------
   @override

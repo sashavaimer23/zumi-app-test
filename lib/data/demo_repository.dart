@@ -1426,6 +1426,31 @@ class DemoRepository implements Repository {
     _log(approve ? 'approve' : 'reject', 'licence', l.isEmpty ? userId : '${l.first.userName} ${l.first.licenceNo}', note);
   }
 
+  @override
+  Future<void> becomeAgent({String? licenceNo}) async {
+    final u = _requireUser();
+    if (u.isAgent) return;
+    if (u.isAdmin) throw AppException('Please write to support to change your account type.', code: 'ASK_SUPPORT');
+    _setUser(u.copyWith(role: 'agent', licenceNo: (licenceNo ?? '').trim().isEmpty ? u.licenceNo : licenceNo!.trim()));
+    for (var i = 0; i < _props.length; i++) {
+      if (_props[i].ownerId == u.id) _props[i] = _props[i].copyWith(listedBy: 'agent');
+    }
+  }
+
+  @override
+  Future<String> adminSetAccountType(String email, String type) async {
+    _requireAdmin();
+    final u = _known.values.where((x) => (x.email ?? '').toLowerCase() == email.trim().toLowerCase()).firstOrNull;
+    if (u == null) throw AppException('No account with this email.', code: 'USER_NOT_FOUND');
+    if (u.isAdmin) throw AppException('Team accounts are changed in Team.', code: 'TEAM_ACCOUNT');
+    if (type == 'owner' && u.agencyId != null) {
+      throw AppException('This agent is in an agency — they must leave it first.', code: 'IN_AGENCY');
+    }
+    final was = u.role;
+    _setUser(u.copyWith(role: type));
+    return '$was → $type';
+  }
+
   // ---------- агентства ----------
   final Map<String, _DemoAgency> _agencies = {};
   final Map<String, String> _invites = {}; // код → id агентства

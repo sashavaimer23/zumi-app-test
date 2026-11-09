@@ -520,8 +520,8 @@ class _AccountsState extends State<_Accounts> {
       child: _Loader<List<AccountItem>>(
         future: _future,
         builder: (list) {
-          if (list.isEmpty) return _emptyDone('No new accounts.');
-          return Column(children: [for (final a in list) _accountCard(a)]);
+          if (list.isEmpty) return Column(children: [const _AccountTypeTool(), _emptyDone('No new accounts.')]);
+          return Column(children: [const _AccountTypeTool(), for (final a in list) _accountCard(a)]);
         },
       ),
     );
@@ -1189,4 +1189,74 @@ class _AgenciesAdminState extends State<_AgenciesAdmin> {
       ),
     ]);
   }
+}
+
+/// Сменить тип аккаунта по просьбе человека (собственник ↔ агент)
+class _AccountTypeTool extends StatefulWidget {
+  const _AccountTypeTool();
+
+  @override
+  State<_AccountTypeTool> createState() => _AccountTypeToolState();
+}
+
+class _AccountTypeToolState extends State<_AccountTypeTool> {
+  final _email = TextEditingController();
+  String _type = 'agent';
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _apply() async {
+    if (!_email.text.contains('@')) {
+      showSnack(context, 'Enter the email of the account');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final r = await context.read<AppState>().repo.adminSetAccountType(_email.text.trim(), _type);
+      if (!mounted) return;
+      showSnack(context, 'Done: $r');
+      _email.clear();
+    } catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _Card(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Change account type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          const Text(
+              'When someone asks support to switch between Owner and Agent. Their listings switch too. '
+              'Agents in an agency must leave it first.',
+              style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 10, runSpacing: 10, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            SizedBox(
+              width: 260,
+              child: TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(hintText: 'Account email', isDense: true),
+              ),
+            ),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'agent', label: Text('Make agent')),
+                ButtonSegment(value: 'owner', label: Text('Make owner')),
+              ],
+              selected: {_type},
+              onSelectionChanged: (s) => setState(() => _type = s.first),
+            ),
+            _actionBtn(_busy ? 'Saving…' : 'Apply', _busy ? () {} : _apply, primary: true),
+          ]),
+        ]),
+      );
 }
