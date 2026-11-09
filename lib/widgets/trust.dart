@@ -62,7 +62,7 @@ class VerifiedBadge extends StatelessWidget {
   }
 }
 
-/// Спокойная пометка «Licence not checked» — агент без проверенной лицензии ZIEA.
+/// Спокойная пометка «ZIEA licence not verified» — агент без проверенной лицензии ZIEA.
 /// Специально нейтральная (серая, без «предупреждения»): в Замбии лицензия есть не у всех агентов,
 /// мы не хотим их отпугивать. На карточках в поиске не показываем — только на странице объявления и профиля.
 class LicenceWarning extends StatelessWidget {
@@ -75,7 +75,7 @@ class LicenceWarning extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 3 : 5),
           decoration: BoxDecoration(color: const Color(0xFFEFECE7), borderRadius: BorderRadius.circular(20)),
-          child: Text('Agent · licence not checked',
+          child: Text('ZIEA licence not verified',
               style: TextStyle(fontSize: compact ? 11 : 12.5, color: const Color(0xFF6E7A74))),
         ),
       );
