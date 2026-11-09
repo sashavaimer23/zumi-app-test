@@ -44,7 +44,7 @@ class DemoRepository implements Repository {
   final Map<String, List<ChatMessage>> _msgs = {};
   final Map<String, StreamController<List<ChatMessage>>> _msgCtrls = {};
 
-  static const _limits = {'agent': 15, 'owner': 2};
+  static const _limits = {'agent': 10, 'owner': 3};
 
   Future<void> _lag() => Future.delayed(const Duration(milliseconds: 250));
 
@@ -410,12 +410,12 @@ class DemoRepository implements Repository {
     // как на сервере: объявления на проверке тоже занимают место
     final ag = u.agencyId == null ? null : _agencies[u.agencyId];
     if (ag != null) {
-      // агентство: общий лимит на всех агентов — 30, с проверенной фирмой 50
+      // агентство: общий лимит на всех агентов — 25
       final members = _known.values.where((x) => x.agencyId == ag.id).map((x) => x.id).toSet()..add(u.id);
       final usedAll = _props
           .where((p) => members.contains(p.ownerId) && const {'active', 'draft', 'pending'}.contains(p.status))
           .length;
-      final free = ag.verified ? 50 : 30;
+      const free = 25;
       final bossPlan = ag.ownerId == u.id && _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now()) &&
               _billing.plan == 'agency'
           ? 150
@@ -423,8 +423,8 @@ class DemoRepository implements Repository {
       return Quota(usedAll, (bossPlan > free ? bossPlan : free) + (ag.ownerId == u.id ? _billing.extraSlots : 0));
     }
     final used = _props.where((p) => p.ownerId == u.id && const {'active', 'draft', 'pending'}.contains(p.status)).length;
-    // как на сервере: агент с проверенной лицензией — 20, без — 15, собственник — 2; тариф — если больше
-    final base = u.isAgent && u.licenceVerified ? 20 : (_limits[u.role] ?? 999);
+    // как на сервере: агент с проверенной лицензией — 15, без — 10, собственник — 3; тариф — если больше
+    final base = u.isAgent && u.licenceVerified ? 15 : (_limits[u.role] ?? 999);
     final planActive = _billing.planUntil != null && _billing.planUntil!.isAfter(DateTime.now());
     final planLimit = !planActive ? 0 : switch (_billing.plan) { 'agency' => 150, 'landlord' => 10, _ => 50 };
     final allowed = (planLimit > base ? planLimit : base) + _billing.extraSlots;

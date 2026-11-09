@@ -144,7 +144,7 @@ void main() {
     final head = repo.currentUser!;
     expect(head.isAgent, isTrue);
     expect(head.agencyId, isNotNull);
-    expect((await repo.myQuota()).allowed, 30);
+    expect((await repo.myQuota()).allowed, 25);
     final code = await repo.agencyInvite();
     expect((await repo.agencyInviteInfo(code))?.name, 'Copper Homes');
     await repo.signOut();

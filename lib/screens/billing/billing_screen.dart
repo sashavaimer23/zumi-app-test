@@ -75,7 +75,7 @@ class _PlansScreenState extends State<PlansScreen> {
                 if (app.canBuy && plans.isNotEmpty) ...[
                   agent
                       ? _title('Plans for agents', 'More listings, boosts every month and a Pro badge. Pay for 3, 6 or 12 months and save.')
-                      : _title('Landlord plan', 'Have more than 2 properties? Post up to 10 — from K75 a month. Pay for longer and save.'),
+                      : _title('Landlord plan', 'Have more than 3 properties? Post up to 10 — from K75 a month. Pay for longer and save.'),
                   for (final p in plans) _PriceCard(item: p, onBuy: () => _buy(p)),
                 ],
                 if (app.canBuy && packs.isNotEmpty) ...[

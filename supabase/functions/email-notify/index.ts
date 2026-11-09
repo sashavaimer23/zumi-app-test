@@ -70,15 +70,27 @@ function compose(it: Item, site: string): { subject: string; title: string; body
         button: "Open my listings",
         link: `${site}/?open=listings`,
       };
-    case "confirm":
-      return {
-        subject: "Is your property still available?",
-        title: "Is it still available?",
-        body: `<b>${esc(d.title)}</b><br><br>Tap <b>Yes</b> to keep it in search, or <b>No</b> if it is already taken. ` +
-          `Without an answer it will be hidden in ${d.hide_in} ${Number(d.hide_in) === 1 ? "day" : "days"}.`,
-        button: "Answer in one tap",
-        link: `${site}/?listing=${d.listing_id}`,
-      };
+    case "confirm": {
+      const n = Number(d.count ?? 1);
+      const hide = `${d.hide_in} ${Number(d.hide_in) === 1 ? "day" : "days"}`;
+      return n > 1
+        ? {
+          subject: `Are your ${n} listings still available?`,
+          title: `${n} listings need a quick answer`,
+          body: `Tap <b>Yes</b> on the ones still free, or <b>No</b> on those already taken. ` +
+            `Listings without an answer are paused (hidden from search) in ${hide}. It takes a minute.`,
+          button: "Answer now",
+          link: `${site}/?open=listings`,
+        }
+        : {
+          subject: "Is your property still available?",
+          title: "Is it still available?",
+          body: `<b>${esc(d.title)}</b><br><br>Tap <b>Yes</b> to keep it in search, or <b>No</b> if it is already taken. ` +
+            `Without an answer it will be paused (hidden from search) in ${hide}.`,
+          button: "Answer in one tap",
+          link: `${site}/?listing=${d.listing_id}`,
+        };
+    }
     case "plan_ending": {
       const name = ({ pro: "Pro", agency: "Agency", landlord: "Landlord" } as Record<string, string>)[d.plan] ?? "Zumi";
       const days = Number(d.days ?? 1);

@@ -117,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Switch to an agent account?'),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text(
-              'Agents can post up to 15 listings for free (20 with a checked ZIEA licence) and can join an agency. '
+              'Agents can post up to 10 listings for free (15 with a checked ZIEA licence) and can join an agency. '
               'Your listings will show "Agent". To switch back later you will need to write to support.',
               style: TextStyle(height: 1.4)),
           const SizedBox(height: 14),

@@ -1151,7 +1151,7 @@ class _AgenciesAdminState extends State<_AgenciesAdmin> {
       Text('Agencies', style: zHeadline(context, size: 20)),
       const SizedBox(height: 4),
       const Text('Check the firm registration number on the ZIEA list. Checked agencies get the '
-          '"Registered firm" badge and a shared limit of 50 instead of 30.',
+          '"Registered firm" badge on the agency page.',
           style: TextStyle(color: Zc.grey, fontSize: 13)),
       const SizedBox(height: 12),
       _Loader<List<AgencyAdminItem>>(

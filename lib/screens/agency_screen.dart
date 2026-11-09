@@ -417,9 +417,9 @@ class _OwnerToolsState extends State<_OwnerTools> {
           const SizedBox(height: 6),
           Text(
             (a.firmLicenceNo ?? '').isEmpty
-                ? 'Add your ZIEA firm registration number — once we check it, the limit grows from 30 to 50 '
-                    'and you get the "Registered firm" badge.'
-                : 'We are checking your firm registration (${a.firmLicenceNo}). After that the limit grows to 50.',
+                ? 'Add your ZIEA firm registration number — once we check it, your agency gets the '
+                    '"Registered firm" badge.'
+                : 'We are checking your firm registration (${a.firmLicenceNo}). After that you get the "Registered firm" badge.',
             style: const TextStyle(fontSize: 13, color: Zc.orange, fontWeight: FontWeight.w600, height: 1.35),
           ),
         ],
@@ -466,7 +466,7 @@ Future<bool?> showAgencyEditor(BuildContext context, {AgencyPage? a}) {
               const SizedBox(height: 6),
               const Text(
                   'You become the head of the agency. Invite your agents with a link — the agency gets one page '
-                  'and one shared listing limit (30 free, 50 once we check the firm registration).',
+                  'and one shared listing limit (25 free listings for the whole agency).',
                   style: TextStyle(color: Zc.grey, fontSize: 14, height: 1.4)),
             ],
             const SizedBox(height: 16),

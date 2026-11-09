@@ -101,7 +101,7 @@ class AgencyFields extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(
             'After sign-up you can invite your agents with a link. The whole agency shares one listing limit '
-            '(30 free, 50 once we check your firm registration) and gets its own page.',
+            '(25 free listings for the whole agency) and gets its own page.',
             style: TextStyle(fontSize: 12, color: Zc.grey, height: 1.35)),
         const SizedBox(height: 18),
       ]);
@@ -109,7 +109,7 @@ class AgencyFields extends StatelessWidget {
 
 /// Подсказка под полем лицензии ZIEA
 const kLicenceHint = 'Not required to sign up — you can add it later in Profile. Agents with a checked ZIEA licence '
-    'get the "Licensed agent" badge and can post up to 20 listings.';
+    'get the "Licensed agent" badge and can post up to 15 listings.';
 
 /// Обязательная галочка: условия, политика и хранение данных вне Замбии (дата согласия хранится на сервере)
 class ConsentCheck extends StatelessWidget {

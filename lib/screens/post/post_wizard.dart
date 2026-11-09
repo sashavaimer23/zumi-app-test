@@ -1351,7 +1351,7 @@ class _LimitReached extends StatelessWidget {
           // в приложениях для Android и iPhone о покупке не говорим (правила Apple и Google) — только на сайте
           '${isAgent ? 'Agents' : 'Owners'} can publish ${quota.allowed} listings for free. '
           '${context.watch<AppState>().canBuy ? 'To add more, get ${isAgent ? 'extra listings or a Pro plan' : 'the Landlord plan — up to 10 listings from K75 a month'}.' : 'Hide a listing or mark it as rented or sold to post a new one.'}'
-          '${unlicensed ? '\n\nLicensed agents can post up to 20 listings — add your ZIEA registration number.' : ''}'
+          '${unlicensed ? '\n\nLicensed agents can post up to 15 listings — add your ZIEA registration number.' : ''}'
           '${!isAgent ? '\n\nTip: a house or block with several flats can be ONE listing — choose "Several units" and say how many are free.' : ''}',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Zc.grey, height: 1.4),

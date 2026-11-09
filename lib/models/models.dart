@@ -338,8 +338,9 @@ class Property {
   static const askAfterDays = 30;
   static const hideAfterDays = 37;
   // комнаты сдаются быстрее — спрашиваем через 14 дней, скрываем через 21
-  int get _askDays => isRoom ? 14 : askAfterDays;
-  int get _hideDays => isRoom ? 21 : hideAfterDays;
+  // как на сервере: комнаты 14/21, агенты — раз в неделю (7/10), собственники 30/37
+  int get _askDays => isRoom ? 14 : (listedBy == 'agent' ? 7 : askAfterDays);
+  int get _hideDays => isRoom ? 21 : (listedBy == 'agent' ? 10 : hideAfterDays);
 
   /// Дней с последнего подтверждения
   int get daysSinceConfirmed =>

@@ -177,11 +177,11 @@ reset role;
 -- ---------- лимиты объявлений ----------
 insert into auth.users(id, email, raw_user_meta_data) values
  ('a0000000-0000-0000-0000-000000000011', 'agent2@x.zm', '{"full_name":"Agent Two","role":"agent"}');
-select zt.ok('owner: 2 free listings', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 2);
-select zt.ok('agent without a checked licence: 15', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 15);
-select zt.ok('agent with a checked licence: 20', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 20);
+select zt.ok('owner: 3 free listings', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 3);
+select zt.ok('agent without a checked licence: 10', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000011')) = 10);
+select zt.ok('agent with a checked licence: 15', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 15);
 update profiles set extra_listing_slots = 3 where id = 'a0000000-0000-0000-0000-000000000002';
-select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 23);
+select zt.ok('bought slots are added on top', (select allowed from listing_quota('a0000000-0000-0000-0000-000000000002')) = 18);
 
 -- ---------- рекламные баннеры: выключатель ----------
 insert into ads(id, advertiser, title, placement, image_url, target_type, target, starts_on, ends_on, status)
@@ -331,7 +331,7 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004
 select admin_mark_order((select (r->>'id')::uuid from so), 'paid', null);
 reset role;
 select zt.ok('extra listing slot added for 30 days',
-  (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 3);
+  (select allowed from listing_quota('a0000000-0000-0000-0000-000000000001')) = 4);
 -- тариф арендодателя: только собственникам
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', false);
@@ -491,7 +491,7 @@ update properties set confirmed_at = now() - interval '32 days', approved_at = n
 set role service_role;
 select zt.ok('owner is asked by email to confirm an old listing',
   exists (select 1 from jsonb_array_elements(email_due(50)) e
-           where e->>'kind' = 'confirm' and e->>'email' = 'agent@x.zm' and (e->'data'->>'hide_in')::int = 5));
+           where e->>'kind' = 'confirm' and e->>'email' = 'agent@x.zm' and (e->'data'->>'hide_in')::int = 1 and (e->'data'->>'count')::int >= 1));
 reset role;
 delete from properties where id = 'b0000000-0000-0000-0000-0000000000e2';
 delete from conversations where id = 'c0000000-0000-0000-0000-0000000000e1';
@@ -555,7 +555,7 @@ select zt.err('only agency owners make invites', 'NOT_AGENCY_OWNER', $$select ag
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a6', false);
 create temp table inv as select agency_invite() as code;
 grant select on inv to authenticated;
-select zt.ok('agency has 30 shared free listings', (select allowed from listing_quota(auth.uid())) = 30);
+select zt.ok('agency has 25 shared free listings', (select allowed from listing_quota(auth.uid())) = 25);
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', false);
 select zt.err('owners cannot join an agency', 'AGENTS_ONLY', $$select join_agency((select code from inv))$$);
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a7', false);
@@ -570,8 +570,8 @@ insert into properties(owner_id,title,deal_type,property_type,price,location,sta
  ('a0000000-0000-0000-0000-0000000000a7','Staff house','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas)),
  ('a0000000-0000-0000-0000-0000000000a6','Boss house','rent','house',6000,'SRID=4326;POINT(28.32 -15.41)','active',(select min(id) from areas));
 update properties set status = 'active' where owner_id in ('a0000000-0000-0000-0000-0000000000a6', 'a0000000-0000-0000-0000-0000000000a7');
-select zt.ok('the limit is shared: both agents see 2 of 30 used',
-  (select used = 2 and allowed = 30 from listing_quota('a0000000-0000-0000-0000-0000000000a7'))
+select zt.ok('the limit is shared: both agents see 2 of 25 used',
+  (select used = 2 and allowed = 25 from listing_quota('a0000000-0000-0000-0000-0000000000a7'))
   and (select used = 2 from listing_quota('a0000000-0000-0000-0000-0000000000a6')));
 update app_settings set value = 'true' where key = 'billing_enabled';
 set role authenticated;
@@ -582,7 +582,7 @@ update app_settings set value = 'false' where key = 'billing_enabled';
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
 select admin_verify_agency((select agency_id from profiles where id = 'a0000000-0000-0000-0000-0000000000a6'), true);
-select zt.ok('verified firm: 50 shared listings', (select allowed from listing_quota('a0000000-0000-0000-0000-0000000000a7')) = 50);
+select zt.ok('verified firm: still 25 shared listings', (select allowed from listing_quota('a0000000-0000-0000-0000-0000000000a7')) = 25);
 select zt.ok('team sees agencies to check', exists (select 1 from admin_agencies() where name = 'Copper Homes' and members = 2));
 select set_config('request.jwt.claim.sub', '', false);
 reset role;
@@ -597,12 +597,12 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000a6
 select update_agency('Copper Homes Ltd', 'ZIEA-F-10', null, 'Lusaka homes since 2015');
 select zt.ok('renamed agency: staff show the new name; new firm number needs a new check',
   (select agency_name = 'Copper Homes Ltd' from profiles where id = 'a0000000-0000-0000-0000-0000000000a7')
-  and (select allowed from listing_quota(auth.uid())) = 30);
+  and (select allowed from listing_quota(auth.uid())) = 25);
 select zt.err('agency owner cannot leave', 'OWNER_CANNOT_LEAVE', $$select leave_agency()$$);
 select agency_remove_member('a0000000-0000-0000-0000-0000000000a7');
 select zt.ok('removed agent: own limit again, no agency name',
   (select agency_id is null and agency_name is null from profiles where id = 'a0000000-0000-0000-0000-0000000000a7')
-  and (select used = 1 and allowed = 15 from listing_quota('a0000000-0000-0000-0000-0000000000a7')));
+  and (select used = 1 and allowed = 10 from listing_quota('a0000000-0000-0000-0000-0000000000a7')));
 reset role;
 drop table inv;
 delete from properties where owner_id in ('a0000000-0000-0000-0000-0000000000a6', 'a0000000-0000-0000-0000-0000000000a7');

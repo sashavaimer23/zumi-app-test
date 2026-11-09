@@ -45,8 +45,9 @@ void main() {
     expect(p.title, 'Test house');
   });
 
-  test('owner can post 2 listings, then the limit is reached', () async {
+  test('owner can post 3 listings, then the limit is reached', () async {
     final repo = await ownerWithPhone();
+    await repo.createListing(draft());
     await repo.createListing(draft());
     await repo.createListing(draft());
     expect((await repo.myQuota()).reached, isTrue);
@@ -100,6 +101,16 @@ void main() {
       expect(p.daysUntilHidden, 6);
       expect(listing(38, fresh: false).expired, isTrue);
       expect(listing(38, fresh: false).hiddenFromSearch, isTrue);
+    });
+    test('agents are asked every week, paused after 10 days', () {
+      final p = Property(
+        id: 'a', title: 'T', dealType: DealType.rent, propertyType: PropertyType.house, price: 1, lat: 0, lng: 0,
+        listedBy: 'agent',
+        createdAt: DateTime.now().subtract(const Duration(days: 8)),
+        confirmedAt: DateTime.now().subtract(const Duration(days: 8)),
+      );
+      expect(p.needsAvailabilityAnswer, isTrue);
+      expect(p.daysUntilHidden, 2);
     });
   });
 
@@ -156,17 +167,17 @@ void main() {
     expect(r.items.single.comment, 'Slow on 3G');
   });
 
-  test('launch limits: owner 2, agent 15, licensed agent 20', () async {
+  test('launch limits: owner 3, agent 10, licensed agent 15', () async {
     final owner = await ownerWithPhone(email: 'q@x.zm', phone: '+260974444444');
-    expect((await owner.myQuota()).allowed, 2);
+    expect((await owner.myQuota()).allowed, 3);
 
     final agent = DemoRepository();
     await agent.signUp(email: 'new.agent@x.zm', password: 'secret1', fullName: 'A', phone: '+260975555555', role: 'agent');
-    expect((await agent.myQuota()).allowed, 15);
+    expect((await agent.myQuota()).allowed, 10);
 
     final licensed = DemoRepository();
     await licensed.signIn(email: 'agent@test.com', password: 'secret1'); // в демо — агент с проверенной лицензией
-    expect((await licensed.myQuota()).allowed, 20);
+    expect((await licensed.myQuota()).allowed, 15);
   });
 
   test('rooms: own section, details parsed, asked sooner', () {
