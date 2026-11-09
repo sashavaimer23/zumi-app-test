@@ -85,15 +85,7 @@ jobs:
         with:
           path: build/web
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  # Сайт теперь на Cloudflare Pages (zumihome.com). GitHub Pages больше не используется.
 
   # Cloudflare Pages: тот же сайт + страницы для Google и превью ссылок (cloudflare/functions).
   # Работает, когда в Settings → Secrets есть CLOUDFLARE_API_TOKEN; иначе шаг пропускается.

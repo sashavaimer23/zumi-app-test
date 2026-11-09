@@ -122,6 +122,12 @@
 для ранних агентов. Проверено: при включении оплаты ничего не скрывает и не удаляет уже размещённые объявления
 (лимит действует только на новые и на возврат скрытых).
 
+## Хостинг: Cloudflare Pages (09.11)
+- ✅ Сайт переехал с GitHub Pages на Cloudflare Pages (проект zumi, zumi-2wr.pages.dev), домены zumihome.com и www — Active. Выкладка из GitHub Actions (секрет CLOUDFLARE_API_TOKEN, права Account → Cloudflare Pages → Edit).
+- ✅ Функции (cloudflare/functions): /l/<id> — превью объявления для WhatsApp/Facebook и страница для Google (людей сразу в приложение); /agent/<id>, /agency/<id>; страницы районов /rent/<район>[/2-bedroom-flats], /buy/...; живая /sitemap.xml. ?preview — посмотреть, как видят боты.
+- ✅ Лимиты (036): собственник 3, агент 10 / 15 с лицензией, агентство 25 на всех. Агентам «Ещё актуально?» раз в 7 дней, пауза через 10.
+- Потом: DMARC-запись (рекомендация Cloudflare), WhatsApp-напоминания после номера.
+
 ## Домен (05.11)
 - ✅ zumihome.com куплен в Cloudflare ($11.17/год, автопродление, владелец — Саша лично; после регистрации компании сменить в Contacts).
 - ✅ DNS: 4 записи A на GitHub Pages + CNAME www, всё «DNS only». Сайт на https://zumihome.com, старый адрес github.io перекидывает сам.
