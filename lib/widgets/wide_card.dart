@@ -201,15 +201,12 @@ class _Info extends StatelessWidget {
                 ),
                 if (p.ownerIdentityVerified) ...[const SizedBox(width: 6), const VerifiedMark()],
               ]),
+              // агентство — спокойно, серым под именем
+              if ((p.agencyName ?? '').isNotEmpty)
+                Text(p.agencyName!,
+                    overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Zc.grey)),
             ]),
           ),
-          if (p.agencyName != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(color: Zc.text, borderRadius: BorderRadius.circular(8)),
-              child: Text(p.agencyName!,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-            ),
         ]),
         const Divider(height: 20, color: Zc.lightGrey),
         // контакты
