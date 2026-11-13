@@ -243,6 +243,10 @@ abstract class Repository {
   Future<List<Property>> agencyListings(AgencyPage a);
   Future<String> agencyInvite();
   Future<AgencyInviteInfo?> agencyInviteInfo(String code);
+
+  /// Каталог агента: адрес, «о себе», районы, показ WhatsApp, просмотры (038)
+  Future<CatalogInfo> myCatalog();
+  Future<String> setMyCatalog({required String slug, String? bio, String? areas, required bool publicContact});
   Future<String> joinAgency(String code);
   Future<void> leaveAgency();
   Future<void> agencyRemoveMember(String userId);

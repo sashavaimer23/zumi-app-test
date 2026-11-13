@@ -2625,3 +2625,39 @@ bool looksLikePaymentRequest(String text) => _payWords.hasMatch(text);
 /// «3 months upfront»
 String advanceLabel(int m) => m == 1 ? '1 month upfront' : '$m months upfront';
 const kAdvanceChoices = [1, 2, 3, 6, 12];
+
+/// Каталог агента (портфолио): zumihome.com/<slug>
+class CatalogInfo {
+  final String slug;
+  final String? bio;
+  final String? areas;
+  final bool publicContact;
+  final int views7d;
+  final int viewsTotal;
+  const CatalogInfo({
+    required this.slug,
+    this.bio,
+    this.areas,
+    this.publicContact = true,
+    this.views7d = 0,
+    this.viewsTotal = 0,
+  });
+
+  factory CatalogInfo.fromMap(Map<String, dynamic> m) => CatalogInfo(
+        slug: m['slug'] as String,
+        bio: m['bio'] as String?,
+        areas: m['areas'] as String?,
+        publicContact: (m['public_contact'] as bool?) ?? true,
+        views7d: (m['views_7d'] as num?)?.toInt() ?? 0,
+        viewsTotal: (m['views_total'] as num?)?.toInt() ?? 0,
+      );
+
+  String link(String site) => '$site/$slug';
+  String get shortLink => 'zumihome.com/$slug';
+}
+
+/// «John Banda» → «john-banda» (как в базе)
+String slugFromName(String s) {
+  final x = s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+  return x.length > 32 ? x.substring(0, 32).replaceAll(RegExp(r'-+$'), '') : x;
+}

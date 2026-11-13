@@ -1,10 +1,17 @@
 // /l/<id> — объявление: превью для WhatsApp/Facebook и страница для Google; людей — сразу в приложение
 import { card, esc, img as fullImg, headline, isBot, LISTING_COLS, Listing, notFound, page, priceLine, sb, SITE, specs, typeName, slug } from "../../lib/zumi";
+import { catalogItem } from "../../lib/catalog_item";
 
 export const onRequestGet: PagesFunction = async ({ request, params }) => {
   const id = String(params.id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return notFound();
   const app = `${SITE}/?listing=${id}`;
+  // открыли из каталога агента — лёгкая страница объекта для всех (быстро и на плохом интернете)
+  const c = new URL(request.url).searchParams.get("c");
+  if (c) {
+    const r = await catalogItem(id, c.toLowerCase());
+    if (r) return r;
+  }
   if (!isBot(request)) return Response.redirect(app, 302);
 
   const rows = await sb<Listing[]>(`property_feed?select=${LISTING_COLS}&id=eq.${id}&status=eq.active&limit=1`).catch(() => []);

@@ -108,6 +108,9 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::notice::No CLOUDFLARE_API_TOKEN yet — Cloudflare deploy skipped"; exit 0; fi
           mkdir -p site && tar -xf artifact/artifact.tar -C site
           rm -f site/sitemap.xml   # карта сайта — живая (cloudflare/functions/sitemap.xml.ts)
+          # функции запускаются только для страниц (каталоги /<адрес>, /l, /agent …), а не для файлов сайта — экономим лимит
+          python3 -c "import os,json; e=['/']+sorted(('/'+n+'/*') if os.path.isdir('site/'+n) else '/'+n for n in os.listdir('site')); json.dump({'version':1,'include':['/*'],'exclude':e[:99]}, open('site/_routes.json','w'))"
+          cat site/_routes.json
           cd cloudflare
           printf 'export const SUPABASE_URL = "%s";\nexport const SUPABASE_ANON_KEY = "%s";\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > lib/config.ts
           npx --yes wrangler@3 pages project create zumi --production-branch main >/dev/null 2>&1 || true

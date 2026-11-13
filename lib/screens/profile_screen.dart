@@ -17,13 +17,13 @@ import '../widgets/trust.dart';
 import 'lazy_screens.dart';
 import 'help/help_screen.dart';
 import 'post/post_wizard.dart';
-import 'public_profile_screen.dart';
 import 'settings_screen.dart';
 import 'verify/get_verified_screen.dart';
 import 'auth_screen.dart';
 import 'shell.dart';
 import '../widgets/zicons.dart';
 import 'agency_screen.dart';
+import 'catalog_card.dart';
 
 /// Профиль: роль, лимит бесплатных объявлений, мои объявления, выход.
 class ProfileScreen extends StatefulWidget {
@@ -177,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         margin: const EdgeInsets.only(bottom: 14),
                       ),
-                      _AgentPageCard(user: user, listings: listings, rating: rating),
+                      CatalogCard(user: user, listings: listings, rating: rating),
                       const SizedBox(height: 14),
                     ],
                     // «Zumi бесплатный на период запуска» (пока платные функции выключены)
@@ -715,100 +715,6 @@ class _MyListingTile extends StatelessWidget {
 }
 
 /// Агент: своя страница с каталогом и отзывами — посмотреть и поделиться
-class _AgentPageCard extends StatelessWidget {
-  const _AgentPageCard({required this.user, required this.listings, required this.rating});
-  final AppUser user;
-  final List<Property> listings;
-  final Rating? rating;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = listings.where((p) => p.status == 'active').length;
-    final views = listings.fold<int>(0, (a, p) => a + p.viewsCount);
-    final r = rating;
-    final site = AppConfig.siteUrl;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Zc.chip),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(ZI.storefront, color: Zc.green),
-          SizedBox(width: 8),
-          Text('My agent page', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green)),
-        ]),
-        const SizedBox(height: 4),
-        const Text('Your catalog and client reviews — share it with clients instead of sending listings one by one.',
-            style: TextStyle(fontSize: 13, color: Zc.grey, height: 1.35)),
-        const SizedBox(height: 14),
-        Row(children: [
-          _Stat(value: '$active', label: 'active'),
-          _Stat(value: '$views', label: 'views'),
-          _Stat(
-            value: r == null || r.count == 0 ? '—' : r.average.toStringAsFixed(1),
-            label: r == null || r.count == 0 ? 'no reviews yet' : '${r.count} ${r.count == 1 ? 'review' : 'reviews'}',
-            star: r != null && r.count > 0,
-          ),
-        ]),
-        const SizedBox(height: 14),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Zc.green,
-                side: const BorderSide(color: Zc.green),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => PublicProfileScreen(userId: user.id)),
-              ),
-              child: const Text('View my page'),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: Zc.orange,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () => showShareSheet(
-                context,
-                text: '${user.agencyName ?? user.fullName ?? 'My'} listings on Zumi',
-                link: site == null ? null : '$site/agent/${user.id}',
-              ),
-              icon: const Icon(ZI.share, size: 18),
-              label: const Text('Share'),
-            ),
-          ),
-        ]),
-      ]),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, this.star = false});
-  final String value;
-  final String label;
-  final bool star;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Zc.text)),
-            if (star) ...[const SizedBox(width: 2), const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF5A623))],
-          ]),
-          Text(label, style: const TextStyle(fontSize: 12, color: Zc.grey)),
-        ]),
-      );
-}
-
 /// Карточка «Get verified» с прогрессом — ведёт на чек-лист
 class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.isAgent});

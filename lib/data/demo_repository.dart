@@ -1551,6 +1551,22 @@ class DemoRepository implements Repository {
     return a == null ? null : AgencyInviteInfo(agencyId: a.id, name: a.name);
   }
 
+  CatalogInfo? _catalog;
+
+  @override
+  Future<CatalogInfo> myCatalog() async {
+    final u = currentUser;
+    return _catalog ??= CatalogInfo(slug: slugFromName(u?.fullName ?? 'agent').padRight(3, 'x'), views7d: 12, viewsTotal: 40);
+  }
+
+  @override
+  Future<String> setMyCatalog({required String slug, String? bio, String? areas, required bool publicContact}) async {
+    final s = slug.trim().toLowerCase();
+    if (!RegExp(r'^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$').hasMatch(s)) throw Exception('Use 3–40 small letters, numbers or dashes.');
+    _catalog = CatalogInfo(slug: s, bio: bio, areas: areas, publicContact: publicContact, views7d: 12, viewsTotal: 40);
+    return s;
+  }
+
   @override
   Future<String> joinAgency(String code) async {
     final u = _requireUser();

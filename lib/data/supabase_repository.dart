@@ -171,6 +171,9 @@ class SupabaseRepository implements Repository {
         ('ASK_AGENCY_OWNER', 'Your agency owner buys plans and extra listings for the whole agency.'),
         ('TOO_MANY_INVITES', 'Too many invites today. Try again tomorrow.'),
         ('USE_INVITE', 'Join an agency with an invite link from its owner.'),
+        ('SLUG_TAKEN', 'This address is already taken — try another one.'),
+        ('SLUG_RESERVED', 'This address is used by Zumi — try another one.'),
+        ('BAD_SLUG', 'Use 3–40 small letters, numbers or dashes, for example john-banda.'),
         ('ASK_SUPPORT', 'Please write to support to change your account type.'),
         ('USER_NOT_FOUND', 'No account with this email.'),
         ('IN_AGENCY', 'This agent is in an agency — they must leave it first.'),
@@ -1416,6 +1419,25 @@ class SupabaseRepository implements Repository {
         final m = Map<String, dynamic>.from(r as Map);
         return AgencyInviteInfo(
             agencyId: m['agency_id'] as String, name: m['name'] as String, valid: (m['valid'] as bool?) ?? false);
+      });
+
+  @override
+  Future<CatalogInfo> myCatalog() => _guard(() async {
+        final r = await _db.rpc('my_catalog');
+        return CatalogInfo.fromMap(Map<String, dynamic>.from(r as Map));
+      });
+
+  @override
+  Future<String> setMyCatalog({required String slug, String? bio, String? areas, required bool publicContact}) =>
+      _guard(() async {
+        final s = await _db.rpc('set_my_catalog', params: {
+          'p_slug': slug.trim().toLowerCase(),
+          'p_bio': bio,
+          'p_areas': areas,
+          'p_public_contact': publicContact,
+        }) as String;
+        await refreshUser();
+        return s;
       });
 
   @override

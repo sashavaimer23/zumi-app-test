@@ -662,4 +662,36 @@ select zt.ok('upfront months are in the feed', (select advance_months = 3 from p
 select zt.err('upfront months only for rent', 'properties_advance_ok', $$update properties set deal_type = 'sale' where id = 'b0000000-0000-0000-0000-0000000000c2'$$);
 delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000c1';
 
+-- ---------- 038: каталог агента ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000d1', 'jb@x.zm', '{"full_name":"John Banda","role":"agent","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000d2', 'jb2@x.zm', '{"full_name":"John Banda","role":"agent","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000d3', 'own@x.zm', '{"full_name":"Olga Owner","role":"owner","terms_accepted":true}');
+update profiles set phone = '+260 96 5550101', phone_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000d1';
+update profiles set phone = '+260 96 5550202', phone_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000d3';
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000d1', false);
+set role authenticated;
+select zt.ok('catalog: address made from name', (select public.my_catalog()->>'slug') = 'john-banda');
+reset role;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000d2', false);
+set role authenticated;
+select zt.ok('catalog: same name gets -2', (select public.my_catalog()->>'slug') = 'john-banda-2');
+select zt.err('catalog: taken address refused', 'SLUG_TAKEN', $$select public.set_my_catalog('john-banda', null, null, true)$$);
+select zt.err('catalog: site address refused', 'SLUG_RESERVED', $$select public.set_my_catalog('agents', null, null, true)$$);
+select zt.err('catalog: bad address refused', 'BAD_SLUG', $$select public.set_my_catalog('Jo hn!', null, null, true)$$);
+select zt.ok('catalog: own address saved', public.set_my_catalog('Lusaka-Homes', 'Homes in Lusaka', 'Ibex Hill, Woodlands', true) = 'lusaka-homes');
+reset role;
+set role anon;
+select zt.ok('catalog page: public, number shown for agent with checked phone',
+  (select (public.catalog_page('john-banda')->>'contact') = '260965550101'));
+select zt.ok('catalog page: no number when phone not checked',
+  (select (public.catalog_page('lusaka-homes')->>'contact') is null and public.catalog_page('lusaka-homes')->>'areas' = 'Ibex Hill, Woodlands'));
+select public.catalog_seen('john-banda'); select public.catalog_seen('john-banda');
+reset role;
+select zt.ok('catalog views counted', (select n from catalog_views where profile_id = 'a0000000-0000-0000-0000-0000000000d1') = 2);
+update profiles set slug = 'olga-owner' where id = 'a0000000-0000-0000-0000-0000000000d3';
+select zt.ok('owner number is never public', (select public.catalog_page('olga-owner')->>'contact') is null);
+select zt.ok('anon cannot read slug column directly', not has_column_privilege('anon', 'public.profiles', 'catalog_public_contact', 'select'));
+
 select zt.ok('ALL CHECKS PASSED', true);
