@@ -15,17 +15,29 @@ export const ITEM_COLS = `${LISTING_COLS},amenities,advance_months`;
 const RESERVED = new Set(("agents agent agency agencies l rent buy terms privacy delete-account sitemap admin api " +
   "assets icons canvaskit help support login signup sign-up register zumi about blog app settings search map post www " +
   "mail hello team owner owners catalog catalogue listing listings home index robots favicon manifest join invite " +
-  "pricing plans contact news jobs careers legal security status test staging").split(" "));
+  "pricing plans contact news jobs careers legal security status test staging example demo").split(" "));
 export const isSlug = (s: string) =>
   /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(s) && !s.includes("--") && !RESERVED.has(s) && !/^(rent|buy)-/.test(s);
 
+// zumihome.com/example — образец каталога на демо-объявлениях (посмотреть, как это выглядит)
+export const DEMO_SLUG = "example";
+const DEMO: Catalog = {
+  id: "demo", slug: DEMO_SLUG, role: "agent", name: "Example Agent", agency_name: "Sample Realty",
+  agency_id: null, avatar_url: null,
+  bio: "This is an example of a Zumi catalogue. Your catalogue shows your photo, a few words about you, " +
+    "the areas you cover and all your properties — share one link with clients instead of sending listings one by one.",
+  areas: "Ibex Hill, Woodlands, Kabulonga", licensed: true, phone_checked: true, since: "2026", contact: null,
+};
+export const isDemo = (c: Catalog) => c.id === "demo";
+
 export async function loadCatalog(slug: string): Promise<Catalog | null> {
+  if (slug === DEMO_SLUG) return DEMO;
   const c = await rpc<Catalog | null>("catalog_page", { p_slug: slug }).catch(() => null);
   return c && c.id ? c : null;
 }
 
 export const loadItems = (ownerId: string) =>
-  sb<Item[]>(`property_feed?select=${ITEM_COLS}&owner_id=eq.${ownerId}&status=eq.active&is_fresh=eq.true&order=created_at.desc&limit=80`)
+  sb<Item[]>(`property_feed?select=${ITEM_COLS}&${ownerId === "demo" ? "is_demo=eq.true" : `owner_id=eq.${ownerId}&is_fresh=eq.true`}&status=eq.active&order=created_at.desc&limit=${ownerId === "demo" ? 12 : 80}`)
     .catch(() => [] as Item[]);
 
 const POWER: Record<string, string> = {
@@ -138,6 +150,7 @@ ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).j
 
 export function contactBar(c: Catalog, text: string) {
   const app = `${SITE}/?agent=${c.id}`;
+  if (isDemo(c)) return `<div class="cta"><div class="wrap"><a class="app" href="/agents">Example — make your own free catalogue</a></div></div>`;
   return c.contact
     ? `<div class="cta"><div class="wrap"><a class="wa" href="${esc(wa(c.contact, text))}">WhatsApp</a><a class="call" href="tel:+${esc(c.contact)}">Call</a></div></div>`
     : `<div class="cta"><div class="wrap"><a class="app" href="${esc(app)}">Contact on Zumi</a></div></div>`;

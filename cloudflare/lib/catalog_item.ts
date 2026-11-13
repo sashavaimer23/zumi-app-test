@@ -1,15 +1,15 @@
 // /l/<id>?c=<адрес каталога> — объект из каталога агента: лёгкая страница с фото, деталями и WhatsApp агента.
-import { AMENITY, avatar, badges, contactBar, isSlug, ITEM_COLS, Item, loadCatalog, shareScript, shell } from "./catalog";
+import { AMENITY, avatar, badges, contactBar, DEMO_SLUG, isDemo, isSlug, ITEM_COLS, Item, loadCatalog, shareScript, shell } from "./catalog";
 import { esc, headline, img, priceLine, sb, SITE, specs } from "./zumi";
 
 export async function catalogItem(id: string, slug: string): Promise<Response | null> {
-  if (!isSlug(slug)) return null;
+  if (!isSlug(slug) && slug !== DEMO_SLUG) return null;
   const [c, rows] = await Promise.all([
     loadCatalog(slug),
     sb<Item[]>(`property_feed?select=${ITEM_COLS}&id=eq.${id}&status=eq.active&limit=1`).catch(() => [] as Item[]),
   ]);
   const p = rows[0];
-  if (!c || !p || p.owner_id !== c.id) return null;
+  if (!c || !p || (isDemo(c) ? p.owner_id : p.owner_id !== c.id)) return null;
 
   const url = `${SITE}/l/${id}?c=${slug}`;
   const h = headline(p);

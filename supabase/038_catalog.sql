@@ -37,7 +37,7 @@ returns boolean language sql immutable as $$
     'sitemap','admin','api','assets','icons','canvaskit','help','support','login','signup','sign-up','register',
     'zumi','about','blog','app','settings','search','map','post','www','mail','hello','team','owner','owners',
     'catalog','catalogue','listing','listings','home','index','robots','favicon','manifest','join','invite',
-    'pricing','plans','contact','news','jobs','careers','legal','security','status','test','staging'])
+    'pricing','plans','contact','news','jobs','careers','legal','security','status','test','staging','example','demo'])
     or s ~ '^(rent|buy)-';
 $$;
 

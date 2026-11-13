@@ -1,18 +1,18 @@
 // zumihome.com/<адрес> — каталог агента (портфолио). Видят все: люди, Google и WhatsApp-превью.
 // Всё, что не похоже на адрес каталога (файлы сайта, /terms.html и т.д.), отдаём как обычно.
-import { badges, avatar, contactBar, isSlug, itemCard, loadCatalog, loadItems, shareScript, shell } from "../lib/catalog";
+import { badges, avatar, contactBar, DEMO_SLUG, isDemo, isSlug, itemCard, loadCatalog, loadItems, shareScript, shell } from "../lib/catalog";
 import { esc, isBot, rpc, SITE, typeName } from "../lib/zumi";
 
 export const onRequestGet: PagesFunction = async (ctx) => {
   const raw = String(ctx.params.slug ?? "");
   const slug = raw.toLowerCase();
-  if (!isSlug(slug)) return ctx.next();
+  if (!isSlug(slug) && slug !== DEMO_SLUG) return ctx.next();
   if (raw !== slug) return Response.redirect(`${SITE}/${slug}`, 301);
 
   const c = await loadCatalog(slug);
   if (!c) return ctx.next(); // нет такого каталога — обычная страница «не найдено»
   const items = await loadItems(c.id);
-  if (!isBot(ctx.request)) ctx.waitUntil(rpc("catalog_seen", { p_slug: slug }).catch(() => null));
+  if (!isBot(ctx.request) && !isDemo(c)) ctx.waitUntil(rpc("catalog_seen", { p_slug: slug }).catch(() => null));
 
   const url = `${SITE}/${slug}`;
   const first = c.name.split(/\s+/)[0] || c.name;
@@ -41,6 +41,7 @@ export const onRequestGet: PagesFunction = async (ctx) => {
 ${c.bio ? `<p class="bio">${esc(c.bio).replace(/\n/g, "<br>")}</p>` : ""}
 </div></div>
 <div class="wrap">
+${isDemo(c) ? `<div class="safe" style="margin-top:14px">This is an example catalogue with sample homes. Agents get their own at zumihome.com/<i>their-name</i> — <a href="/agents">learn more</a>.</div>` : ""}
 ${items.length > 1 ? `<div class="tabs">${tabs}</div>` : ""}
 ${items.length ? `<div class="grid" id="g">${items.map((p) => itemCard(p, slug)).join("")}</div>`
     : `<div class="empty" style="margin-top:18px">No properties available right now — message ${esc(first)} to ask what is coming up.</div>`}
