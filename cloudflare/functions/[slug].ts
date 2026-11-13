@@ -26,23 +26,36 @@ export const onRequestGet: PagesFunction = async (ctx) => {
     .filter(Boolean).join(" · ");
   const image = items[0]?.image_urls?.[0] ?? items[0]?.thumb_urls?.[0] ?? c.avatar_url;
 
-  const tabs = [
-    `<button class="on" data-f="all">All · ${items.length}</button>`,
-    rent && sale ? `<button data-f="deal:rent">For rent · ${rent}</button><button data-f="deal:sale">For sale · ${sale}</button>` : "",
-    types.length > 1 ? types.map((t) => `<button data-f="type:${t}">${esc(typeName(t, true)[0]!.toUpperCase() + typeName(t, true).slice(1))}</button>`).join("") : "",
-  ].join("");
+  const SHORT: Record<string, string> = { house: "Houses", apartment: "Flats", room: "Rooms", land: "Plots", commercial: "Commercial" };
+  const seg = rent && sale
+    ? `<div class="seg"><button class="on" data-deal="all">All</button><button data-deal="rent">For rent · ${rent}</button><button data-deal="sale">For sale · ${sale}</button></div>`
+    : "";
+  const typeBtns = types.length > 1
+    ? `<div class="types">${types.map((t) => `<button data-type="${t}">${esc(SHORT[t] ?? typeName(t, true))}</button>`).join("")}</div>`
+    : "";
 
+  // сколько районов — по самим объектам (у агента объекты могут быть в разных районах); «Works in» — только если агент сам указал
+  const areasN = new Set(items.map((p) => p.area_name).filter(Boolean)).size;
   const body = `<div class="top"><div class="wrap">
 <div class="bar"><a class="logo" href="/">ZUMI</a><a class="share" data-share href="${esc(`https://wa.me/?text=${encodeURIComponent(`${title}\n${url}`)}`)}">Share</a></div>
-<div class="who">${avatar(c)}<div><h1>${esc(c.name)}</h1>
-<div class="ag">${c.agency_name ? esc(c.agency_name) : c.role === "agent" ? "Real estate agent" : "Property owner"}</div></div></div>
-<div class="bdgs">${badges(c)}</div>
-<div class="meta">${[c.areas ? `📍 ${esc(c.areas)}` : "", `${items.length} ${items.length === 1 ? "listing" : "listings"}`, c.since ? `On Zumi since ${esc(c.since)}` : ""].filter(Boolean).join(" · ")}</div>
+</div></div>
+<div class="wrap"><div class="prof">
+${avatar(c)}
+<h1>${esc(c.name)}</h1>
+<div class="ag">${c.agency_name ? esc(c.agency_name) : c.role === "agent" ? "Real estate agent" : "Property owner"}</div>
+${badges(c) ? `<div class="bdgs">${badges(c)}</div>` : ""}
+<div class="stats">
+<div><b>${items.length}</b><span>${items.length === 1 ? "property" : "properties"}</span></div>
+${areasN ? `<div><b>${areasN}</b><span>${areasN === 1 ? "area" : "areas"}</span></div>` : ""}
+${c.since ? `<div><b>${esc(c.since)}</b><span>on Zumi since</span></div>` : ""}
+</div>
+${c.areas ? `<div class="areas"><small>Works in</small>${esc(c.areas.split(",").map((x) => x.trim()).filter(Boolean).join(" · "))}</div>` : ""}
 ${c.bio ? `<p class="bio">${esc(c.bio).replace(/\n/g, "<br>")}</p>` : ""}
 </div></div>
 <div class="wrap">
-${isDemo(c) ? `<div class="safe" style="margin-top:14px">This is an example catalogue with sample homes. Agents get their own at zumihome.com/<i>their-name</i> — <a href="/agents">learn more</a>.</div>` : ""}
-${items.length > 1 ? `<div class="tabs">${tabs}</div>` : ""}
+${isDemo(c) ? `<p class="note">Example catalogue with sample homes · <a href="/agents">make your own</a></p>` : ""}
+<div class="sec"><h2>Properties<span>${items.length}</span></h2></div>
+${seg || typeBtns ? `<div class="filters">${seg}${typeBtns}</div>` : ""}
 ${items.length ? `<div class="grid" id="g">${items.map((p) => itemCard(p, slug)).join("")}</div>`
     : `<div class="empty" style="margin-top:18px">No properties available right now — message ${esc(first)} to ask what is coming up.</div>`}
 <div class="foot">Never pay before you have seen the property in person.<br>
@@ -50,9 +63,10 @@ ${items.length ? `<div class="grid" id="g">${items.map((p) => itemCard(p, slug))
 <a class="made" href="/agents">Agent? Make your free catalogue on Zumi</a></div>
 </div>
 <script>
-var bs=document.querySelectorAll('.tabs button'),cs=document.querySelectorAll('#g .card');
-bs.forEach(function(b){b.onclick=function(){bs.forEach(function(x){x.classList.remove('on')});b.classList.add('on');
-var f=b.dataset.f.split(':');cs.forEach(function(c){c.style.display=(f[0]==='all'||c.dataset[f[0]]===f[1])?'':'none'})}});
+var deal='all',type='',cs=document.querySelectorAll('#g .card');
+function apply(){cs.forEach(function(c){c.style.display=(deal==='all'||c.dataset.deal===deal)&&(!type||c.dataset.type===type)?'':'none'})}
+document.querySelectorAll('.seg button').forEach(function(b,i,all){b.onclick=function(){all.forEach(function(x){x.classList.remove('on')});b.classList.add('on');deal=b.dataset.deal;apply()}});
+document.querySelectorAll('.types button').forEach(function(b,i,all){b.onclick=function(){var on=!b.classList.contains('on');all.forEach(function(x){x.classList.remove('on')});if(on)b.classList.add('on');type=on?b.dataset.type:'';apply()}});
 </script>${shareScript(url, title)}`;
 
   return shell({

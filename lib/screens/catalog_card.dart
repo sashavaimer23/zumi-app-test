@@ -253,7 +253,7 @@ class _CatalogEditorState extends State<_CatalogEditor> {
           const Text('Short and easy to say on the phone: your name or your agency.',
               style: TextStyle(fontSize: 12, color: Zc.grey)),
           const SizedBox(height: 16),
-          const Text('About you', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('About you (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           TextField(
             controller: _bio,
@@ -263,7 +263,7 @@ class _CatalogEditorState extends State<_CatalogEditor> {
                 hintText: 'e.g. Helping families find homes in Lusaka for 8 years. Viewings 7 days a week.'),
           ),
           const SizedBox(height: 8),
-          const Text('Areas you cover', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Areas you work in (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           TextField(
             controller: _areas,
