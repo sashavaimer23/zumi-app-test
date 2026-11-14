@@ -1,6 +1,6 @@
 -- =====================================================================
 --  Zumi — ещё 8 демо-объявлений тестовому агенту Mwila Banda (всего станет 14)
---  Запускать ПОСЛЕ test_agent.sql. Можно запускать повторно.
+--  Запускать ПОСЛЕ test_agent.sql (можно и после переноса на zumi.team.zm+agent@gmail.com). Можно повторно.
 --  Удаляются вместе с агентом (строка «УДАЛИТЬ» в test_agent.sql).
 -- =====================================================================
 
@@ -12,7 +12,9 @@ delete from public.properties where id in (
 insert into public.properties (id, owner_id, title, description, deal_type, property_type, price, currency, rent_period,
   bedrooms, bathrooms, area_sqm, amenities, area_id, address, location, listed_by, contact_name, contact_phone,
   kids_allowed, pets_allowed, advance_months, status)
-select v.id::uuid, '7e570000-0000-4000-8000-000000000001', v.title, v.descr, v.deal, v.ptype, v.price, 'ZMW',
+select v.id::uuid,
+       coalesce((select id from auth.users where lower(email) = 'zumi.team.zm+agent@gmail.com'), '7e570000-0000-4000-8000-000000000001'),
+       v.title, v.descr, v.deal, v.ptype, v.price, 'ZMW',
        case when v.deal = 'rent' then 'month' end,
        v.beds, v.baths, v.sqm, v.amen, a.id, v.addr,
        ('SRID=4326;POINT(' || v.lng || ' ' || v.lat || ')')::geography, 'agent', 'Mwila Banda', '+260 970 000 101',
@@ -61,4 +63,5 @@ insert into public.property_images (property_id, url, sort_order) values
 
 -- проверка: должно быть 14
 select count(*) as listings_visible from public.property_feed
- where owner_id = '7e570000-0000-4000-8000-000000000001' and status = 'active' and is_fresh;
+ where owner_id = coalesce((select id from auth.users where lower(email) = 'zumi.team.zm+agent@gmail.com'), '7e570000-0000-4000-8000-000000000001')
+   and status = 'active' and is_fresh;
