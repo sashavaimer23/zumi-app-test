@@ -694,4 +694,12 @@ update profiles set slug = 'olga-owner' where id = 'a0000000-0000-0000-0000-0000
 select zt.ok('owner number is never public', (select public.catalog_page('olga-owner')->>'contact') is null);
 select zt.ok('anon cannot read slug column directly', not has_column_privilege('anon', 'public.profiles', 'catalog_public_contact', 'select'));
 
+-- ---------- 039: карточка автора для лёгкой страницы ----------
+set role anon;
+select zt.ok('owner card: agent with catalogue shows number', (select public.owner_card('a0000000-0000-0000-0000-0000000000d1')->>'contact') = '260965550101');
+select zt.ok('owner card: owner number never shown', (select public.owner_card('a0000000-0000-0000-0000-0000000000d3')->>'contact') is null);
+reset role;
+update profiles set slug = null where id = 'a0000000-0000-0000-0000-0000000000d1';
+select zt.ok('owner card: agent without catalogue — no number', (select public.owner_card('a0000000-0000-0000-0000-0000000000d1')->>'contact') is null);
+
 select zt.ok('ALL CHECKS PASSED', true);

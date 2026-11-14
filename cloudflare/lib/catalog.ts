@@ -63,17 +63,17 @@ export function badges(c: Catalog) {
 }
 
 // общий вид страниц каталога
-export function shell(o: { title: string; description: string; url: string; image?: string | null; body: string; bar?: string }) {
+export function shell(o: { title: string; description: string; url: string; image?: string | null; body: string; bar?: string; jsonld?: unknown; type?: string }) {
   const image = img(o.image) || `${SITE}/og-image.jpg`;
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(o.title)}</title><meta name="description" content="${esc(o.description)}">
 <link rel="canonical" href="${esc(o.url)}">
-<meta property="og:type" content="profile"><meta property="og:site_name" content="Zumi">
+<meta property="og:type" content="${o.type ?? "profile"}"><meta property="og:site_name" content="Zumi">
 <meta property="og:url" content="${esc(o.url)}"><meta property="og:title" content="${esc(o.title)}">
 <meta property="og:description" content="${esc(o.description)}"><meta property="og:image" content="${esc(image)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${esc(image)}">
-<meta name="theme-color" content="#245045"><link rel="icon" type="image/png" href="/favicon.png">
+<meta name="theme-color" content="#245045">${o.jsonld ? `<script type="application/ld+json">${JSON.stringify(o.jsonld).replace(/</g, "\\u003c")}</script>` : ""}<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#FBF7F2;color:#1F2A26;font:16px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:84px}
@@ -148,11 +148,11 @@ export function avatar(c: Catalog) {
   return a ? `<img class="av" src="${esc(a)}" alt="${esc(c.name)}">` : `<div class="av">${esc(initials(c.name) || "Z")}</div>`;
 }
 
-export function itemCard(p: Item, slug: string) {
+export function itemCard(p: Item, slug?: string) {
   const pic = img(p.thumb_urls?.[0] ?? p.image_urls?.[0]);
   const n = p.image_urls?.length ?? 0;
   const tags = powerTags(p);
-  return `<a class="card" href="/l/${p.id}?c=${slug}" data-deal="${p.deal_type}" data-type="${p.property_type}">
+  return `<a class="card" href="/l/${p.id}${slug ? `?c=${slug}` : ""}" data-deal="${p.deal_type}" data-type="${p.property_type}">
 <div class="ph">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy" decoding="async">` : ""}
 <span class="deal">${p.deal_type === "rent" ? "For rent" : "For sale"}</span>${n > 1 ? `<span class="n">${n} photos</span>` : ""}</div>
 <div class="tx"><b>${esc(priceLine(p))}</b><div class="t">${esc(p.title)}</div>
@@ -160,8 +160,9 @@ export function itemCard(p: Item, slug: string) {
 ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join("")}</div>` : ""}</div></a>`;
 }
 
-export function contactBar(c: Catalog, text: string) {
-  const app = `${SITE}/?agent=${c.id}`;
+export function contactBar(c: Catalog | null, text: string, appUrl?: string) {
+  const app = appUrl ?? (c ? `${SITE}/?agent=${c.id}` : SITE);
+  if (!c) return `<div class="cta"><div class="wrap"><a class="app" href="${esc(app)}">Contact on Zumi</a></div></div>`;
   if (isDemo(c)) return `<div class="cta"><div class="wrap"><a class="app" href="/agents">Example — make your own free catalogue</a></div></div>`;
   return c.contact
     ? `<div class="cta"><div class="wrap"><a class="wa" href="${esc(wa(c.contact, text))}">WhatsApp</a><a class="call" href="tel:+${esc(c.contact)}">Call</a></div></div>`
