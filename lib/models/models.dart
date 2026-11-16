@@ -617,6 +617,7 @@ class AppUser {
   final String role; // 'agent' | 'owner' | 'admin'
   final String? teamLevel; // команда Zumi: 'moderator' | 'owner'
   final String? agencyId; // агент в агентстве (общий лимит, страница агентства)
+  final bool isSeeker; // «Looking for a home» — ищет жильё, своих объявлений нет (040)
   final String? agencyName;
   final bool phoneVerified;   // телефон подтверждён SMS-кодом
   final bool idVerified;      // NRC/паспорт + селфи проверены командой Zumi
@@ -664,6 +665,7 @@ class AppUser {
     this.marketingWhatsapp = false,
     this.emailAlerts = true,
     this.agencyId,
+    this.isSeeker = false,
     this.needsOnboarding = false,
   });
 
@@ -706,6 +708,7 @@ class AppUser {
     bool? marketingWhatsapp,
     bool? emailAlerts,
     String? agencyId,
+    bool? isSeeker,
     bool clearAgency = false,
     String? role,
   }) =>
@@ -735,6 +738,7 @@ class AppUser {
         marketingWhatsapp: marketingWhatsapp ?? this.marketingWhatsapp,
         emailAlerts: emailAlerts ?? this.emailAlerts,
         agencyId: clearAgency ? null : (agencyId ?? this.agencyId),
+        isSeeker: isSeeker ?? this.isSeeker,
         needsOnboarding: needsOnboarding,
       );
 

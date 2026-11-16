@@ -702,4 +702,17 @@ reset role;
 update profiles set slug = null where id = 'a0000000-0000-0000-0000-0000000000d1';
 select zt.ok('owner card: agent without catalogue — no number', (select public.owner_card('a0000000-0000-0000-0000-0000000000d1')->>'contact') is null);
 
+-- ---------- 040: «ищу жильё» ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000e1', 'seek@x.zm', '{"full_name":"Seeker","role":"seeker","terms_accepted":true}');
+select zt.ok('seeker: account created as owner + seeker, no phone needed',
+  (select role = 'owner' and is_seeker and phone is null from profiles where id = 'a0000000-0000-0000-0000-0000000000e1'));
+update profiles set phone = '+260 96 5550303', phone_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000e1';
+insert into properties(owner_id,title,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('a0000000-0000-0000-0000-0000000000e1','My flat','rent','apartment',3000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'owner');
+select zt.ok('seeker: first listing makes them an owner',
+  (select not is_seeker from profiles where id = 'a0000000-0000-0000-0000-0000000000e1'));
+delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000e1';
+
 select zt.ok('ALL CHECKS PASSED', true);

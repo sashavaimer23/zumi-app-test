@@ -36,7 +36,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _loading = false;
   bool _googleLoading = false;
   bool _facebookLoading = false;
-  String _role = 'owner';
+  String _role = 'seeker'; // большинство просто ищет жильё
   bool _consent = false;
   bool _marketing = false; // новости и предложения — по желанию, по умолчанию выключено
   final _form = GlobalKey<FormState>();
@@ -57,8 +57,9 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-    _signUp = widget.startSignUp;
-    if (const ['owner', 'agent', 'agency'].contains(widget.initialRole)) _role = widget.initialRole!;
+    // пришли с кнопки «Написать», «Номер», «♥» и т.п. — сразу короткая регистрация
+    _signUp = widget.startSignUp || widget.reason != null;
+    if (const ['seeker', 'owner', 'agent', 'agency'].contains(widget.initialRole)) _role = widget.initialRole!;
   }
 
   @override
@@ -89,17 +90,17 @@ class _AuthScreenState extends State<AuthScreen> {
           email: _email.text.trim(),
           password: _password.text,
           fullName: _name.text.trim(),
-          phone: _phone.text.trim(),
+          phone: _role == 'seeker' ? '' : _phone.text.trim(),
           role: _role,
           termsAccepted: _consent,
-          licenceNo: _role != 'owner' ? _licence.text.trim() : null,
+          licenceNo: _role == 'agent' || _role == 'agency' ? _licence.text.trim() : null,
           marketing: _marketing,
           agencyName: _role == 'agency' ? _agencyName.text.trim() : null,
           firmLicenceNo: _role == 'agency' ? _firmNo.text.trim() : null,
         );
-        // после регистрации — предлагаем подтвердить телефон по SMS (можно пропустить)
         if (!widget.embedded) nav.pop(true);
-        nav.push(MaterialPageRoute(builder: (_) => const PhoneVerifyScreen(afterSignup: true)));
+        // тем, кто размещает объявления, — сразу подтвердить телефон (можно пропустить); ищущим жильё не нужно
+        if (_role != 'seeker') nav.push(MaterialPageRoute(builder: (_) => const PhoneVerifyScreen(afterSignup: true)));
         return;
       } else {
         await repo.signIn(email: _email.text.trim(), password: _password.text);
@@ -337,16 +338,18 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) => (v ?? '').trim().length < 2 ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 18),
-                const FieldLabel('Phone', required: true),
-                TextFormField(
-                  controller: _phone,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(hintText: '+260 …'),
-                  validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
-                ),
-                const SizedBox(height: 18),
+                if (_role != 'seeker') ...[
+                  const FieldLabel('Phone', required: true),
+                  TextFormField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(hintText: '+260 …'),
+                    validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
+                  ),
+                  const SizedBox(height: 18),
+                ],
                 if (_role == 'agency') AgencyFields(name: _agencyName, firmNo: _firmNo),
-                if (_role != 'owner') ...[
+                if (_role == 'agent' || _role == 'agency') ...[
                   FieldLabel(_role == 'agency' ? 'Your personal ZIEA number' : 'ZIEA registration number', optional: true),
                   TextFormField(
                     controller: _licence,

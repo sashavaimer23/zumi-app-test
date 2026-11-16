@@ -36,7 +36,7 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
   final _licence = TextEditingController();
   final _agencyName = TextEditingController();
   final _firmNo = TextEditingController();
-  String _role = 'owner';
+  String _role = 'seeker';
   bool _consent = false;
   bool _marketing = false;
   bool _loading = false;
@@ -71,16 +71,16 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
       await context.read<AppState>().repo.completeSignup(
             role: _role == 'agency' ? 'agent' : _role,
             fullName: _name.text.trim(),
-            phone: _phone.text.trim(),
-            licenceNo: _role != 'owner' ? _licence.text.trim() : null,
+            phone: _role == 'seeker' ? '' : _phone.text.trim(),
+            licenceNo: _role == 'agent' || _role == 'agency' ? _licence.text.trim() : null,
             termsAccepted: _consent,
             marketing: _marketing,
           );
       if (_role == 'agency' && mounted) {
         await context.read<AppState>().repo.createAgency(name: _agencyName.text.trim(), firmLicenceNo: _firmNo.text.trim());
       }
-      // как после обычной регистрации — предлагаем сразу подтвердить телефон (можно пропустить)
-      nav.push(MaterialPageRoute(builder: (_) => const PhoneVerifyScreen(afterSignup: true)));
+      // как после обычной регистрации — предлагаем сразу подтвердить телефон (можно пропустить); ищущим жильё не нужно
+      if (_role != 'seeker') nav.push(MaterialPageRoute(builder: (_) => const PhoneVerifyScreen(afterSignup: true)));
     } on AppException catch (e) {
       if (mounted) showSnack(context, e.message);
     } catch (e) {
@@ -122,16 +122,18 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
                 validator: (v) => (v ?? '').trim().length < 2 ? 'Enter your name' : null,
               ),
               const SizedBox(height: 18),
-              const FieldLabel('Phone', required: true),
-              TextFormField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(hintText: '+260 …'),
-                validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
-              ),
-              const SizedBox(height: 18),
+              if (_role != 'seeker') ...[
+                const FieldLabel('Phone', required: true),
+                TextFormField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(hintText: '+260 …'),
+                  validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 9 ? 'Enter a valid phone' : null,
+                ),
+                const SizedBox(height: 18),
+              ],
               if (_role == 'agency') AgencyFields(name: _agencyName, firmNo: _firmNo),
-                if (_role != 'owner') ...[
+              if (_role == 'agent' || _role == 'agency') ...[
                 FieldLabel(_role == 'agency' ? 'Your personal ZIEA number' : 'ZIEA registration number', optional: true),
                 TextFormField(
                   controller: _licence,

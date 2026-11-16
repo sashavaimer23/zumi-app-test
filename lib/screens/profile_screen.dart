@@ -119,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(color: Zc.orangeSoft, borderRadius: BorderRadius.circular(12)),
-                        child: Text(user.isAdmin ? 'Zumi team' : (user.isAgent ? 'Agent' : 'Owner'),
+                        child: Text(user.isAdmin ? 'Zumi team' : (user.isAgent ? 'Agent' : (user.isSeeker ? 'Looking for a home' : 'Owner')),
                             style: const TextStyle(color: Zc.orange, fontSize: 12, fontWeight: FontWeight.w600)),
                       ),
                     ]),
@@ -160,6 +160,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final toAnswer = listings.where((p) => p.needsAvailabilityAnswer && p.isFresh).length;
                   final showHidden = _showHidden && hiddenList.isNotEmpty;
                   final list = showHidden ? hiddenList : shownList;
+                  // «ищу жильё»: без лимитов и объявлений — только понятный путь «разместить своё»
+                  if (user.isSeeker && listings.isEmpty) return const _SeekerCard();
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     // агент: своя страница-витрина с каталогом и отзывами
                     if (user.isAgent) ...[
@@ -824,4 +826,49 @@ class _MenuTile extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Профиль того, кто ищет жильё: что можно делать + «Есть что сдать или продать?»
+class _SeekerCard extends StatelessWidget {
+  const _SeekerCard();
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: Zc.chip)),
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Looking for a home', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green)),
+            SizedBox(height: 8),
+            Text('• Save homes with the ♥ to compare them later\n'
+                '• Message owners and agents in the Zumi chat\n'
+                '• See phone numbers and call directly\n'
+                '• Get an email when someone answers you',
+                style: TextStyle(fontSize: 14, height: 1.6)),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Zc.chip, borderRadius: BorderRadius.circular(18)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Have a place to rent out or sell?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            const Text('Post it for free — your account becomes an owner account automatically. '
+                'Agents can switch in Settings.',
+                style: TextStyle(fontSize: 13.5, color: Zc.grey, height: 1.4)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Zc.orange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              ),
+              onPressed: () => Shell.current?.go(2),
+              icon: const Icon(ZI.plus, size: 18),
+              label: const Text('Post a property'),
+            ),
+          ]),
+        ),
+      ]);
 }

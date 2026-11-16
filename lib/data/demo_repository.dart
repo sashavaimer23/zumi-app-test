@@ -104,7 +104,10 @@ class DemoRepository implements Repository {
     if (password.length < 6) throw AppException('Password must be at least 6 characters');
     final agency = role == 'agency';
     if (agency) role = 'agent';
+    final seeker = role == 'seeker';
+    if (seeker) role = 'owner';
     var u = AppUser(
+      isSeeker: seeker,
       id: 'demo-${email.toLowerCase().hashCode}',
       email: email,
       fullName: fullName,
@@ -191,7 +194,8 @@ class DemoRepository implements Repository {
       email: u.email,
       fullName: fullName.trim(),
       phone: phone.trim(),
-      role: role,
+      role: role == 'seeker' ? 'owner' : role,
+      isSeeker: role == 'seeker',
       licenceNo: lic,
       marketingEmail: marketing,
       marketingWhatsapp: marketing,

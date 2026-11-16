@@ -202,7 +202,7 @@ class _PostWizardState extends State<PostWizard> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     if (!app.signedIn) {
-      return const AuthScreen(embedded: true, reason: 'Sign in to list your property on Zumi.');
+      return const AuthScreen(embedded: true, reason: 'Sign in to list your property on Zumi.', initialRole: 'owner');
     }
     // аккаунт команды Zumi не публикует объявления (это проверяет и сервер)
     if (app.user!.isAdmin) {

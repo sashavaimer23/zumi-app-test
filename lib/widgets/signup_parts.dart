@@ -39,6 +39,9 @@ class RolePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(children: [
+        // большинство просто ищет жильё — самый короткий путь, первым
+        _card('seeker', 'Looking for a home', 'I want to rent or buy — quick sign-up, no phone needed', ZI.search),
+        const SizedBox(height: 12),
         Row(children: [
           Expanded(child: _card('owner', 'Owner', 'I list my own property', ZI.house)),
           const SizedBox(width: 12),

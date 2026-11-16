@@ -75,6 +75,11 @@ class SupabaseRepository implements Repository {
       try {
         alerts = (await _db.rpc('my_email_alerts') as bool?) ?? true;
       } catch (_) {/* база ещё без 031 */}
+      bool seeker = false;
+      try {
+        final s = await _db.from('profiles').select('is_seeker').eq('id', u.id).maybeSingle();
+        seeker = (s?['is_seeker'] as bool?) ?? false;
+      } catch (_) {/* база ещё без 040 */}
       return AppUser(
         id: u.id,
         email: u.email,
@@ -103,6 +108,7 @@ class SupabaseRepository implements Repository {
         needsOnboarding: (ver?['needs_onboarding'] as bool?) ?? false,
         emailAlerts: alerts,
         agencyId: agencyId,
+        isSeeker: seeker,
       );
     } catch (_) {
       return AppUser(id: u.id, email: u.email);
