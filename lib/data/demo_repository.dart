@@ -1558,6 +1558,12 @@ class DemoRepository implements Repository {
   CatalogInfo? _catalog;
 
   @override
+  Future<InviteInfo> myInvite() async => const InviteInfo(code: 'DEMO42', invited: 3, posted: 1);
+
+  @override
+  Future<bool> claimInvite(String code) async => false;
+
+  @override
   Future<CatalogInfo> myCatalog() async {
     final u = currentUser;
     return _catalog ??= CatalogInfo(slug: slugFromName(u?.fullName ?? 'agent').padRight(3, 'x'), views7d: 12, viewsTotal: 40);

@@ -141,9 +141,10 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
         await showJoinAgency(context, q['join']!);
         return;
       }
+      if (q['invite'] != null) context.read<AppState>().setPendingInvite(q['invite']!);
       if (q['signup'] != null) {
         // со страницы zumihome.com/agents: «Join as an agent» / «Register your agency»
-        final role = q['signup'] == 'agency' ? 'agency' : 'agent';
+        final role = const ['agency', 'owner', 'seeker'].contains(q['signup']) ? q['signup']! : 'agent';
         if (context.read<AppState>().user == null) {
           Navigator.push(context,
               MaterialPageRoute(builder: (_) => AuthScreen(startSignUp: true, initialRole: role)));

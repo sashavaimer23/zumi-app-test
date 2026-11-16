@@ -1,0 +1,18 @@
+# Cloudflare Pages: кэш в браузере — со второго захода сайт открывается почти сразу.
+# stale-while-revalidate: браузер сразу берёт сохранённую копию, а свежую тихо проверяет в фоне.
+# index.html и flutter_bootstrap.js — всегда свежие (по умолчанию), чтобы обновления доходили.
+
+/main.dart.js
+  Cache-Control: public, max-age=60, stale-while-revalidate=604800
+
+/canvaskit/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=2592000
+
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=2592000
+
+/icons/*
+  Cache-Control: public, max-age=604800
+
+/og-image.jpg
+  Cache-Control: public, max-age=604800

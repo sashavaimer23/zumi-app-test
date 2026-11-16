@@ -20,9 +20,11 @@ class AppState extends ChangeNotifier {
       _user = u;
       notifyListeners();
       if (u != null) _syncFavorites();
+      if (u != null) _claimPendingInvite();
       if (changed) _watchUnread();
     });
     if (_user != null) _syncFavorites();
+    if (_user != null) _claimPendingInvite();
     _watchUnread();
     loadFlags();
   }
@@ -128,6 +130,21 @@ class AppState extends ChangeNotifier {
   StreamSubscription<AppUser?>? _sub;
 
   static const _kFav = 'favorites';
+  static const _kInvite = 'pending_invite';
+
+  /// Пришёл по ссылке-приглашению (?invite=КОД) — запоминаем до регистрации
+  void setPendingInvite(String code) {
+    final c = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (c.length >= 4 && c.length <= 8) _prefs.setString(_kInvite, c);
+    if (_user != null) _claimPendingInvite();
+  }
+
+  Future<void> _claimPendingInvite() async {
+    final c = _prefs.getString(_kInvite);
+    if (c == null) return;
+    await repo.claimInvite(c); // засчитывается только новым аккаунтам (первые 3 дня), один раз
+    await _prefs.remove(_kInvite);
+  }
   static const _kRecent = 'recently_viewed';
   static const _kHints = 'seen_hints';
 

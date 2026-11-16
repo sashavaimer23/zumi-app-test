@@ -32,8 +32,6 @@ details p{margin:8px 0 0;color:#4A5651}
 @media(max-width:520px){h1{font-size:26px}.lead{font-size:16px}.cta .btn,.cta .btn2{width:100%;text-align:center;box-sizing:border-box}}
 </style>`;
 
-const join = "/?signup=agent";
-const agency = "/?signup=agency";
 
 const faq: [string, string][] = [
   ["Is it really free?",
@@ -53,8 +51,13 @@ const faq: [string, string][] = [
     "Yes. Register your agency, then invite colleagues with a link. The agency shares 25 free listings and gets its own page with all your properties."],
 ];
 
-export const onRequestGet: PagesFunction = async () =>
-  page({
+export const onRequestGet: PagesFunction = async ({ request }) => {
+  // ссылка-приглашение от агента: /agents?i=КОД — передаём код в регистрацию
+  const code = (new URL(request.url).searchParams.get("i") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  const inv = code ? `&invite=${code}` : "";
+  const join = `/?signup=agent${inv}`;
+  const agency = `/?signup=agency${inv}`;
+  return page({
     title: "Zumi for agents — list properties in Zambia for free",
     description: "Post up to 10 listings free (15 with a ZIEA licence, 25 for agencies). No commission. " +
       "Clients call, WhatsApp or chat with you directly. Licence not required.",
@@ -121,3 +124,4 @@ ${faq.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).j
 <p style="margin:14px 0 0;font-size:14px">Questions? Write to <a style="color:#fff" href="mailto:hello@zumihome.com">hello@zumihome.com</a></p>
 </div>`,
   });
+};

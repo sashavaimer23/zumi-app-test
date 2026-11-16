@@ -2665,3 +2665,16 @@ String slugFromName(String s) {
   final x = s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
   return x.length > 32 ? x.substring(0, 32).replaceAll(RegExp(r'-+$'), '') : x;
 }
+
+/// «Пригласить друга»: мой код и сколько людей пришло (041)
+class InviteInfo {
+  final String code;
+  final int invited;
+  final int posted;
+  const InviteInfo({required this.code, this.invited = 0, this.posted = 0});
+  factory InviteInfo.fromMap(Map<String, dynamic> m) => InviteInfo(
+        code: m['code'] as String,
+        invited: (m['invited'] as num?)?.toInt() ?? 0,
+        posted: (m['posted'] as num?)?.toInt() ?? 0,
+      );
+}

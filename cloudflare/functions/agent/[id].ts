@@ -8,6 +8,9 @@ export const onRequestGet: PagesFunction = async ({ request, params }) => {
   const id = String(params.id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return notFound();
   const app = `${SITE}/?agent=${id}`;
+  // у агента есть каталог — отправляем туда всех (лёгкая страница, красивое превью)
+  const oc = await rpc<{ slug: string | null } | null>("owner_card", { p_owner: id }).catch(() => null);
+  if (oc?.slug) return Response.redirect(`${SITE}/${oc.slug}`, 301);
   if (!isBot(request)) return Response.redirect(app, 302);
   const pr = (await rpc<Pub[]>("public_profile", { uid: id }).catch(() => []))[0];
   if (!pr) return notFound();

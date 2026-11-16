@@ -17,11 +17,14 @@ import '../widgets/zicons.dart';
 /// Вход / регистрация. При регистрации выбирается роль: собственник или агент.
 /// Возвращает true через Navigator.pop, если пользователь вошёл.
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.embedded = false, this.reason, this.startSignUp = false, this.initialRole});
+  const AuthScreen({super.key, this.embedded = false, this.reason, this.startSignUp = false, this.initialRole, this.footer});
 
   /// true — экран встроен во вкладку (без кнопки «назад» и без pop)
   final bool embedded;
   final String? reason;
+
+  /// Что показать под формой (например, ссылку «Agent? See what Zumi gives agents» на вкладке Post)
+  final Widget? footer;
 
   /// ссылка со страницы «Zumi для агентов» (?signup=agent): сразу регистрация с нужной ролью
   final bool startSignUp;
@@ -427,6 +430,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   label: const Text('Help & questions', style: TextStyle(color: Zc.grey)),
                 ),
               ),
+              if (widget.footer != null) ...[const SizedBox(height: 10), widget.footer!],
             ],
           ),
         ),

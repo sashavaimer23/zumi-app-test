@@ -6,6 +6,7 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/launch_banner.dart';
 import '../widgets/ads.dart';
+import '../widgets/agents_link.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/promo_card.dart';
@@ -139,6 +140,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             if (_isPlainHome) ..._sections(),
             ..._results(),
+            // для агентов — ссылка на zumihome.com/agents
+            if (_isPlainHome)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(isDesktop(context) ? desktopSide(context) : 16, 18,
+                      isDesktop(context) ? desktopSide(context) : 16, 0),
+                  child: const AgentsLink(),
+                ),
+              ),
             const SliverToBoxAdapter(child: SizedBox(height: Shell.navSpace + 70)),
           ],
         ),

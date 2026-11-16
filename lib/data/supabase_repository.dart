@@ -1428,6 +1428,21 @@ class SupabaseRepository implements Repository {
       });
 
   @override
+  Future<InviteInfo> myInvite() => _guard(() async {
+        final r = await _db.rpc('my_invite');
+        return InviteInfo.fromMap(Map<String, dynamic>.from(r as Map));
+      });
+
+  @override
+  Future<bool> claimInvite(String code) async {
+    try {
+      return (await _db.rpc('claim_invite', params: {'p_code': code}) as bool?) ?? false;
+    } catch (_) {
+      return false; // база ещё без 041 — не мешаем
+    }
+  }
+
+  @override
   Future<CatalogInfo> myCatalog() => _guard(() async {
         final r = await _db.rpc('my_catalog');
         return CatalogInfo.fromMap(Map<String, dynamic>.from(r as Map));

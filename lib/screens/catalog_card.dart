@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
@@ -160,6 +161,12 @@ class _CatalogCardState extends State<CatalogCard> {
             ),
           ),
         ]),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: c == null && !_failed ? null : () => _showQr(context, _link, _shortLink),
+          icon: const Icon(Icons.qr_code_2, size: 20, color: Zc.green),
+          label: const Text('QR code for business cards and flyers', style: TextStyle(color: Zc.green)),
+        ),
         if (c != null && (c.bio ?? '').isEmpty) ...[
           const SizedBox(height: 10),
           const Text('Tip: add a few words about you and the areas you cover — clients trust a catalogue with a face and a story.',
@@ -299,4 +306,35 @@ class _CatalogEditorState extends State<_CatalogEditor> {
       ),
     );
   }
+}
+
+
+/// QR-код каталога — для визиток, листовок, табличек «Сдаётся»
+void _showQr(BuildContext context, String link, String short) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Your catalogue QR code', style: TextStyle(color: Zc.green)),
+      content: SizedBox(
+        width: 280,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          QrImageView(
+            data: link,
+            size: 240,
+            backgroundColor: Colors.white,
+            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF1E4A3F)),
+            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1E4A3F)),
+          ),
+          const SizedBox(height: 10),
+          Text(short, style: const TextStyle(fontWeight: FontWeight.w600, color: Zc.green)),
+          const SizedBox(height: 8),
+          const Text('Take a screenshot and put it on your business card, flyer or a "To let" board. '
+              'People point their phone camera at it and your catalogue opens.',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: Zc.grey, height: 1.4)),
+        ]),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+    ),
+  );
 }

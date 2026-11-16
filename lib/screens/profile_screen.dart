@@ -24,6 +24,7 @@ import 'shell.dart';
 import '../widgets/zicons.dart';
 import 'agency_screen.dart';
 import 'catalog_card.dart';
+import 'invite_card.dart';
 
 /// Профиль: роль, лимит бесплатных объявлений, мои объявления, выход.
 class ProfileScreen extends StatefulWidget {
@@ -182,6 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       CatalogCard(user: user, listings: listings, rating: rating),
                       const SizedBox(height: 14),
                     ],
+                    InviteCard(user: user),
                     // «Zumi бесплатный на период запуска» (пока платные функции выключены)
                     const LaunchBanner(margin: EdgeInsets.only(bottom: 14)),
                     _IdentityCard(isAgent: user.isAgent),

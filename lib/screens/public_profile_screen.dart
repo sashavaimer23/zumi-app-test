@@ -53,7 +53,9 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     final who = pr.isAgent ? (pr.agencyName ?? pr.displayName) : pr.displayName;
     showShareSheet(
       context,
-      text: '$who on Zumi — ${pr.activeListings} ${pr.activeListings == 1 ? 'listing' : 'listings'} in Zambia',
+      text: pr.isAgent
+          ? '$who — property catalogue on Zumi (${pr.activeListings} ${pr.activeListings == 1 ? 'property' : 'properties'})'
+          : '$who on Zumi — ${pr.activeListings} ${pr.activeListings == 1 ? 'listing' : 'listings'} in Zambia',
       link: site == null || widget.userId.startsWith('demo:') ? null : '$site/agent/${widget.userId}',
     );
   }

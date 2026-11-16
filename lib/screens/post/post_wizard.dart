@@ -14,6 +14,7 @@ import '../../widgets/success_hero.dart';
 import '../../widgets/common.dart';
 import '../../widgets/onboarding.dart';
 import '../auth_screen.dart';
+import '../../widgets/agents_link.dart';
 import '../filters_sheet.dart';
 import '../shell.dart';
 import 'location_picker.dart';
@@ -202,7 +203,11 @@ class _PostWizardState extends State<PostWizard> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     if (!app.signedIn) {
-      return const AuthScreen(embedded: true, reason: 'Sign in to list your property on Zumi.', initialRole: 'owner');
+      return const AuthScreen(
+          embedded: true,
+          reason: 'Sign in to list your property on Zumi.',
+          initialRole: 'owner',
+          footer: AgentsLink(compact: true));
     }
     // аккаунт команды Zumi не публикует объявления (это проверяет и сервер)
     if (app.user!.isAdmin) {

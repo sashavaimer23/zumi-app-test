@@ -715,4 +715,21 @@ select zt.ok('seeker: first listing makes them an owner',
   (select not is_seeker from profiles where id = 'a0000000-0000-0000-0000-0000000000e1'));
 delete from properties where owner_id = 'a0000000-0000-0000-0000-0000000000e1';
 
+-- ---------- 041: приглашения ----------
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000d2', false);
+set role authenticated;
+create temp table if not exists t_inv as select public.my_invite()->>'code' as code;
+reset role;
+select zt.ok('invite: code made', (select length(code) = 6 from t_inv));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000e1', false);
+set role authenticated;
+select zt.ok('invite: new person claims', public.claim_invite((select code from t_inv)));
+select zt.ok('invite: only once', not public.claim_invite((select code from t_inv)));
+reset role;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-0000000000d2', false);
+set role authenticated;
+select zt.ok('invite: counter', (public.my_invite()->>'invited')::int = 1);
+select zt.ok('invite: cannot invite yourself', not public.claim_invite((select code from t_inv)));
+reset role;
+
 select zt.ok('ALL CHECKS PASSED', true);
