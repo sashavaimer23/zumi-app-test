@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../config.dart';
+import '../features.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -207,7 +208,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
               if (p.bathrooms != null) _Spec(ZI.bath, '${p.bathrooms} baths'),
               if (p.areaSqm != null) _Spec(ZI.size, '${_n(p.areaSqm!)} m²'),
               if (p.plotSqm != null) _Spec(ZI.land, 'Plot ${_n(p.plotSqm!)} m²'),
-              _Spec(ZI.eye, '${p.viewsCount} views'),
+              if (Features.showStats) _Spec(ZI.eye, '${p.viewsCount} views'),
             ]),
             const SizedBox(height: 22),
             // комнаты: главное правило — никаких денег за просмотр

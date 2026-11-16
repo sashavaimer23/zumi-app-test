@@ -597,7 +597,7 @@ class _MyListingTile extends StatelessWidget {
                       style: TextStyle(fontSize: 11, color: stale ? Zc.orange : Zc.green)),
                 ),
                 const SizedBox(width: 8),
-                Text('${p.viewsCount} views', style: const TextStyle(fontSize: 11, color: Zc.grey)),
+                if (Features.showStats) Text('${p.viewsCount} views', style: const TextStyle(fontSize: 11, color: Zc.grey)),
                 if (p.isPromoted) ...[const SizedBox(width: 8), const Icon(ZI.bolt, size: 14, color: Zc.orange)],
                 if (p.isVerified) ...[const SizedBox(width: 8), const VerifiedMark(size: 14)],
               ]),
@@ -701,7 +701,7 @@ class _MyListingTile extends StatelessWidget {
       // «ещё доступно?» — одним нажатием
       if (StillAvailableCard.shows(p)) StillAvailableCard(p: p, margin: const EdgeInsets.only(top: 10)),
       // советы после публикации и цифры за 7 дней
-      if (stats != null && p.status == 'active' && !stale) _TipStrip(p: p, stats: stats!),
+      if (Features.showStats && stats != null && p.status == 'active' && !stale) _TipStrip(p: p, stats: stats!),
       ]),
     );
   }

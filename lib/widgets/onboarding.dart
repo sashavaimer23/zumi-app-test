@@ -68,7 +68,7 @@ class Onboarding {
             _Step(TourKeys.post, 'List your property', 'Renting out or selling? Post a listing for free.'),
           ],
         Tour.owner => [
-            _Step(TourKeys.profile, 'Your listings', 'Profile → My listings: edit, see views and answer '
+            _Step(TourKeys.profile, 'Your listings', 'Profile → My listings: edit and answer '
                 '"still available?" in one tap.', round: true),
             _Step(TourKeys.profile, 'Rented or sold? Hide it', 'As soon as it is taken, open My listings → ⋯ → '
                 '"Mark as rented". People stop calling about it, and your free slot is back.', round: true),

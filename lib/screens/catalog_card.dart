@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
+import '../features.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -123,7 +124,7 @@ class _CatalogCardState extends State<CatalogCard> {
         const SizedBox(height: 14),
         Row(children: [
           _Stat(value: '$active', label: active == 1 ? 'property' : 'properties'),
-          _Stat(value: c == null ? '—' : '${c.views7d}', label: 'views this week'),
+          if (Features.showStats) _Stat(value: c == null ? '—' : '${c.views7d}', label: 'views this week'),
           _Stat(
             value: r == null || r.count == 0 ? '—' : r.average.toStringAsFixed(1),
             label: r == null || r.count == 0 ? 'no reviews yet' : '${r.count} ${r.count == 1 ? 'review' : 'reviews'}',
