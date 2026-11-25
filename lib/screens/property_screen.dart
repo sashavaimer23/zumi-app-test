@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../config.dart';
@@ -19,6 +17,7 @@ import '../widgets/share.dart';
 import '../widgets/trust.dart';
 import '../widgets/wide_card.dart';
 import 'auth_screen.dart';
+import 'lazy_map.dart';
 import 'chat_screen.dart';
 import 'public_profile_screen.dart';
 import '../widgets/zicons.dart';
@@ -244,37 +243,11 @@ class _PropertyScreenState extends State<PropertyScreen> {
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 height: 200,
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: LatLng(p.lat, p.lng),
-                    initialZoom: 14.5,
-                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag),
-                  ),
-                  children: [
-                    TileLayer(urlTemplate: AppConfig.mapTilesUrl, userAgentPackageName: AppConfig.mapUserAgent),
-                    // комната: только район (круг ~1 км), точное место — после разговора с хозяином
-                    if (p.isRoom && !(p.ownerId != null && p.ownerId == context.read<AppState>().user?.id))
-                      CircleLayer(circles: [
-                        CircleMarker(
-                          point: LatLng(p.lat, p.lng),
-                          radius: 700,
-                          useRadiusInMeter: true,
-                          color: const Color(0x2EFF7A59), // Zc.orange, прозрачный
-                          borderColor: Zc.orange,
-                          borderStrokeWidth: 1.5,
-                        ),
-                      ])
-                    else
-                      MarkerLayer(markers: [
-                        Marker(
-                          point: LatLng(p.lat, p.lng),
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.topCenter,
-                          child: const Icon(ZI.pinFill, color: Zc.orange, size: 44),
-                        ),
-                      ]),
-                  ],
+                child: LazyMiniMap(
+                  lat: p.lat,
+                  lng: p.lng,
+                  // комната: только район (круг ~1 км), точное место — после разговора с хозяином
+                  approximate: p.isRoom && !(p.ownerId != null && p.ownerId == context.read<AppState>().user?.id),
                 ),
               ),
             ),

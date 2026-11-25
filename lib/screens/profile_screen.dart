@@ -8,13 +8,12 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/availability.dart';
 import '../widgets/launch_banner.dart';
-import 'billing/billing_screen.dart';
+import 'lazy_screens.dart';
 import '../widgets/common.dart';
 import '../widgets/onboarding.dart';
 import '../widgets/results.dart';
 import '../widgets/share.dart';
 import '../widgets/trust.dart';
-import 'lazy_screens.dart';
 import 'help/help_screen.dart';
 import 'post/post_wizard.dart';
 import 'settings_screen.dart';
@@ -843,7 +842,7 @@ class _SeekerCard extends StatelessWidget {
           child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Looking for a home', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Zc.green)),
             SizedBox(height: 8),
-            Text('• Save homes with the ♥ to compare them later\n'
+            Text('• Save homes you like to compare them later\n'
                 '• Message owners and agents in the Zumi chat\n'
                 '• See phone numbers and call directly\n'
                 '• Get an email when someone answers you',

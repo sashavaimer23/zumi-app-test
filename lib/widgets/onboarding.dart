@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
-import 'wide_card.dart';
 import 'zicons.dart';
+import 'tour_runner.dart' deferred as tour_runner;
 
 // ======================================================================
 // Обучение при первом входе.
@@ -116,108 +115,24 @@ class Onboarding {
       app.markHint(_id(tour));
     }
 
-    final targets = <TargetFocus>[
-      for (var i = 0; i < steps.length; i++)
-        TargetFocus(
-          identify: steps[i].title,
-          keyTarget: steps[i].key,
-          shape: steps[i].round && !isDesktop(context) ? ShapeLightFocus.Circle : ShapeLightFocus.RRect,
-          radius: 22,
-          paddingFocus: steps[i].round ? 0 : 8, // иконку меню подсвечиваем аккуратным кругом
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: _below(steps[i].key, screen) ? ContentAlign.bottom : ContentAlign.top,
-              builder: (ctx, controller) => _StepCard(
-                step: steps[i],
-                index: i,
-                count: steps.length,
-                onNext: controller.next,
-                onSkip: controller.skip,
-              ),
-            ),
-          ],
-        ),
-    ];
-
-    TutorialCoachMark(
-      targets: targets,
-      colorShadow: const Color(0xFF0B2E28),
-      opacityShadow: 0.72,
-      paddingFocus: 8,
-      hideSkip: true, // своя кнопка «Skip» на карточке — крупнее и понятнее
-      pulseEnable: false, // без мигания — спокойнее
-      onFinish: done,
-      onSkip: () {
-        done();
-        return true;
-      },
-    ).show(context: context);
-  }
-
-  /// Подпись снизу, если элемент в верхней половине экрана
-  static bool _below(GlobalKey key, Size screen) {
-    final box = key.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return true;
-    final y = box.localToGlobal(Offset.zero).dy + box.size.height / 2;
-    return y < screen.height / 2;
-  }
-}
-
-class _StepCard extends StatelessWidget {
-  const _StepCard({
-    required this.step,
-    required this.index,
-    required this.count,
-    required this.onNext,
-    required this.onSkip,
-  });
-  final _Step step;
-  final int index;
-  final int count;
-  final VoidCallback onNext;
-  final VoidCallback onSkip;
-
-  @override
-  Widget build(BuildContext context) {
-    final last = index == count - 1;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          elevation: 6,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 10, 8),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(step.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Zc.green)),
-              const SizedBox(height: 6),
-              Text(step.text, style: const TextStyle(fontSize: 15, height: 1.4, color: Zc.text)),
-              const SizedBox(height: 6),
-              Row(children: [
-                // точки прогресса
-                for (var i = 0; i < count; i++)
-                  Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    width: i == index ? 14 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: i == index ? Zc.orange : Zc.lightGrey,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                const Spacer(),
-                if (!last) TextButton(onPressed: onSkip, child: const Text('Skip', style: TextStyle(color: Zc.grey))),
-                TextButton(
-                  onPressed: onNext,
-                  child: Text(last ? 'Got it' : 'Next', style: const TextStyle(color: Zc.orange, fontWeight: FontWeight.w600)),
-                ),
-              ]),
-            ]),
-          ),
-        ),
-      ),
+    // сам тур (пакет подсветки) скачивается только когда нужен — первая загрузка сайта легче
+    try {
+      await tour_runner.loadLibrary();
+    } catch (_) {
+      done();
+      return;
+    }
+    if (!context.mounted) {
+      done();
+      return;
+    }
+    tour_runner.showTour(
+      context,
+      keys: [for (final s in steps) s.key],
+      titles: [for (final s in steps) s.title],
+      texts: [for (final s in steps) s.text],
+      rounds: [for (final s in steps) s.round],
+      onDone: done,
     );
   }
 }

@@ -22,7 +22,6 @@ import 'profile_screen.dart';
 import 'public_profile_screen.dart';
 import 'agency_screen.dart';
 import 'auth_screen.dart';
-import 'billing/billing_screen.dart';
 import 'saved_screen.dart';
 import 'support/support_screen.dart';
 

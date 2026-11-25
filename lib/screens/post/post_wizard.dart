@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../data/images.dart';
 import '../../features.dart';
 import '../../models/models.dart';
-import '../billing/billing_screen.dart';
+import '../lazy_screens.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
 import '../../widgets/success_hero.dart';
@@ -17,7 +17,7 @@ import '../auth_screen.dart';
 import '../../widgets/agents_link.dart';
 import '../filters_sheet.dart';
 import '../shell.dart';
-import 'location_picker.dart';
+import '../lazy_map.dart';
 import 'seller_help.dart';
 import '../../widgets/trust.dart';
 import '../verify/get_verified_screen.dart';
@@ -830,10 +830,7 @@ class _PostWizardState extends State<PostWizard> {
               ? () => showSnack(context, 'Choose the neighbourhood first')
               : () async {
                   final start = LatLng(_d.lat ?? _d.area!.lat, _d.lng ?? _d.area!.lng);
-                  final res = await Navigator.push<LatLng>(
-                    context,
-                    MaterialPageRoute(builder: (_) => LocationPickerScreen(start: start)),
-                  );
+                  final res = await pickLocation(context, start);
                   if (res != null) {
                     setState(() {
                       _d.lat = res.latitude;

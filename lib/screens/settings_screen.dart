@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../features.dart';
 import '../models/models.dart';
-import 'billing/billing_screen.dart';
+import 'lazy_screens.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/app_feedback.dart';

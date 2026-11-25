@@ -2,8 +2,9 @@
 // Всё, что не похоже на адрес каталога (файлы сайта, /terms.html и т.д.), отдаём как обычно.
 import { badges, avatar, contactBar, DEMO_SLUG, isDemo, isSlug, itemCard, loadCatalog, loadItems, shareScript, shell } from "../lib/catalog";
 import { esc, isBot, rpc, SITE, typeName } from "../lib/zumi";
+import { edgeCached } from "../lib/cache";
 
-export const onRequestGet: PagesFunction = async (ctx) => {
+const render: PagesFunction = async (ctx) => {
   const raw = String(ctx.params.slug ?? "");
   const slug = raw.toLowerCase();
   if (!isSlug(slug) && slug !== DEMO_SLUG) return ctx.next();
@@ -12,7 +13,6 @@ export const onRequestGet: PagesFunction = async (ctx) => {
   const c = await loadCatalog(slug);
   if (!c) return ctx.next(); // нет такого каталога — обычная страница «не найдено»
   const items = await loadItems(c.id);
-  if (!isBot(ctx.request) && !isDemo(c)) ctx.waitUntil(rpc("catalog_seen", { p_slug: slug }).catch(() => null));
 
   const url = `${SITE}/${slug}`;
   const first = c.name.split(/\s+/)[0] || c.name;
@@ -75,3 +75,11 @@ document.querySelectorAll('.types button').forEach(function(b,i,all){b.onclick=f
   });
 };
 
+
+// Каталог: просмотры считаем всегда, а саму страницу отдаём из кэша Cloudflare (обновляется раз в 2 минуты)
+export const onRequestGet: PagesFunction = async (ctx) => {
+  const slug = String(ctx.params.slug ?? "").toLowerCase();
+  if (!isSlug(slug) && slug !== DEMO_SLUG) return ctx.next();
+  if (slug !== DEMO_SLUG && !isBot(ctx.request)) ctx.waitUntil(rpc("catalog_seen", { p_slug: slug }).catch(() => null));
+  return edgeCached(ctx.request, 120, () => Promise.resolve(render(ctx)));
+};

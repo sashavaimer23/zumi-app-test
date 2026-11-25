@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../features.dart';
 import '../models/models.dart';
 import '../screens/filters_sheet.dart';
-import '../screens/map_screen.dart';
+import '../screens/lazy_map.dart';
 import '../screens/property_screen.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -242,10 +242,7 @@ class MapFab extends StatelessWidget {
       foregroundColor: Colors.white,
       icon: const Icon(ZI.map),
       label: const Text('Map'),
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => MapScreen(initial: filters.copy())),
-      ),
+      onPressed: () => openMapScreen(context, filters.copy()),
     );
   }
 }

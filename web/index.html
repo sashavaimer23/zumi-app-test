@@ -66,6 +66,12 @@
     #zumi-loading .slow { opacity: 0; font-weight: 400; font-size: 13px; text-align: center; max-width: 260px;
       transition: opacity .4s; }
     #zumi-loading.is-slow .slow { opacity: .8; }
+    /* медленный интернет: можно сразу смотреть жильё в лёгкой версии, пока грузится полный сайт */
+    #zumi-loading .lite { display: none; margin-top: 14px; text-align: center; }
+    #zumi-loading.is-slow .lite { display: block; }
+    #zumi-loading .lite a { display: inline-block; margin: 4px; padding: 10px 16px; border-radius: 22px;
+      background: #F07A5A; color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; }
+    #zumi-loading .lite a.out { background: transparent; color: #245045; border: 1.5px solid #245045; }
     #zumi-loading .legal { position: absolute; bottom: 18px; font-size: 12px; opacity: .55; }
     #zumi-loading .legal a { color: inherit; }
     @keyframes zs { to { transform: rotate(360deg); } }
@@ -77,6 +83,10 @@
     <div class="logo">ZUMI</div>
     <div class="spin"></div>
     <div class="slow">Slow connection — Zumi is still loading. The next visit will be faster.</div>
+    <div class="lite">
+      <div style="font-size:13px;margin-bottom:6px;opacity:.8">Don't want to wait? Browse homes now:</div>
+      <a href="/rent">Homes to rent</a><a href="/buy" class="out">To buy</a>
+    </div>
     <nav class="legal"><a href="terms.html">Terms of Service</a> · <a href="privacy.html">Privacy Policy</a></nav>
   </div>
   <script>
