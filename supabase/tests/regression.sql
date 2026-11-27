@@ -644,8 +644,15 @@ select zt.ok('new account (under 14 days): 3rd listing still goes to review',
   (select status from properties where id = 'b0000000-0000-0000-0000-0000000000c1') = 'pending');
 update profiles set created_at = now() - interval '20 days' where id = 'a0000000-0000-0000-0000-0000000000c1';
 insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000c9','a0000000-0000-0000-0000-0000000000c1','Fourth-a','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
+select zt.ok('042: 20-day account without checked phone still goes to review',
+  (select status from properties where id = 'b0000000-0000-0000-0000-0000000000c9') = 'pending');
+delete from properties where id = 'b0000000-0000-0000-0000-0000000000c9';
+update profiles set created_at = now() - interval '40 days', phone = '+260 96 5550404', phone_verified_at = now()
+ where id = 'a0000000-0000-0000-0000-0000000000c1';
+insert into properties(id,owner_id,title,deal_type,property_type,price,location,status,area_id,listed_by) values
  ('b0000000-0000-0000-0000-0000000000c2','a0000000-0000-0000-0000-0000000000c1','Fourth','rent','house',5000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
-select zt.ok('older account with 2 approved: published at once',
+select zt.ok('trusted account (phone checked, 30+ days, no confirmed reports): published at once',
   (select status = 'active' and approved_at is not null from properties where id = 'b0000000-0000-0000-0000-0000000000c2'));
 update properties set confirmed_at = now() - interval '1 day' where id = 'b0000000-0000-0000-0000-0000000000c2';
 insert into listing_reports(property_id, reporter_id, reason) values
@@ -731,5 +738,90 @@ set role authenticated;
 select zt.ok('invite: counter', (public.my_invite()->>'invited')::int = 1);
 select zt.ok('invite: cannot invite yourself', not public.claim_invite((select code from t_inv)));
 reset role;
+
+-- ---------- 042: защита от мошенников ----------
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users(id, email, raw_user_meta_data) values
+ ('a0000000-0000-0000-0000-0000000000f1', 'trusted1@x.zm', '{"full_name":"Trusted One","role":"agent","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000f2', 'trusted2@x.zm', '{"full_name":"Trusted Two","role":"agent","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000f3', 'newbie@x.zm', '{"full_name":"Newbie","role":"owner","terms_accepted":true}'),
+ ('a0000000-0000-0000-0000-0000000000f4', 'tenant42@x.zm', '{"full_name":"Tenant","role":"seeker","terms_accepted":true}');
+update profiles set created_at = now() - interval '90 days', phone = '+260 96 5550501', phone_verified_at = now(),
+       licence_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000f1';
+update profiles set created_at = now() - interval '90 days', phone = '+260 96 5550502', phone_verified_at = now(),
+       licence_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000f2';
+update profiles set phone = '+260 96 5550503', phone_verified_at = now() where id = 'a0000000-0000-0000-0000-0000000000f3';
+-- оригинал проверенного агента
+insert into properties(id,owner_id,title,description,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000f1','a0000000-0000-0000-0000-0000000000f1','Lovely 3 bed house in Roma',
+  'Spacious 3 bedroom house with garden, borehole and solar, close to schools and shops.',
+  'rent','house',10000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
+select zt.ok('licensed agent with checked phone: published at once',
+  (select status = 'active' from properties where id = 'b0000000-0000-0000-0000-0000000000f1'));
+insert into property_images(property_id, url, sort_order) values ('b0000000-0000-0000-0000-0000000000f1', 'https://x/1.jpg', 0);
+select public.photo_hashed((select id from property_images where property_id = 'b0000000-0000-0000-0000-0000000000f1'),
+  repeat('1010', 16), 'aa', null);
+-- тот же дом у другого проверенного агента, цена почти та же → группа, 0 баллов
+insert into properties(id,owner_id,title,description,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000f2','a0000000-0000-0000-0000-0000000000f2','3 bedroom house Roma',
+  'Nice family home with garden and borehole.', 'rent','house',10500,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'agent');
+insert into property_images(property_id, url, sort_order) values ('b0000000-0000-0000-0000-0000000000f2', 'https://x/2.jpg', 0);
+select public.photo_hashed((select id from property_images where property_id = 'b0000000-0000-0000-0000-0000000000f2'),
+  repeat('1010', 15) || '1011', 'bb', null);
+select zt.ok('same house by two verified agents: one group, no risk points',
+  (select p1.dup_group is not null and p1.dup_group = p2.dup_group and coalesce(r.score, 0) = 0
+     from properties p1, properties p2 left join listing_risk r on r.property_id = p2.id
+    where p1.id = 'b0000000-0000-0000-0000-0000000000f1' and p2.id = 'b0000000-0000-0000-0000-0000000000f2'));
+select zt.ok('group: exactly one card in search',
+  (select count(*) = 1 from property_feed where id in ('b0000000-0000-0000-0000-0000000000f1','b0000000-0000-0000-0000-0000000000f2') and dup_lead));
+select zt.ok('Also offered by shows the other agent',
+  (select count(*) = 1 from public.also_offered('b0000000-0000-0000-0000-0000000000f1')));
+-- тот же дом у нового аккаунта, цена ниже → риск
+insert into properties(id,owner_id,title,description,deal_type,property_type,price,location,status,area_id,listed_by) values
+ ('b0000000-0000-0000-0000-0000000000f3','a0000000-0000-0000-0000-0000000000f3','Cheap 3 bed house Roma',
+  'Spacious 3 bedroom house with garden, borehole and solar, close to schools and shops.',
+  'rent','house',6000,'SRID=4326;POINT(28.31 -15.41)','active',(select min(id) from areas),'owner');
+insert into property_images(property_id, url, sort_order) values ('b0000000-0000-0000-0000-0000000000f3', 'https://x/3.jpg', 0);
+select public.photo_hashed((select id from property_images where property_id = 'b0000000-0000-0000-0000-0000000000f3'),
+  repeat('1010', 16), 'cc', null);
+select zt.ok('copy by a new account with a lower price: risk points with a plain reason',
+  (select score >= 35 and reasons::text like '%Photos match a listing by verified%'
+     from listing_risk where property_id = 'b0000000-0000-0000-0000-0000000000f3'));
+select zt.ok('new account listing waits for review', (select status = 'pending' from properties where id = 'b0000000-0000-0000-0000-0000000000f3'));
+-- чат: просит предоплату
+insert into conversations(id, property_id, buyer_id, seller_id) values
+ ('c0000000-0000-0000-0000-0000000000f1', 'b0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000f4', 'a0000000-0000-0000-0000-0000000000f1');
+insert into messages(conversation_id, sender_id, body) values
+ ('c0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000f1', 'Please send the viewing fee by Airtel money first');
+select zt.ok('chat: payment words are flagged', (select count(*) = 1 from chat_flags where kind = 'payment'
+   and conversation_id = 'c0000000-0000-0000-0000-0000000000f1'));
+select zt.ok('chat flag adds risk to the listing',
+  (select reasons::text like '%asked for a deposit%' from listing_risk where property_id = 'b0000000-0000-0000-0000-0000000000f1'));
+-- две жалобы «мошенничество» → на проверку, номер скрыт, письмо команде; 70+ → предупреждение в чате
+insert into listing_reports(property_id, reporter_id, reason) values
+ ('b0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000f4', 'scam'),
+ ('b0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000f3', 'asked_prepayment');
+select zt.ok('risk 40+: back to review automatically',
+  (select status = 'pending' from properties where id = 'b0000000-0000-0000-0000-0000000000f1'));
+select zt.ok('risk 70+: chats about this listing get a warning',
+  (select risk_warned_at is not null from conversations where id = 'c0000000-0000-0000-0000-0000000000f1'));
+select zt.ok('team alert queued and action logged',
+  (select count(*) >= 1 from risk_alerts where property_id = 'b0000000-0000-0000-0000-0000000000f1')
+  and (select count(*) >= 1 from admin_audit where action = 'risk_review' and target_id = 'b0000000-0000-0000-0000-0000000000f1'));
+-- команда: «всё в порядке»
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000004', false);
+set role authenticated;
+select zt.ok('Risk list for the team', jsonb_array_length(public.admin_risk_list(50)) >= 2);
+select public.admin_risk_action('b0000000-0000-0000-0000-0000000000f1', 'safe', null);
+reset role;
+select zt.ok('marked safe: listing back in search, warning removed',
+  (select p.status = 'active' and c.risk_warned_at is null from properties p, conversations c
+    where p.id = 'b0000000-0000-0000-0000-0000000000f1' and c.id = 'c0000000-0000-0000-0000-0000000000f1'));
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000005', false);
+set role authenticated;
+select zt.err('only the Zumi owner can ban', 'OWNER_ONLY',
+  $$select public.admin_risk_action('b0000000-0000-0000-0000-0000000000f3', 'ban', null)$$);
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
 
 select zt.ok('ALL CHECKS PASSED', true);
