@@ -1561,6 +1561,27 @@ class DemoRepository implements Repository {
   Future<InviteInfo> myInvite() async => const InviteInfo(code: 'DEMO42', invited: 3, posted: 1);
 
   @override
+  Future<List<AlsoOffered>> alsoOffered(String propertyId) async => const [];
+
+  @override
+  Future<bool> conversationWarning(String conversationId) async => false;
+
+  @override
+  Future<List<RiskItem>> adminRiskList() async => const [];
+
+  @override
+  Future<void> adminRiskAction(String propertyId, String action, {String? note}) async {}
+
+  @override
+  Future<RiskSettings> adminRiskSettings() async => const RiskSettings(config: {'review_at': 40, 'warn_at': 70}, stopWords: 'viewing fee, airtel money');
+
+  @override
+  Future<void> adminSetRiskSettings(Map<String, num> config, String stopWords) async {}
+
+  @override
+  Future<int> adminRiskRecalc() async => 0;
+
+  @override
   Future<bool> claimInvite(String code) async => false;
 
   @override

@@ -216,7 +216,7 @@ class Contact {
       if (!context.mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => ChatScreen(conversationId: id, title: p.contactName ?? p.title)),
+        MaterialPageRoute(builder: (_) => ChatScreen(conversationId: id, title: p.contactName ?? p.title, propertyId: p.id)),
       );
     } catch (e) {
       if (context.mounted) showSnack(context, '$e');

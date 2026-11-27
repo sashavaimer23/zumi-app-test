@@ -104,6 +104,20 @@ function compose(it: Item, site: string): { subject: string; title: string; body
         link: `${site}/?open=plans`,
       };
     }
+    case "risk_alert":
+      // команде Zumi: подозрительное объявление автоматически ушло на проверку (миграция 042)
+      return {
+        subject: `⚠️ Risk ${d.score}: "${d.title}" sent to review`,
+        title: "A listing needs your check",
+        body: `<b>${esc(d.title)}</b><br><br>Risk score: <b>${esc(d.score)}</b>` +
+          (d.reason ? `<br>Main reason: ${esc(d.reason)}` : "") +
+          `<br><br>${d.action === "warn"
+            ? "The listing is hidden for review and people who wrote about it see a warning in chat."
+            : "The listing is hidden for review and the phone number is not shown."}` +
+          `<br>Open Admin → Risk to mark it safe, keep it hidden or block the account.`,
+        button: "Open Admin → Risk",
+        link: `${site}/?open=admin_risk`,
+      };
     default:
       return { subject: "News from Zumi", title: "Zumi", body: "", button: "Open Zumi", link: site };
   }

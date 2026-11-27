@@ -7,19 +7,32 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/trust.dart';
 import '../widgets/zicons.dart';
 
 /// Переписка. С Supabase сообщения приходят в реальном времени (Realtime).
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.conversationId, required this.title});
+  const ChatScreen({super.key, required this.conversationId, required this.title, this.propertyId});
   final String conversationId;
   final String title;
+
+  /// объявление, о котором переписка — для кнопки Report в предупреждении
+  final String? propertyId;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  late final Future<bool> _warning = context.read<AppState>().repo.conversationWarning(widget.conversationId);
+
+  Future<void> _report() async {
+    final id = widget.propertyId;
+    if (id == null) return;
+    final p = await context.read<AppState>().repo.getProperty(id);
+    if (p != null && mounted) await showReportSheet(context, p);
+  }
+
   final _ctrl = TextEditingController();
   // каждое новое сообщение, пока переписка открыта, сразу считается прочитанным
   late final Stream<List<ChatMessage>> _stream =
@@ -70,6 +83,13 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: Column(children: [
+        // объявление на проверке по риску (70+) — предупреждаем всех в переписке
+        FutureBuilder<bool>(
+          future: _warning,
+          builder: (context, s) => s.data == true
+              ? _RiskBanner(onReport: widget.propertyId == null ? null : _report)
+              : const SizedBox.shrink(),
+        ),
         Expanded(
           child: StreamBuilder<List<ChatMessage>>(
             stream: _stream,
@@ -114,7 +134,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (mine || !looksLikePaymentRequest(m.body)) return bubble;
                   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     bubble,
-                    const _PayWarning(),
+                    _PayWarning(onReport: widget.propertyId == null ? null : _report),
                   ]);
                 },
               );
@@ -170,27 +190,62 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 
-/// «Never pay before you have seen the property» — под сообщением с просьбой о деньгах
+/// Мягкий баннер арендатору под сообщением с просьбой о деньгах + кнопка Report
 class _PayWarning extends StatelessWidget {
-  const _PayWarning();
+  const _PayWarning({this.onReport});
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) => Container(
         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.85),
         margin: const EdgeInsets.only(top: 2, bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 6),
         decoration: BoxDecoration(color: const Color(0xFFFFF1D6), borderRadius: BorderRadius.circular(12)),
-        child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(ZI.warning, size: 18, color: Color(0xFF9A6200)),
-          SizedBox(width: 8),
-          Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(ZI.warning, size: 18, color: Color(0xFF9A6200)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Never pay a deposit or viewing fee before you see the house and the agreement.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B4A00), height: 1.35, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ]),
+          if (onReport != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onReport,
+                style: TextButton.styleFrom(foregroundColor: const Color(0xFF9A6200), visualDensity: VisualDensity.compact),
+                child: const Text('Report'),
+              ),
+            ),
+        ]),
+      );
+}
+
+/// Команда Zumi проверяет это объявление (риск 70+) — предупреждение сверху переписки
+class _RiskBanner extends StatelessWidget {
+  const _RiskBanner({this.onReport});
+  final VoidCallback? onReport;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        color: const Color(0xFFFDE2DC),
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        child: Row(children: [
+          const Icon(ZI.warning, size: 20, color: Color(0xFFB3261E)),
+          const SizedBox(width: 10),
+          const Expanded(
             child: Text(
-              'Never pay a deposit, viewing fee or any money before you have seen the property in person '
-              'and met the owner or agent. Zumi never asks for payment in chat. '
-              'If someone insists, report the listing.',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF6B4A00), height: 1.35),
+              'Be careful: the Zumi team is checking this listing. Do not send any money until you have seen '
+              'the house and signed an agreement.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF7A1C14), height: 1.35),
             ),
           ),
+          if (onReport != null) TextButton(onPressed: onReport, child: const Text('Report')),
         ]),
       );
 }

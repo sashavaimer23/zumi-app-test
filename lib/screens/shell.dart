@@ -169,6 +169,12 @@ class ShellState extends State<Shell> with WidgetsBindingObserver {
         go(open == 'chats' ? 3 : 4);
         return;
       }
+      if (open == 'admin_risk') {
+        // письмо «объявление ушло на проверку» → сразу в кабинет команды
+        go(4);
+        if (context.read<AppState>().user?.isAdmin ?? false) openAdminScreen(context);
+        return;
+      }
       if (open == 'plans') {
         go(4);
         if (context.read<AppState>().billingVisible) openPlans(context);

@@ -177,6 +177,7 @@ class SupabaseRepository implements Repository {
         ('ASK_AGENCY_OWNER', 'Your agency owner buys plans and extra listings for the whole agency.'),
         ('TOO_MANY_INVITES', 'Too many invites today. Try again tomorrow.'),
         ('USE_INVITE', 'Join an agency with an invite link from its owner.'),
+        ('UNDER_REVIEW', 'The Zumi team is checking this listing. Contacts are hidden for now.'),
         ('SLUG_TAKEN', 'This address is already taken — try another one.'),
         ('SLUG_RESERVED', 'This address is used by Zumi — try another one.'),
         ('BAD_SLUG', 'Use 3–40 small letters, numbers or dashes, for example john-banda.'),
@@ -436,6 +437,10 @@ class SupabaseRepository implements Repository {
         return _areasCache!;
       });
 
+  /// Один и тот же дом у нескольких агентов (группа повторов, миграция 042) — в поиске одна карточка.
+  /// Остальные видны на странице объявления в блоке «Also offered by». До 042 поля нет — ничего не меняется.
+  static Iterable<Map<String, dynamic>> _leads(List<Map<String, dynamic>> rows) => rows.where((r) => r['dup_lead'] != false);
+
   /// Общие фильтры поиска. Объявления, не подтверждённые 37 дней, не показываются.
   PostgrestFilterBuilder<PostgrestList> _filtered(SearchFilters f, {String columns = '*', bool withPrice = true}) {
     var q = _db.from('property_feed').select(columns).eq('status', 'active').eq('is_fresh', true);
@@ -478,7 +483,7 @@ class SupabaseRepository implements Repository {
           SortBy.priceDesc => ordered.order('price', ascending: false),
         };
         final rows = await sorted.range(offset, offset + limit - 1);
-        return rows.map(Property.fromMap).toList();
+        return _leads(rows).map(Property.fromMap).toList();
       });
 
   @override
@@ -502,7 +507,7 @@ class SupabaseRepository implements Repository {
   @override
   Future<List<Property>> popular({String city = 'Lusaka', int limit = 8}) => _guard(() async {
         final rows = await _filtered(SearchFilters(city: city)).order('views_count', ascending: false).limit(limit);
-        return rows.map(Property.fromMap).toList();
+        return _leads(rows).map(Property.fromMap).toList();
       });
 
   @override
@@ -1436,6 +1441,53 @@ class SupabaseRepository implements Repository {
         return AgencyInviteInfo(
             agencyId: m['agency_id'] as String, name: m['name'] as String, valid: (m['valid'] as bool?) ?? false);
       });
+
+  @override
+  Future<List<AlsoOffered>> alsoOffered(String propertyId) async {
+    try {
+      final rows = await _db.rpc('also_offered', params: {'p_id': propertyId}) as List;
+      return rows.map((r) => AlsoOffered.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+    } catch (_) {
+      return const []; // база ещё без 042
+    }
+  }
+
+  @override
+  Future<bool> conversationWarning(String conversationId) async {
+    try {
+      return (await _db.rpc('conversation_warning', params: {'p_conv': conversationId}) as bool?) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<List<RiskItem>> adminRiskList() => _guard(() async {
+        final rows = await _db.rpc('admin_risk_list', params: {'p_limit': 200}) as List;
+        return rows.map((r) => RiskItem.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+      });
+
+  @override
+  Future<void> adminRiskAction(String propertyId, String action, {String? note}) => _guard(() async {
+        await _db.rpc('admin_risk_action', params: {'p_property': propertyId, 'p_action': action, 'p_note': note});
+      });
+
+  @override
+  Future<RiskSettings> adminRiskSettings() => _guard(() async {
+        final r = Map<String, dynamic>.from(await _db.rpc('admin_risk_settings') as Map);
+        return RiskSettings(
+          config: Map<String, num>.from((r['config'] as Map).map((k, v) => MapEntry(k as String, v as num))),
+          stopWords: (r['stop_words'] as String?) ?? '',
+        );
+      });
+
+  @override
+  Future<void> adminSetRiskSettings(Map<String, num> config, String stopWords) => _guard(() async {
+        await _db.rpc('admin_set_risk_settings', params: {'p_config': config, 'p_stop_words': stopWords});
+      });
+
+  @override
+  Future<int> adminRiskRecalc() => _guard(() async => ((await _db.rpc('risk_recalc_recent')) as num?)?.toInt() ?? 0);
 
   @override
   Future<InviteInfo> myInvite() => _guard(() async {

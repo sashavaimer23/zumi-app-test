@@ -249,6 +249,15 @@ abstract class Repository {
 
   /// «Пригласить друга» (041)
   Future<InviteInfo> myInvite();
+
+  /// Защита от мошенников (042)
+  Future<List<AlsoOffered>> alsoOffered(String propertyId);
+  Future<bool> conversationWarning(String conversationId);
+  Future<List<RiskItem>> adminRiskList();
+  Future<void> adminRiskAction(String propertyId, String action, {String? note});
+  Future<RiskSettings> adminRiskSettings();
+  Future<void> adminSetRiskSettings(Map<String, num> config, String stopWords);
+  Future<int> adminRiskRecalc();
   Future<bool> claimInvite(String code);
   Future<String> setMyCatalog({required String slug, String? bio, String? areas, required bool publicContact});
   Future<String> joinAgency(String code);

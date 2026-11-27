@@ -22,6 +22,7 @@ import '../support/ticket_chat_screen.dart';
 
 part 'admin_extra.dart';
 part 'admin_owner.dart';
+part 'admin_risk.dart';
 
 // ======================================================================
 // Кабинет команды Zumi. Доступен только role = 'admin' (проверяет сервер).
@@ -30,7 +31,7 @@ part 'admin_owner.dart';
 // ======================================================================
 
 enum _Section {
-  inbox, accounts, listings, licences, reports, phones, support, reviews, help, // модератор
+  inbox, risk, accounts, listings, licences, reports, phones, support, reviews, help, // модератор
   ads, payments, adStats, stats, dev, feedback, team, log, // владелец
 }
 
@@ -42,6 +43,7 @@ const _ownerOnly = {
 extension on _Section {
   String get label => switch (this) {
         _Section.inbox => 'Inbox',
+        _Section.risk => 'Risk',
         _Section.stats => 'Statistics',
         _Section.adStats => 'Ad statistics',
         _Section.dev => 'Developer',
@@ -61,6 +63,7 @@ extension on _Section {
       };
   IconData get icon => switch (this) {
         _Section.inbox => ZI.bell,
+        _Section.risk => ZI.warning,
         _Section.stats => ZI.sort,
         _Section.adStats => ZI.eye,
         _Section.dev => ZI.settings,
@@ -114,6 +117,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   int _badge(_Section s) => switch (s) {
         _Section.inbox => _stats.totalFor(owner: _isOwner),
+        _Section.risk => 0,
         _Section.stats => 0,
         _Section.adStats => 0,
         _Section.dev => 0,
@@ -134,6 +138,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _body() => switch (_section) {
         _Section.inbox => _Inbox(stats: _stats, onOpen: _go, onRefresh: _refreshStats, owner: _isOwner),
+        _Section.risk => _RiskAdmin(owner: _isOwner),
         _Section.stats => const _Stats(),
         _Section.adStats => const _AdStats(),
         _Section.dev => const _DevStats(),

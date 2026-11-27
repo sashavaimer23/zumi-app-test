@@ -41,6 +41,12 @@ class AppState extends ChangeNotifier {
     final waNum = (wa == null || wa.isEmpty) ? null : wa;
     final billing = (f['billing'] as bool?) ?? false;
     final rooms = (f['rooms'] as bool?) ?? false;
+    final words = ((f['chat_stop_words'] as String?) ?? '')
+        .split(',')
+        .map((w) => w.trim().toLowerCase())
+        .where((w) => w.length >= 3)
+        .toList();
+    Features.chatStopWords = words;
     if (promo == Features.promotion && ads == Features.ads && waNum == Features.waVerifyNumber &&
         billing == Features.billing && rooms == Features.rooms) {
       return;

@@ -18,6 +18,9 @@ class Features {
   /// null — подтверждение через WhatsApp ещё не подключено (используется старый экран с кодом).
   static String? waVerifyNumber;
 
+  /// Стоп-слова чата (меняются в Admin → Risk): при них арендатор видит баннер «не платите заранее»
+  static List<String> chatStopWords = const [];
+
   /// Платные функции (бусты, доп. места, тарифы). Владелец включает в кабинете → Payments.
   /// Покупки — только на сайте: в приложениях Android/iPhone о покупках не говорим (правила магазинов).
   static bool billing = false;

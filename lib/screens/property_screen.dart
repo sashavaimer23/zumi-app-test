@@ -73,7 +73,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => ChatScreen(conversationId: id, title: p.contactName ?? p.title)),
+        MaterialPageRoute(builder: (_) => ChatScreen(conversationId: id, title: p.contactName ?? p.title, propertyId: p.id)),
       );
     } catch (e) {
       if (mounted) showSnack(context, '$e');
@@ -230,6 +230,8 @@ class _PropertyScreenState extends State<PropertyScreen> {
               const Padding(padding: EdgeInsets.only(top: 22), child: ListingAdBlock()),
             ..._amenityGroup('Power & water', p.amenities.where(powerWaterLabels.containsKey).toList()),
             ..._amenityGroup('Amenities', p.amenities.where((a) => !powerWaterLabels.containsKey(a)).toList()),
+            // этот же дом у других агентов (группа повторов) — честное сравнение цен
+            _AlsoOffered(propertyId: p.id),
             _h('Details'),
             _row('Property type', p.isRoom ? (p.roomInfo?.kindLabel ?? 'Room') : p.propertyType.label),
             if (p.dealType == DealType.rent) _row('Rental', p.rentPeriod == 'day' ? 'Daily' : 'Long-term'),
@@ -454,5 +456,70 @@ class _ActionBtn extends StatelessWidget {
             Text(label, style: const TextStyle(fontSize: 11)),
           ]),
         ),
+      );
+}
+
+
+/// «Also offered by»: тот же дом у других агентов и их цены (миграция 042). Пусто — ничего не показываем.
+class _AlsoOffered extends StatelessWidget {
+  const _AlsoOffered({required this.propertyId});
+  final String propertyId;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<AlsoOffered>>(
+        future: context.read<AppState>().repo.alsoOffered(propertyId),
+        builder: (context, snap) {
+          final list = snap.data ?? const <AlsoOffered>[];
+          if (list.isEmpty) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Also offered by',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Zc.text)),
+              const SizedBox(height: 4),
+              const Text('The same home is listed by other agents. Compare prices and choose who to contact.',
+                  style: TextStyle(fontSize: 13, color: Zc.grey)),
+              const SizedBox(height: 10),
+              for (final a in list)
+                InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () async {
+                    final nav = Navigator.of(context);
+                    final other = await context.read<AppState>().repo.getProperty(a.id);
+                    if (other != null) nav.push(MaterialPageRoute(builder: (_) => PropertyScreen(property: other)));
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Zc.chip),
+                    ),
+                    child: Row(children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Flexible(
+                              child: Text(a.agencyName ?? a.ownerName,
+                                  overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                            if (a.licensed) ...[
+                              const SizedBox(width: 6),
+                              const Icon(ZI.verified, size: 16, color: Zc.green),
+                            ],
+                          ]),
+                          if (a.agencyName != null)
+                            Text(a.ownerName, style: const TextStyle(fontSize: 12.5, color: Zc.grey)),
+                        ]),
+                      ),
+                      Text(money(a.price, a.currency) + (a.rentPeriod == 'month' ? ' /mo' : ''),
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: Zc.orange)),
+                    ]),
+                  ),
+                ),
+            ]),
+          );
+        },
       );
 }

@@ -2624,7 +2624,12 @@ final _payWords = RegExp(
   r'send\s*(the\s*|me\s*)?(money|cash|payment|k\s?\d+)|transfer\s*(the\s*)?(money|k\s?\d+)|western\s*union|moneygram)\b',
   caseSensitive: false,
 );
-bool looksLikePaymentRequest(String text) => _payWords.hasMatch(text);
+bool looksLikePaymentRequest(String text) {
+  if (_payWords.hasMatch(text)) return true;
+  // плюс стоп-слова из Admin → Risk (их можно менять без обновления сайта)
+  final t = text.toLowerCase();
+  return Features.chatStopWords.any(t.contains);
+}
 
 /// «3 months upfront»
 String advanceLabel(int m) => m == 1 ? '1 month upfront' : '$m months upfront';
@@ -2677,4 +2682,114 @@ class InviteInfo {
         invited: (m['invited'] as num?)?.toInt() ?? 0,
         posted: (m['posted'] as num?)?.toInt() ?? 0,
       );
+}
+
+/// «Also offered by»: этот же дом у других агентов (группа повторов, 042)
+class AlsoOffered {
+  final String id;
+  final String ownerName;
+  final String? agencyName;
+  final bool licensed;
+  final double price;
+  final String currency;
+  final String? rentPeriod;
+  final String? slug;
+  const AlsoOffered({
+    required this.id,
+    required this.ownerName,
+    this.agencyName,
+    this.licensed = false,
+    required this.price,
+    this.currency = 'ZMW',
+    this.rentPeriod,
+    this.slug,
+  });
+  factory AlsoOffered.fromMap(Map<String, dynamic> m) => AlsoOffered(
+        id: m['id'] as String,
+        ownerName: (m['owner_name'] as String?) ?? 'Agent',
+        agencyName: m['agency_name'] as String?,
+        licensed: (m['licensed'] as bool?) ?? false,
+        price: ((m['price'] as num?) ?? 0).toDouble(),
+        currency: (m['currency'] as String?) ?? 'ZMW',
+        rentPeriod: m['rent_period'] as String?,
+        slug: m['slug'] as String?,
+      );
+}
+
+/// Причина риска простыми словами
+class RiskReason {
+  final String code;
+  final int points;
+  final String text;
+  const RiskReason(this.code, this.points, this.text);
+  factory RiskReason.fromMap(Map<String, dynamic> m) =>
+      RiskReason((m['code'] as String?) ?? '', ((m['points'] as num?) ?? 0).toInt(), (m['text'] as String?) ?? '');
+}
+
+/// Строка раздела Admin → Risk
+class RiskItem {
+  final String propertyId;
+  final int score;
+  final List<RiskReason> reasons;
+  final String title;
+  final String status;
+  final double price;
+  final String currency;
+  final String? rentPeriod;
+  final String? areaName;
+  final String? ownerId;
+  final String ownerName;
+  final String? agencyName;
+  final bool ownerBanned;
+  final int accountScore;
+  final List<RiskReason> accountReasons;
+  final int groupSize;
+  final int? clearedScore;
+  const RiskItem({
+    required this.propertyId,
+    required this.score,
+    required this.reasons,
+    required this.title,
+    required this.status,
+    required this.price,
+    this.currency = 'ZMW',
+    this.rentPeriod,
+    this.areaName,
+    this.ownerId,
+    required this.ownerName,
+    this.agencyName,
+    this.ownerBanned = false,
+    this.accountScore = 0,
+    this.accountReasons = const [],
+    this.groupSize = 0,
+    this.clearedScore,
+  });
+  static List<RiskReason> _reasons(dynamic v) =>
+      ((v as List?) ?? const []).map((e) => RiskReason.fromMap(Map<String, dynamic>.from(e as Map))).toList();
+  factory RiskItem.fromMap(Map<String, dynamic> m) => RiskItem(
+        propertyId: m['property_id'] as String,
+        score: ((m['score'] as num?) ?? 0).toInt(),
+        reasons: _reasons(m['reasons']),
+        title: (m['title'] as String?) ?? '',
+        status: (m['status'] as String?) ?? '',
+        price: ((m['price'] as num?) ?? 0).toDouble(),
+        currency: (m['currency'] as String?) ?? 'ZMW',
+        rentPeriod: m['rent_period'] as String?,
+        areaName: m['area_name'] as String?,
+        ownerId: m['owner_id'] as String?,
+        ownerName: (m['owner_name'] as String?) ?? '—',
+        agencyName: m['agency_name'] as String?,
+        ownerBanned: (m['owner_banned'] as bool?) ?? false,
+        accountScore: ((m['account_score'] as num?) ?? 0).toInt(),
+        accountReasons: _reasons(m['account_reasons']),
+        groupSize: ((m['group_size'] as num?) ?? 0).toInt(),
+        clearedScore: (m['cleared_score'] as num?)?.toInt(),
+      );
+}
+
+/// Веса, пороги и стоп-слова (Admin → Risk → Settings)
+class RiskSettings {
+  final Map<String, num> config;
+  final String stopWords;
+  const RiskSettings({required this.config, required this.stopWords});
 }

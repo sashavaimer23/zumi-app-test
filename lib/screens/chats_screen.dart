@@ -119,7 +119,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ChatScreen(conversationId: c.id, title: c.otherName ?? 'Chat'),
+                              builder: (_) => ChatScreen(conversationId: c.id, title: c.otherName ?? 'Chat', propertyId: c.propertyId),
                             ),
                           );
                           if (mounted) setState(() => _reload(app));
