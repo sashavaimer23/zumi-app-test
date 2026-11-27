@@ -38,6 +38,7 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
   final _firmNo = TextEditingController();
   String _role = 'seeker';
   bool _consent = false;
+  bool _dataConsent = false; // хранение данных за пределами Замбии — отдельное согласие
   bool _marketing = false;
   bool _loading = false;
 
@@ -63,6 +64,10 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
     }
     if (!_consent) {
       showSnack(context, 'Please accept the Terms of Service and Privacy Policy');
+      return;
+    }
+    if (!_dataConsent) {
+      showSnack(context, 'Please agree to store your data on cloud servers outside Zambia — we cannot create an account without it');
       return;
     }
     setState(() => _loading = true);
@@ -146,6 +151,7 @@ class _FinishSignupScreenState extends State<FinishSignupScreen> {
                 const SizedBox(height: 18),
               ],
               ConsentCheck(value: _consent, onChanged: (v) => setState(() => _consent = v)),
+                DataConsentCheck(value: _dataConsent, onChanged: (v) => setState(() => _dataConsent = v)),
               MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
               const SizedBox(height: 30),
               PrimaryButton(label: 'Continue', loading: _loading, onPressed: _submit, width: double.infinity),

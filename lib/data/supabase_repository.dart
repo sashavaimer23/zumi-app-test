@@ -269,6 +269,9 @@ class SupabaseRepository implements Repository {
             'phone': phone,
             'role': role,
             'terms_accepted': termsAccepted,
+            // отдельное согласие на хранение данных вне Замбии (галочка обязательна на экране регистрации)
+            'data_abroad_consent': true,
+            'data_abroad_consent_at': DateTime.now().toUtc().toIso8601String(),
             'marketing': marketing,
             if ((role == 'agent' || role == 'agency') && (licenceNo ?? '').trim().isNotEmpty) 'licence_no': licenceNo!.trim(),
             if (role == 'agency') 'agency_name': (agencyName ?? '').trim(),
@@ -328,6 +331,13 @@ class SupabaseRepository implements Repository {
           'p_terms': termsAccepted,
           'p_marketing': marketing,
         });
+        // отдельное согласие на хранение данных вне Замбии — сохраняем в аккаунте (галочка обязательна)
+        try {
+          await _db.auth.updateUser(UserAttributes(data: {
+            'data_abroad_consent': true,
+            'data_abroad_consent_at': DateTime.now().toUtc().toIso8601String(),
+          }));
+        } catch (_) {/* не мешаем регистрации */}
         await _reloadUser();
       });
 

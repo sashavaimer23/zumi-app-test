@@ -41,6 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _facebookLoading = false;
   String _role = 'seeker'; // большинство просто ищет жильё
   bool _consent = false;
+  bool _dataConsent = false; // хранение данных за пределами Замбии — отдельное согласие
   bool _marketing = false; // новости и предложения — по желанию, по умолчанию выключено
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
@@ -82,6 +83,10 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (_signUp && !_consent) {
       showSnack(context, 'Please accept the Terms of Service and Privacy Policy');
+      return;
+    }
+    if (_signUp && !_dataConsent) {
+      showSnack(context, 'Please agree to store your data on cloud servers outside Zambia — we cannot create an account without it');
       return;
     }
     setState(() => _loading = true);
@@ -400,6 +405,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 16),
                 // отдельная галочка согласия — дата согласия сохраняется на сервере
                 ConsentCheck(value: _consent, onChanged: (v) => setState(() => _consent = v)),
+                DataConsentCheck(value: _dataConsent, onChanged: (v) => setState(() => _dataConsent = v)),
                 // где хранятся данные — до согласия, простыми словами
                   MarketingCheck(value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
               ],

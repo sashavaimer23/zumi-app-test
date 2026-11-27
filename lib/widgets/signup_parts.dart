@@ -155,6 +155,38 @@ class ConsentCheck extends StatelessWidget {
       );
 }
 
+/// Отдельное согласие на хранение данных за пределами Замбии (закон о защите данных Замбии) — обязательно
+class DataConsentCheck extends StatelessWidget {
+  const DataConsentCheck({super.key, required this.value, required this.onChanged});
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Checkbox(value: value, activeColor: Zc.orange, onChanged: (v) => onChanged(v ?? false)),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text.rich(
+              TextSpan(style: const TextStyle(fontSize: 13, color: Zc.text, height: 1.4), children: [
+                const TextSpan(text: 'I agree that Zumi stores my data on trusted cloud servers outside Zambia. '),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: GestureDetector(
+                    onTap: () => openLegal(context, LegalDoc.privacy),
+                    child: const Text('Learn more',
+                        style: TextStyle(fontSize: 13, color: Zc.green, decoration: TextDecoration.underline)),
+                  ),
+                ),
+                const TextSpan(text: ' *', style: TextStyle(color: Zc.orange, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          ),
+        ),
+      ]);
+}
+
 /// Новости и предложения — по желанию, по умолчанию выключено
 class MarketingCheck extends StatelessWidget {
   const MarketingCheck({super.key, required this.value, required this.onChanged});

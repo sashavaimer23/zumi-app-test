@@ -8,7 +8,7 @@ import '../widgets/back_to_top.dart';
 /// ВАЖНО: это черновики. Перед запуском их должен проверить юрист в Замбии.
 /// Когда тексты будут проверены — поставьте kLegalDraft = false (плашка «Draft» исчезнет).
 const kLegalDraft = true;
-const kLegalUpdated = '29 October 2026';
+const kLegalUpdated = '27 November 2026';
 
 enum LegalDoc { terms, privacy }
 
@@ -224,12 +224,13 @@ const _privacy = <(String, String)>[
     '• Where your data is stored: Zumi uses the cloud provider Supabase. Your account data, listings, photos and '
         'messages are stored on Supabase servers in the European Union (Ireland), which means outside Zambia.\n'
         '• Other services we use: Resend — to send emails from Zumi (codes and messages about your account); '
-        'Cloudflare — for our domain and email forwarding; GitHub Pages — to deliver the Zumi website; Google and '
+        'Cloudflare — for our domain, email forwarding and to deliver the Zumi website; Google and '
         'Facebook — only if you choose to sign in with them; a map provider — to show maps (it sees your IP address '
         'when map images load). They receive only what they need for that job.\n'
-        '• Your consent: when you create an account and accept this Privacy Policy, you give your explicit consent '
-        'to this transfer and storage of your data outside Zambia. Without it we cannot create an account, because '
-        'Zumi has no servers in Zambia yet.\n'
+        '• Your consent: when you create an account you tick a separate box: "I agree that Zumi stores my data on '
+        'trusted cloud servers outside Zambia." This is your explicit consent to this transfer and storage of your '
+        'data outside Zambia, and we keep a record of when you gave it. Without it we cannot create an account, '
+        'because Zumi has no servers in Zambia yet.\n'
         '• How it is protected: data in the European Union is protected by the EU General Data Protection Regulation, '
         'which gives a level of protection at least equal to the Data Protection Act No. 3 of 2021 of Zambia. On top of '
         'that, data is encrypted when it travels between your device and our servers and when it is stored; access '
